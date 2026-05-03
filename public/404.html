@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conferly - Page Not Found</title>
+    <script>
+        // SPA redirect for GitHub Pages
+        // Store the original path in sessionStorage before redirecting
+        sessionStorage.setItem('redirect', location.pathname + location.search + location.hash);
+        location.replace('/');
+    </script>
+</head>
+<body>
+    <p>Redirecting to Conferly...</p>
+</body>
+</html>
