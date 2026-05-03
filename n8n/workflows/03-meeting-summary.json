@@ -1,0 +1,67 @@
+{
+  "name": "Conferly: Post-Meeting Summary Email",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "conferly",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-1",
+      "name": "Conferly Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.body.event }}",
+              "rightValue": "meeting.ended",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "id": "2",
+              "leftValue": "={{ $json.body.data.durationSeconds }}",
+              "rightValue": 60,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "filter-1",
+      "name": "Meeting > 1 min?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@conferly.site",
+        "toEmail": "={{ $json.body.email }}",
+        "subject": "Your Conferly meeting summary",
+        "emailFormat": "html",
+        "html": "<!DOCTYPE html><html><head><style>body{font-family:Inter,sans-serif;background:#0f172a;color:#fff;padding:40px;margin:0;}.container{max-width:560px;margin:0 auto;background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.2);border-radius:24px;padding:48px 32px;}h1{font-size:24px;margin:0 0 16px;}.stat{display:flex;justify-content:space-between;padding:16px;background:rgba(255,255,255,0.03);border-radius:12px;margin:8px 0;}.label{color:#94a3b8;}strong{color:#fbbf24;}</style></head><body><div class=\"container\"><h1>📊 Meeting Summary</h1><p style=\"color:#cbd5e1;\">Hello {{ $json.body.displayName.split(' ')[0] }}, here's a summary of your meeting on {{ $now.toFormat('dd MMM yyyy') }}.</p><div class=\"stat\"><span class=\"label\">Room Code</span><strong>{{ $json.body.data.roomCode }}</strong></div><div class=\"stat\"><span class=\"label\">Duration</span><strong>{{ Math.floor($json.body.data.durationSeconds / 60) }} minutes</strong></div><div class=\"stat\"><span class=\"label\">Transcript Entries</span><strong>{{ $json.body.data.transcriptEntries }}</strong></div><div class=\"stat\"><span class=\"label\">Chat Messages</span><strong>{{ $json.body.data.chatMessages }}</strong></div><p style=\"color:#94a3b8;font-size:13px;margin-top:24px;\">All meeting data is saved in your dashboard. Visit <a href=\"https://www.conferly.site\" style=\"color:#fbbf24;\">conferly.site</a> to access your transcripts and notes.</p></div></body></html>",
+        "options": {}
+      },
+      "id": "email-1",
+      "name": "Send Summary",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Conferly Webhook": { "main": [[{ "node": "Meeting > 1 min?", "type": "main", "index": 0 }]] },
+    "Meeting > 1 min?": { "main": [[{ "node": "Send Summary", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "conferly" }, { "name": "meetings" }]
+}

@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # ─── Conferly Frontend (React PWA) ───
+  web:
+    build:
+      context: .
+      args:
+        VITE_API_URL: http://localhost:3001
+        VITE_PEACH_ENTITY_ID: ${PEACH_ENTITY_ID:-}
+        VITE_PEACH_SECRET: ${PEACH_SECRET:-}
+        VITE_PEACH_MODE: ${PEACH_MODE:-sandbox}
+        VITE_N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678/webhook/conferly}
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+      - n8n
+    restart: unless-stopped
+
+  # ─── Conferly Backend (Express + SQLite) ───
+  api:
+    build: ./server
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET:-conferly-change-this-secret}
+    volumes:
+      - conferly-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ─── n8n Automation Engine ───
+  # Handles all workflows: signup emails, payment receipts, analytics, alerts, etc.
+  # Access at http://localhost:5678 (default credentials: admin / change-this-password)
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    ports:
+      - "5678:5678"
+    environment:
+      # Authentication (CHANGE THESE in production!)
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-change-this-password}
+      # Host config — set to your subdomain in production (e.g. automation.conferly.site)
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      - WEBHOOK_URL=${N8N_PUBLIC_URL:-http://localhost:5678/}
+      # Timezone (Africa/Johannesburg for SA)
+      - GENERIC_TIMEZONE=Africa/Johannesburg
+      - TZ=Africa/Johannesburg
+      # Pass through Conferly secrets so workflows can use them
+      - SUPABASE_URL=https://neymqmyzmsberwlowlpw.supabase.co
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - PEACH_ENTITY_ID=${PEACH_ENTITY_ID:-}
+      - PEACH_SECRET=${PEACH_SECRET:-}
+      # Email (configure your SMTP for sending welcome/notification emails)
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-noreply@conferly.site}
+    volumes:
+      - n8n-data:/home/node/.n8n
+      - ./n8n/workflows:/workflows
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  conferly-data:
+  n8n-data:
