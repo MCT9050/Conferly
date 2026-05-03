@@ -1,8 +1,8 @@
-# ⚡ Storm — Deployment Guide
+# ⚡ Conferly — Deployment Guide
 
-**Deploy Storm anywhere that can serve a static HTML file.**
+**Deploy Conferly anywhere that can serve a static HTML file.**
 
-Storm builds to a single `dist/index.html` (~970KB) containing all JS, CSS, and assets inlined. No server-side runtime required. No Node.js needed in production. Just serve the file.
+Conferly builds to a single `dist/index.html` (~970KB) containing all JS, CSS, and assets inlined. No server-side runtime required. No Node.js needed in production. Just serve the file.
 
 ---
 
@@ -69,7 +69,7 @@ dist/
 
 ## 3. Environment Variables (Optional)
 
-Storm works 100% without any environment variables. Authentication falls back to secure offline mode (SHA-256 hashed passwords in localStorage).
+Conferly works 100% without any environment variables. Authentication falls back to secure offline mode (SHA-256 hashed passwords in localStorage).
 
 To enable Supabase cloud auth, create a `.env` file **before building**:
 
@@ -104,7 +104,7 @@ vercel --prod
 ```
 
 Or connect your GitHub repo at [vercel.com/new](https://vercel.com/new):
-1. Import your Storm repository
+1. Import your Conferly repository
 2. Framework preset: **Vite**
 3. Build command: `npm run build`
 4. Output directory: `dist`
@@ -159,7 +159,7 @@ Or use the CLI:
 ```bash
 npm i -g wrangler
 npm run build
-wrangler pages deploy dist --project-name=storm
+wrangler pages deploy dist --project-name=conferly
 ```
 
 ---
@@ -204,7 +204,7 @@ jobs:
 
 Enable Pages in: **Repo Settings → Pages → Source: GitHub Actions**
 
-> **Note:** If deploying to `username.github.io/storm` (not root), add `base: '/storm/'` to `vite.config.ts`.
+> **Note:** If deploying to `username.github.io/conferly` (not root), add `base: '/conferly/'` to `vite.config.ts`.
 
 ---
 
@@ -274,23 +274,23 @@ railway up
 npm run build
 
 # Create S3 bucket
-aws s3 mb s3://storm-app --region us-east-1
+aws s3 mb s3://conferly-app --region us-east-1
 
 # Enable static website hosting
-aws s3 website s3://storm-app --index-document index.html --error-document index.html
+aws s3 website s3://conferly-app --index-document index.html --error-document index.html
 
 # Upload
-aws s3 sync dist/ s3://storm-app --delete
+aws s3 sync dist/ s3://conferly-app --delete
 
 # Set public read policy
-aws s3api put-bucket-policy --bucket storm-app --policy '{
+aws s3api put-bucket-policy --bucket conferly-app --policy '{
   "Version": "2012-10-17",
   "Statement": [{
     "Sid": "PublicRead",
     "Effect": "Allow",
     "Principal": "*",
     "Action": "s3:GetObject",
-    "Resource": "arn:aws:s3:::storm-app/*"
+    "Resource": "arn:aws:s3:::conferly-app/*"
   }]
 }'
 ```
@@ -351,8 +351,8 @@ CMD ["nginx", "-g", "daemon off;"]
 
 ```bash
 # Build and run
-docker build -t storm .
-docker run -p 8080:80 storm
+docker build -t conferly .
+docker run -p 8080:80 conferly
 ```
 
 With Docker Compose:
@@ -361,7 +361,7 @@ With Docker Compose:
 # docker-compose.yml
 version: '3.8'
 services:
-  storm:
+  conferly:
     build: .
     ports:
       - "8080:80"
@@ -394,28 +394,28 @@ sudo apt update && sudo apt install -y nginx
 # Build locally and copy dist to server
 # (on your local machine)
 npm run build
-scp -r dist/* user@your-server:/var/www/storm/
+scp -r dist/* user@your-server:/var/www/conferly/
 
 # Or build on the server directly
 ssh user@your-server
 sudo apt install -y nodejs npm
-git clone https://github.com/YOUR_USERNAME/Storm.git /opt/storm
-cd /opt/storm
+git clone https://github.com/YOUR_USERNAME/Conferly.git /opt/conferly
+cd /opt/conferly
 npm install && npm run build
-sudo cp -r dist/* /var/www/storm/
+sudo cp -r dist/* /var/www/conferly/
 ```
 
 Create Nginx config:
 
 ```bash
-sudo nano /etc/nginx/sites-available/storm
+sudo nano /etc/nginx/sites-available/conferly
 ```
 
 ```nginx
 server {
     listen 80;
-    server_name storm.yourdomain.com;
-    root /var/www/storm;
+    server_name conferly.yourdomain.com;
+    root /var/www/conferly;
     index index.html;
 
     # SPA routing — serve index.html for all routes
@@ -439,13 +439,13 @@ server {
 
 ```bash
 # Enable and restart
-sudo ln -s /etc/nginx/sites-available/storm /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/conferly /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
 
 # Add HTTPS with Let's Encrypt (free)
 sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d storm.yourdomain.com
+sudo certbot --nginx -d conferly.yourdomain.com
 ```
 
 ---
@@ -479,7 +479,7 @@ That's it. It works on any PHP hosting, any Apache server, anything that serves 
 
 For any platform, the process is:
 
-1. **Buy a domain** (Namecheap, Cloudflare, Google Domains) — e.g., `stormcall.app`
+1. **Buy a domain** (Namecheap, Cloudflare, Google Domains) — e.g., `conferly.app`
 2. **Add the domain** in your hosting platform's dashboard
 3. **Update DNS** — add the records your platform gives you:
 
@@ -497,7 +497,7 @@ For any platform, the process is:
 
 ## 6. HTTPS Requirement
 
-**Storm requires HTTPS in production.** These browser APIs only work on secure origins:
+**Conferly requires HTTPS in production.** These browser APIs only work on secure origins:
 
 | API | Requires HTTPS |
 |---|---|
@@ -514,7 +514,7 @@ For any platform, the process is:
 
 ## 7. Supabase Setup (Optional)
 
-Storm works fully without Supabase. To enable cloud-backed auth:
+Conferly works fully without Supabase. To enable cloud-backed auth:
 
 ### 7.1 Create a Supabase Project
 
@@ -599,7 +599,7 @@ After deploying, verify these work:
 ### "Speech recognition not supported"
 
 - **Cause:** Using Firefox or Safari
-- **Fix:** Use Chrome or Edge. This is a browser limitation — `webkitSpeechRecognition` is Chromium-only. Storm shows a graceful warning.
+- **Fix:** Use Chrome or Edge. This is a browser limitation — `webkitSpeechRecognition` is Chromium-only. Conferly shows a graceful warning.
 
 ### Translation not working
 
@@ -645,4 +645,4 @@ The production build is ~970KB (290KB gzipped). This includes TipTap, Yjs, Supab
 
 ---
 
-<p align="center"><strong>⚡ Storm — Deploy once, call from anywhere.</strong></p>
+<p align="center"><strong>⚡ Conferly — Deploy once, call from anywhere.</strong></p>

@@ -1,4 +1,4 @@
-# ⚡ Storm — Business Plan
+# ⚡ Conferly — Business Plan
 
 **Lightning-fast, zero-config video conferencing for Africa and beyond.**
 
@@ -8,9 +8,9 @@
 
 ## 1. Executive Summary
 
-Storm is a browser-based video conferencing platform built as a Progressive Web App (PWA). It requires zero installation, zero server configuration, and zero technical knowledge to use. A user signs up, clicks "Create Meeting," and is instantly in a video call with live transcription, collaborative notes, AI summaries, and real-time translation across all 11 South African official languages.
+Conferly is a browser-based video conferencing platform built as a Progressive Web App (PWA). It requires zero installation, zero server configuration, and zero technical knowledge to use. A user signs up, clicks "Create Meeting," and is instantly in a video call with live transcription, collaborative notes, AI summaries, and real-time translation across all 11 South African official languages.
 
-Storm targets the $14.7B global video conferencing market with a specific wedge into **Africa's underserved enterprise communication space**, where Zoom and Teams are hampered by high bandwidth requirements, mandatory downloads, and no indigenous language support.
+Conferly targets the $14.7B global video conferencing market with a specific wedge into **Africa's underserved enterprise communication space**, where Zoom and Teams are hampered by high bandwidth requirements, mandatory downloads, and no indigenous language support.
 
 **Key differentiators:**
 - Runs 100% in-browser — no download, no plugins, no app store
@@ -40,15 +40,15 @@ Storm targets the $14.7B global video conferencing market with a specific wedge 
 - **Bandwidth**: Average African internet speed is 25 Mbps (vs 100+ Mbps in NA/EU). Heavy clients fail.
 - **Device fragmentation**: Majority of African professionals use mid-range Android phones or shared computers. Native apps are prohibitive.
 - **Language**: 11 official languages in SA alone. No major video platform supports Zulu, Xhosa, Sotho, or Tswana.
-- **Cost**: Zoom Pro costs $13.33/user/mo — unaffordable for many African SMEs. Storm Free offers more than Zoom Free.
+- **Cost**: Zoom Pro costs $13.33/user/mo — unaffordable for many African SMEs. Conferly Free offers more than Zoom Free.
 
 ---
 
 ## 3. Solution
 
-Storm eliminates every barrier:
+Conferly eliminates every barrier:
 
-| Barrier | Storm's Solution |
+| Barrier | Conferly's Solution |
 |---|---|
 | Download required | PWA — runs in any browser, installable with 1 click |
 | High CPU usage | Lightweight React + Tailwind UI; no Electron wrapper |
@@ -79,7 +79,7 @@ Storm eliminates every barrier:
 
 ### 4.4 Competitive Landscape
 
-| Feature | Storm | Zoom | Teams | Google Meet |
+| Feature | Conferly | Zoom | Teams | Google Meet |
 |---|---|---|---|---|
 | Zero install | ✅ PWA | ❌ Desktop app | ❌ Desktop app | ✅ Web |
 | Free tier duration | 40 min | 40 min | 60 min | 60 min |
@@ -90,7 +90,7 @@ Storm eliminates every barrier:
 | Open source | ✅ MIT | ❌ | ❌ | ❌ |
 | Price (Pro) | $12/user/mo | $13.33/user/mo | $12.50/user/mo | $12/user/mo |
 
-**Storm's moat:** Indigenous African language AI + zero-config UX + open-source trust.
+**Conferly's moat:** Indigenous African language AI + zero-config UX + open-source trust.
 
 ---
 
@@ -112,7 +112,7 @@ Storm eliminates every barrier:
 |---|---|---|
 | **Cloud Recording Storage** | Pay-per-GB above plan limits | 8% of revenue |
 | **API Access** | Translation & transcription API for third-party integrations | 5% of revenue |
-| **White-Label Licensing** | OEM Storm for telcos, banks, government | 15% of revenue |
+| White-Label Licensing | OEM Conferly for telcos, banks, government | 15% of revenue |
 | **Premium Support** | Dedicated account manager, SLA guarantees | Included in Business+ |
 
 ### 5.2 Revenue Projections
@@ -140,7 +140,7 @@ Storm eliminates every barrier:
 
 ### 6.1 Phase 1: Product-Led Growth (Months 1–6)
 - **Free tier as wedge:** Generous free plan (5 participants, 40 min, live transcription, SA language translation)
-- **Viral loop:** Every meeting invite exposes new users to Storm
+- **Viral loop:** Every meeting invite exposes new users to Conferly
 - **Content marketing:** "Zoom killer for Africa" narrative, language inclusivity angle
 - **Community:** Open-source contributors, university partnerships in SA
 - **Target:** 50,000 free users, 500 paying organizations
@@ -187,9 +187,9 @@ Storm eliminates every barrier:
 | Subscription | Client-side plan gating | Instant feature unlock |
 
 ### 7.2 Cost Structure Advantage
-Storm's architecture eliminates the major cost centers of traditional video platforms:
+Conferly's architecture eliminates the major cost centers of traditional video platforms:
 
-| Cost Center | Zoom/Teams | Storm |
+| Cost Center | Zoom/Teams | Conferly |
 |---|---|---|
 | Media servers (SFU) | $0.004/min/participant | $0 (peer-to-peer WebRTC) |
 | AI transcription | $0.006/min (Whisper API) | $0 (Web Speech API — browser-native) |
@@ -198,7 +198,7 @@ Storm's architecture eliminates the major cost centers of traditional video plat
 | Cloud recording storage | $0.023/GB/mo (S3) | $0 (client-side, user downloads) |
 | **Total per meeting-hour** | **~$0.50** | **~$0.001** (bandwidth only) |
 
-This gives Storm a **500x cost advantage per meeting-hour**, enabling a viable free tier and 85%+ gross margins.
+This gives Conferly a **500x cost advantage per meeting-hour**, enabling a viable free tier and 85%+ gross margins.
 
 ---
 
@@ -271,7 +271,7 @@ This gives Storm a **500x cost advantage per meeting-hour**, enabling a viable f
 
 ## 11. Impact & Mission
 
-Storm exists to **democratize professional communication across Africa** by eliminating the three barriers that exclude millions: language, cost, and technology.
+Conferly exists to **democratize professional communication across Africa** by eliminating the three barriers that exclude millions: language, cost, and technology.
 
 - **Language equity:** First video platform with live translation for all 11 SA official languages
 - **Economic access:** Generous free tier; Pro at $9/mo (60% cheaper than Zoom for annual plans)
@@ -291,8 +291,8 @@ Storm exists to **democratize professional communication across Africa** by elim
 | IPO (JSE or NASDAQ) | Year 5–7 | 20–30x ARR |
 | Remain private, profitable | Ongoing | Founder-controlled |
 
-At $34.6M ARR (Year 3), a 12x acquisition would value Storm at **$415M**.
+At $34.6M ARR (Year 3), a 12x acquisition would value Conferly at **$415M**.
 
 ---
 
-<p align="center"><strong>⚡ Storm — Video calls, lightning fast. In every language.</strong></p>
+<p align="center"><strong>⚡ Conferly — Video calls, lightning fast. In every language.</strong></p>

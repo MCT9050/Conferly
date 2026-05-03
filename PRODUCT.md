@@ -1,4 +1,4 @@
-# ⚡ Storm — Complete Product Description
+# ⚡ Conferly — Complete Product Description
 
 **Version 1.0 — End-to-End Feature Specification**
 
@@ -6,7 +6,7 @@
 
 ## Product Overview
 
-Storm is a high-performance, zero-install video conferencing Progressive Web App (PWA) that runs entirely in the browser. It combines real-time video, live transcription, AI meeting intelligence, collaborative editing, multi-language translation, and enterprise security into a single lightweight application that requires no downloads, no server setup, and no technical knowledge.
+Conferly is a high-performance, zero-install video conferencing Progressive Web App (PWA) that runs entirely in the browser. It combines real-time video, live transcription, AI meeting intelligence, collaborative editing, multi-language translation, and enterprise security into a single lightweight application that requires no downloads, no server setup, and no technical knowledge.
 
 **One sentence:** *Enter your name, create a meeting, and you're in a fully-featured video conference with live transcription in 11 South African languages — in under 5 seconds.*
 
@@ -250,7 +250,7 @@ The entire flow from opening the app to being in a video call takes **under 5 se
 - Data collected every 1 second (`.ondataavailable`)
 - Duration counter (independent of meeting timer)
 - Stop recording → blob assembled → download button appears
-- Download saves as `storm-recording-{ISO-timestamp}.webm`
+- Download saves as `conferly-recording-{ISO-timestamp}.webm`
 - **Plan gating:** Recording requires Pro plan or above
 
 ---
@@ -399,7 +399,7 @@ Full-featured document editor embedded in the sidebar:
 ### Real-Time Collaboration (Yjs CRDT)
 - **Sync engine:** `@tiptap/extension-collaboration` + `yjs` + `y-webrtc`
 - **Signaling:** Public `wss://signaling.yjs.dev` WebSocket server
-- **Room isolation:** Each meeting gets a unique Yjs room: `storm-notes-{roomId}`
+- **Room isolation:** Each meeting gets a unique Yjs room: `conferly-notes-{roomId}`
 - **Conflict resolution:** Yjs CRDT ensures all participants converge to the same document state without conflicts
 - **Connected peers display:** Shows the number of connected peers (Yjs awareness)
 - **Persistence:** Document persists as long as at least one participant is in the room
@@ -410,7 +410,7 @@ Full-featured document editor embedded in the sidebar:
 - Compact layout fitting the 380px sidebar width
 
 ### Editor Styling
-- Dark theme matching Storm's glassmorphism design
+- Dark theme matching Conferly's glassmorphism design
 - Custom TipTap CSS: headings, lists, task checkboxes, code blocks, blockquotes, highlights, placeholder text
 - Scrollable content area
 - Monospace code, colored syntax
@@ -568,8 +568,8 @@ Dedicated "Security" tab with shield icon — all controls in one place.
 ### Web App Manifest
 ```json
 {
-  "name": "Storm — Video Conferencing",
-  "short_name": "Storm",
+  "name": "Conferly — Video Conferencing",
+  "short_name": "Conferly",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a"
@@ -583,7 +583,7 @@ Dedicated "Security" tab with shield icon — all controls in one place.
 
 ### Meta Tags
 - `theme-color`: `#0f172a` (matches dark UI)
-- `description`: "Storm: A high-performance, lightweight video conferencing PWA. Faster than Zoom."
+- `description`: "Conferly: A high-performance, lightweight video conferencing PWA. Faster than Zoom."
 - SVG emoji favicon (⚡)
 
 ---
@@ -665,7 +665,7 @@ src/
 | Firefox 90+ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 | Safari 15+ | ✅ | ✅ | ⚠️ | ❌ | ⚠️ | ✅ | ✅ |
 
-> Transcription requires `webkitSpeechRecognition` (Chromium only). Storm gracefully degrades — a warning is shown and all other features remain functional.
+> Transcription requires `webkitSpeechRecognition` (Chromium only). Conferly gracefully degrades — a warning is shown and all other features remain functional.
 
 ---
 
@@ -704,7 +704,7 @@ src/
 
 ## Summary
 
-Storm is a **28-file, ~4,500-line** application that delivers:
+Conferly is a **28-file, ~4,500-line** application that delivers:
 
 - ✅ Secure authentication with offline fallback
 - ✅ Real-time video & audio via native WebRTC
@@ -726,4 +726,4 @@ Storm is a **28-file, ~4,500-line** application that delivers:
 
 ---
 
-<p align="center"><strong>⚡ Storm — Video calls, lightning fast. In every language.</strong></p>
+<p align="center"><strong>⚡ Conferly — Video calls, lightning fast. In every language.</strong></p>

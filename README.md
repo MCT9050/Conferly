@@ -67,9 +67,9 @@ src/
 │   ├── useTranslation.ts            # 11 SA languages via MyMemory
 │   ├── usePulse.ts                  # In-browser TF-IDF summarization
 │   ├── usePlan.ts                   # Subscription tier management
-│   ├── useMeetingSecurity.ts        # Password, lock, waiting room
-│   ├── usePresentation.ts           # Slide deck + annotations
-│   ├── usePayment.ts                # Peach Payments checkout
+│   ├── useMeetingSecurity.ts        | Password, lock, waiting room
+│   ├── usePresentation.ts           | Slide deck + annotations
+│   ├── usePayment.ts                | Peach Payments checkout
 │   └── useInstallPrompt.ts          # PWA install prompt
 │
 └── components/
