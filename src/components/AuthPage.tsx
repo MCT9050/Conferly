@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Mail, Lock, User, ArrowRight, Eye, EyeOff,
   AlertCircle, CheckCircle2, Loader2
@@ -23,12 +23,27 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
   const [displayName, setDisplayName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [confirmation, setConfirmation] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   const switchMode = (m: 'signin' | 'signup' | 'forgot') => {
     setMode(m);
     clearError();
     setConfirmation(false);
+    setTurnstileToken('');
   };
+
+  // Turnstile callback function
+  const onTurnstileCallback = useCallback((token: string) => {
+    setTurnstileToken(token);
+  }, []);
+
+  // Make callback available globally for Turnstile
+  useEffect(() => {
+    (window as any).onTurnstileCallback = onTurnstileCallback;
+    return () => {
+      delete (window as any).onTurnstileCallback;
+    };
+  }, [onTurnstileCallback]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,8 +52,21 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
     if (mode === 'signup') {
       if (!displayName.trim()) return;
 
-      // Get Turnstile token for bot protection
-      const turnstileToken = (document.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement)?.value;
+      // Use Turnstile token for bot protection
+      if (!turnstileToken) {
+        clearError();
+        // Try to get token from DOM as fallback
+        const turnstileInput = document.querySelector('input[name="cf-turnstile-response"]') as HTMLInputElement;
+        const fallbackToken = turnstileInput?.value || '';
+        if (!fallbackToken) {
+          return; // No token available, don't proceed
+        }
+        const result = await onSignUp(email.trim(), password, displayName.trim(), fallbackToken);
+        if (result.success && result.needsConfirmation) {
+          setConfirmation(true);
+        }
+        return;
+      }
 
       const result = await onSignUp(email.trim(), password, displayName.trim(), turnstileToken);
       if (result.success && result.needsConfirmation) {
@@ -188,6 +216,7 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
                   data-sitekey="0x4AAAAAADJBiV_xIB3mw1nm"
                   data-theme="dark"
                   data-size="normal"
+                  data-callback="onTurnstileCallback"
                 >
                 </div>
               </div>
