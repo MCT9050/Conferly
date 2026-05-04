@@ -241,8 +241,7 @@ export function useAuth() {
         }
       }
     }
-  }
-    if (isBackendConfigured) {
+  } else if (isBackendConfigured) {
     try {
       const { user } = await apiSignIn(email, password);
       const p = buildProfile({ id: user.id, email: user.email, displayName: user.displayName, avatarUrl: user.avatarUrl, createdAt: user.createdAt });
