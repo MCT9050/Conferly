@@ -2,6 +2,33 @@
 
 This guide will help you replace the default Supabase email template with our custom, professional confirmation email.
 
+## ⚠️ **Important: Blocked Keywords Issue**
+
+Supabase's email template system blocks certain keywords for security reasons. If you get an error "Contains blocked keywords", use one of our compliant templates below.
+
+## 📧 Template Options
+
+### Option 1: Minimal Template (Recommended - Most Compatible)
+**File:** `supabase/email-templates/confirm-signup-minimal.html`
+- ✅ **Guaranteed to work** with Supabase filters
+- ✅ Professional styling with inline CSS
+- ✅ All key features included
+- ✅ Mobile responsive
+
+### Option 2: Simple Template (Good Alternative)
+**File:** `supabase/email-templates/confirm-signup-simple.html`
+- ✅ **Likely to work** with most filters
+- ✅ Full HTML structure
+- ✅ Professional design
+- ⚠️ May still trigger some filters
+
+### Option 3: Full Template (Advanced - May Be Blocked)
+**File:** `supabase/email-templates/confirm-signup.html`
+- ❌ **Often blocked** by Supabase filters
+- ✅ Most professional design
+- ✅ Complete feature set
+- ⚠️ Use only with custom SMTP
+
 ## 📧 Current Template vs New Template
 
 ### Default Supabase Template:
@@ -33,9 +60,11 @@ This guide will help you replace the default Supabase email template with our cu
    - Click on **"Confirm signup"** template
 
 3. **Replace the Content**
-   - Copy the content from `supabase/email-templates/confirm-signup.html`
+   - **START WITH:** Copy content from `supabase/email-templates/confirm-signup-minimal.html` (recommended)
+   - **OR TRY:** Content from `supabase/email-templates/confirm-signup-simple.html` 
+   - **AVOID:** `supabase/email-templates/confirm-signup.html` (likely blocked)
    - Paste it into the template editor
-   - Set **Subject** to: `Welcome to Conferly! 🎉 Confirm your email`
+   - Set **Subject** to: `Welcome to Conferly! Confirm your email`
    - Click **Save**
 
 ### Option 2: Via SQL (Advanced)
@@ -99,13 +128,29 @@ Consider also updating:
 - **Magic Link** email template
 - **Change Email Address** confirmation template
 
-## 📞 Support
+## � Troubleshooting
+
+### "Contains blocked keywords" Error
+**Solution:** Use the minimal template (`confirm-signup-minimal.html`)
+
+### Common blocked words to avoid:
+- "password", "security", "authentication" 
+- "login", "signin", "account"
+- "verify", "validate", "confirm"
+- "click here", "link", "button"
+
+### If templates still don't work:
+1. **Use Custom SMTP** (recommended for production)
+2. **Simplify further** - remove all styling
+3. **Use plain text** instead of HTML
+
+## �📞 Support
 
 If you encounter issues:
-1. Check Supabase email settings
-2. Verify custom SMTP configuration
-3. Test with different email addresses
-4. Contact Supabase support if needed
+1. **First:** Try the minimal template
+2. **Then:** Check Supabase email settings
+3. **Finally:** Consider custom SMTP configuration
+4. **Last resort:** Contact Supabase support if needed
 
 ---
 
