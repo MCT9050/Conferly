@@ -157,8 +157,7 @@ export function useAuth() {
           email,
           password,
           options: {
-            data: { display_name: displayName },
-            emailRedirectTo: window.location.origin
+            data: { display_name: displayName }
           }
         });
         if (err) throw err;
@@ -321,7 +320,7 @@ const completeOnboarding = useCallback(async (data: OnboardingData) => {
     if (isSupabaseConfigured && supabase) {
       try {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: `https://www.conferly.site/reset-password`,
         });
         if (error) {
           setError('Failed to send reset email. Please try again.');
