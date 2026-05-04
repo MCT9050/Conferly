@@ -315,6 +315,51 @@ const completeOnboarding = useCallback(async (data: OnboardingData) => {
     data: { userType: data.userType, organizationName: data.organizationName, organizationSize: data.organizationSize, organizationIndustry: data.organizationIndustry },
   }, [profile]);
 
+  // Password reset
+  const resetPassword = useCallback(async (email: string) => {
+    setError(null);
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) {
+          setError('Failed to send reset email. Please try again.');
+        } else {
+          setError('✅ Password reset email sent! Please check your inbox.');
+        }
+      } catch (err: any) {
+        setError('Failed to send reset email.');
+      }
+    } else {
+      setError('Password reset is not available in offline mode.');
+    }
+  }, []);
+
+  // Update password (for reset flow)
+  const updatePassword = useCallback(async (newPassword: string) => {
+    setError(null);
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.auth.updateUser({
+          password: newPassword
+        });
+        if (error) {
+          setError('Failed to update password. Please try again.');
+          return { success: false };
+        } else {
+          return { success: true };
+        }
+      } catch (err: any) {
+        setError('Failed to update password.');
+        return { success: false };
+      }
+    } else {
+      setError('Password update is not available in offline mode.');
+      return { success: false };
+    }
+  }, []);
+
   return {
     profile, loading, error,
     isAuthenticated: !!profile,
@@ -322,6 +367,8 @@ const completeOnboarding = useCallback(async (data: OnboardingData) => {
     signUp, signIn, signOut, updateDisplayName,
     completeOnboarding,
     resendConfirmation,
+    resetPassword,
+    updatePassword,
     clearError: () => { setError(null); setSessionExpired(false); },
   };
 }

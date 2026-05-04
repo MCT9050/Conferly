@@ -10,20 +10,21 @@ interface AuthPageProps {
   onSignUp: (email: string, password: string, displayName: string) => Promise<{ success: boolean; needsConfirmation?: boolean }>;
   onSignIn: (email: string, password: string) => Promise<{ success: boolean }>;
   onResendConfirmation: (email: string) => Promise<void>;
+  onResetPassword: (email: string) => Promise<void>;
   error: string | null;
   clearError: () => void;
   loading: boolean;
 }
 
-export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, error, clearError, loading }: AuthPageProps) {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onResetPassword, error, clearError, loading }: AuthPageProps) {
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [confirmation, setConfirmation] = useState(false);
 
-  const switchMode = (m: 'signin' | 'signup') => {
+  const switchMode = (m: 'signin' | 'signup' | 'forgot') => {
     setMode(m);
     clearError();
     setConfirmation(false);
@@ -39,6 +40,8 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, err
       if (result.success && result.needsConfirmation) {
         setConfirmation(true);
       }
+    } else if (mode === 'forgot') {
+      await onResetPassword(email.trim());
     } else {
       await onSignIn(email.trim(), password);
     }
@@ -46,7 +49,9 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, err
 
   const isValid = mode === 'signup'
     ? email.trim().length > 0 && password.length >= 6 && displayName.trim().length > 0
-    : email.trim().length > 0 && password.length >= 6;
+    : mode === 'forgot'
+      ? email.trim().length > 0
+      : email.trim().length > 0 && password.length >= 6;
 
   // Show confirmation screen if needed
   if (confirmation) {
@@ -68,7 +73,9 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, err
             <Logo size="xl" />
           </div>
           <p className="text-sm text-slate-400">
-            {mode === 'signin' ? 'Welcome back. Sign in to continue.' : 'Create your free account to get started.'}
+            {mode === 'signin' ? 'Welcome back. Sign in to continue.' :
+              mode === 'forgot' ? 'Enter your email to receive a reset link.' :
+                'Create your free account to get started.'}
           </p>
         </div>
 
@@ -139,33 +146,35 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, err
               />
             </div>
 
-            {/* Password */}
-            <div>
-              <label className="flex items-center gap-2 text-xs text-slate-400 mb-1.5 font-medium">
-                <Lock className="w-3.5 h-3.5" />
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
-                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                  className="w-full px-4 py-3 pr-12 rounded-xl bg-slate-800/80 border border-slate-700/50 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-white transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+            {/* Password (hidden for forgot password) */}
+            {mode !== 'forgot' && (
+              <div>
+                <label className="flex items-center gap-2 text-xs text-slate-400 mb-1.5 font-medium">
+                  <Lock className="w-3.5 h-3.5" />
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
+                    autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                    className="w-full px-4 py-3 pr-12 rounded-xl bg-slate-800/80 border border-slate-700/50 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-white transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {mode === 'signup' && password.length > 0 && password.length < 6 && (
+                  <p className="text-[10px] text-amber-400 mt-1.5">Password must be at least 6 characters</p>
+                )}
               </div>
-              {mode === 'signup' && password.length > 0 && password.length < 6 && (
-                <p className="text-[10px] text-amber-400 mt-1.5">Password must be at least 6 characters</p>
-              )}
-            </div>
+            )}
 
             {/* Submit */}
             <button
@@ -177,7 +186,7 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, err
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <>
-                  {mode === 'signin' ? 'Sign In' : 'Create Account'}
+                  {mode === 'signin' ? 'Sign In' : mode === 'forgot' ? 'Send Reset Link' : 'Create Account'}
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -187,9 +196,20 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, err
           {/* Footer text */}
           <p className="text-center text-xs text-slate-500">
             {mode === 'signin' ? (
-              <>Don't have an account?{' '}
+              <>
+                Don't have an account?{' '}
                 <button onClick={() => switchMode('signup')} className="text-blue-400 hover:text-blue-300">
                   Sign up free
+                </button>
+                <br />
+                <button onClick={() => switchMode('forgot')} className="text-blue-400 hover:text-blue-300 mt-2">
+                  Forgot your password?
+                </button>
+              </>
+            ) : mode === 'forgot' ? (
+              <>Remember your password?{' '}
+                <button onClick={() => switchMode('signin')} className="text-blue-400 hover:text-blue-300">
+                  Sign in
                 </button>
               </>
             ) : (

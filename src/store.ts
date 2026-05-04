@@ -281,6 +281,8 @@ export function useAppState() {
     updateDisplayName: auth.updateDisplayName,
     completeOnboarding: auth.completeOnboarding,
     resendConfirmation: auth.resendConfirmation,
+    resetPassword: auth.resetPassword,
+    updatePassword: auth.updatePassword,
     clearAuthError: auth.clearError,
 
     // Plan

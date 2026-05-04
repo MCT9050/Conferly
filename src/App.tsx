@@ -57,6 +57,7 @@ export default function App() {
           onSignUp={s.signUp}
           onSignIn={s.signIn}
           onResendConfirmation={s.resendConfirmation}
+          onResetPassword={s.resetPassword}
           error={s.authError}
           clearError={s.clearAuthError}
           loading={s.authLoading}
