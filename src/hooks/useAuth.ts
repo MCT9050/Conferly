@@ -9,6 +9,25 @@ import {
 import { saveMeeting } from '../lib/persist';
 import { trigger as automation } from '../lib/automation';
 
+// Cloudflare Turnstile validation
+const validateTurnstileToken = async (token: string): Promise<boolean> => {
+  try {
+    const response = await fetch('/functions/v1/verify-turnstile', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token }),
+    });
+
+    const result = await response.json();
+    return result.success === true;
+  } catch (error) {
+    console.error('Turnstile validation error:', error);
+    return false;
+  }
+};
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -149,10 +168,19 @@ export function useAuth() {
   }, []);
 
   // Sign up
-  const signUp = useCallback(async (email: string, password: string, displayName: string) => {
+  const signUp = useCallback(async (email: string, password: string, displayName: string, turnstileToken?: string) => {
     setError(null); setLoading(true); setSessionExpired(false);
     if (isSupabaseConfigured && supabase) {
       try {
+        // Validate Turnstile token if provided
+        if (turnstileToken) {
+          const isValid = await validateTurnstileToken(turnstileToken);
+          if (!isValid) {
+            setError('Security verification failed. Please refresh the page and try again.');
+            setLoading(false);
+            return { success: false };
+          }
+        }
         const { data, error: err } = await supabase.auth.signUp({
           email,
           password,

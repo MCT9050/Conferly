@@ -36,7 +36,11 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
 
     if (mode === 'signup') {
       if (!displayName.trim()) return;
-      const result = await onSignUp(email.trim(), password, displayName.trim());
+
+      // Get Turnstile token for bot protection
+      const turnstileToken = (document.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement)?.value;
+
+      const result = await onSignUp(email.trim(), password, displayName.trim(), turnstileToken);
       if (result.success && result.needsConfirmation) {
         setConfirmation(true);
       }
@@ -173,6 +177,19 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
                 {mode === 'signup' && password.length > 0 && password.length < 6 && (
                   <p className="text-[10px] text-amber-400 mt-1.5">Password must be at least 6 characters</p>
                 )}
+              </div>
+            )}
+
+            {/* Cloudflare Turnstile - Bot Protection */}
+            {mode === 'signup' && (
+              <div className="flex justify-center">
+                <div
+                  className="cf-turnstile"
+                  data-sitekey="YOUR_SITEKEY_HERE"
+                  data-theme="dark"
+                  data-size="normal"
+                >
+                </div>
               </div>
             )}
 

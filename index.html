@@ -39,6 +39,9 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Conferly — Connecting with Purpose" />
   <meta name="twitter:description" content="Premium video conferencing rooted in the African philosophy of Ubuntu." />
+
+  <!-- Cloudflare Turnstile - Bot Protection -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 
 <body class="bg-slate-950 text-white">
@@ -58,7 +61,7 @@
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch(() => { });
       });
-    }
+   
   </script>
 </body>
 
