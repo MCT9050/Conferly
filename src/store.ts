@@ -49,7 +49,7 @@ export function useAppState() {
 
   // Load meeting history on mount
   useEffect(() => {
-    getMeetings().then(setMeetingHistory).catch(() => {});
+    getMeetings().then(setMeetingHistory).catch(() => { });
   }, []);
 
   // Reconnect to a previous meeting
@@ -127,7 +127,7 @@ export function useAppState() {
         saveMeeting({
           id: mId, roomCode: roomIdRef.current, title: `Meeting ${new Date().toLocaleDateString()}`,
           startedAt: new Date().toISOString(), endedAt: null, durationSeconds: 0, participantCount: 1,
-        }).catch(() => {});
+        }).catch(() => { });
         automation('meeting.started', {
           userId: auth.profile?.id, email: auth.profile?.email, displayName: resolvedName,
           data: { meetingId: mId, roomCode: roomIdRef.current },
@@ -150,17 +150,17 @@ export function useAppState() {
             startedAt: new Date(Date.now() - meetingDurationRef.current * 1000).toISOString(),
             endedAt: new Date().toISOString(),
             durationSeconds: meetingDurationRef.current, participantCount: 1,
-          }).catch(() => {});
+          }).catch(() => { });
           // Save transcript
           const transcriptEntries = speech.transcript.filter(t => t.isFinal).map(t => ({
             speaker: t.speaker, text: t.text, timestamp: t.timestamp.toISOString(),
           }));
-          if (transcriptEntries.length > 0) saveTranscript(mId, transcriptEntries).catch(() => {});
+          if (transcriptEntries.length > 0) saveTranscript(mId, transcriptEntries).catch(() => { });
           // Save chat
           const chatEntries = chatMessages.map(m => ({
             sender: m.sender, text: m.text, timestamp: m.timestamp.toISOString(),
           }));
-          if (chatEntries.length > 0) saveChatHistory(mId, chatEntries).catch(() => {});
+          if (chatEntries.length > 0) saveChatHistory(mId, chatEntries).catch(() => { });
           automation('meeting.ended', {
             userId: auth.profile?.id, email: auth.profile?.email, displayName: resolvedName,
             data: {
@@ -280,6 +280,7 @@ export function useAppState() {
     signOut: auth.signOut,
     updateDisplayName: auth.updateDisplayName,
     completeOnboarding: auth.completeOnboarding,
+    resendConfirmation: auth.resendConfirmation,
     clearAuthError: auth.clearError,
 
     // Plan

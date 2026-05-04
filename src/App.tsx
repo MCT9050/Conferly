@@ -45,7 +45,7 @@ export default function App() {
             setView={s.setView} roomId={s.roomId} setRoomId={s.setRoomId}
             userName={s.userName} setUserName={s.setUserName}
             profile={null} isOfflineMode={false}
-            onSignOut={() => {}} onUpdateName={async () => ({ success: false })}
+            onSignOut={() => { }} onUpdateName={async () => ({ success: false })}
           />
           {installBanner}
         </>
@@ -53,7 +53,14 @@ export default function App() {
     }
     return (
       <>
-        <AuthPage onSignUp={s.signUp} onSignIn={s.signIn} error={s.authError} clearError={s.clearAuthError} loading={s.authLoading} />
+        <AuthPage
+          onSignUp={s.signUp}
+          onSignIn={s.signIn}
+          onResendConfirmation={s.resendConfirmation}
+          error={s.authError}
+          clearError={s.clearAuthError}
+          loading={s.authLoading}
+        />
         {installBanner}
       </>
     );

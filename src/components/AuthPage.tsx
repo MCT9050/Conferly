@@ -4,16 +4,18 @@ import {
   AlertCircle, CheckCircle2, Loader2
 } from 'lucide-react';
 import Logo from './Logo';
+import EmailConfirmation from './EmailConfirmation';
 
 interface AuthPageProps {
   onSignUp: (email: string, password: string, displayName: string) => Promise<{ success: boolean; needsConfirmation?: boolean }>;
   onSignIn: (email: string, password: string) => Promise<{ success: boolean }>;
+  onResendConfirmation: (email: string) => Promise<void>;
   error: string | null;
   clearError: () => void;
   loading: boolean;
 }
 
-export default function AuthPage({ onSignUp, onSignIn, error, clearError, loading }: AuthPageProps) {
+export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, error, clearError, loading }: AuthPageProps) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,6 +48,17 @@ export default function AuthPage({ onSignUp, onSignIn, error, clearError, loadin
     ? email.trim().length > 0 && password.length >= 6 && displayName.trim().length > 0
     : email.trim().length > 0 && password.length >= 6;
 
+  // Show confirmation screen if needed
+  if (confirmation) {
+    return (
+      <EmailConfirmation
+        email={email}
+        onResend={onResendConfirmation}
+        onBack={() => switchMode('signin')}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md space-y-8">
@@ -58,19 +71,6 @@ export default function AuthPage({ onSignUp, onSignIn, error, clearError, loadin
             {mode === 'signin' ? 'Welcome back. Sign in to continue.' : 'Create your free account to get started.'}
           </p>
         </div>
-
-        {/* Confirmation message */}
-        {confirmation && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/20">
-            <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
-            <div>
-              <div className="text-sm font-medium text-green-400">Check your email</div>
-              <div className="text-xs text-green-400/70">
-                We've sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Error */}
         {error && (
@@ -86,21 +86,19 @@ export default function AuthPage({ onSignUp, onSignIn, error, clearError, loadin
           <div className="flex rounded-xl bg-slate-800/60 p-1">
             <button
               onClick={() => switchMode('signin')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                mode === 'signin'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'text-slate-400 hover:text-white'
-              }`}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'signin'
+                ? 'bg-blue-600 text-white shadow-lg'
+                : 'text-slate-400 hover:text-white'
+                }`}
             >
               Sign In
             </button>
             <button
               onClick={() => switchMode('signup')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                mode === 'signup'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'text-slate-400 hover:text-white'
-              }`}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'signup'
+                ? 'bg-blue-600 text-white shadow-lg'
+                : 'text-slate-400 hover:text-white'
+                }`}
             >
               Sign Up
             </button>
