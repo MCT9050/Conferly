@@ -80,7 +80,7 @@ export function usePresentation() {
   const [laserEnabled, setLaserEnabled] = useState(false);
   const currentStrokeRef = useRef<AnnotationPoint[]>([]);
 
-  const currentSlide = slides[currentIndex] || slides[0];
+  const currentSlide = slides[currentIndex];
   const totalSlides = slides.length;
 
   // Navigation
@@ -188,6 +188,7 @@ export function usePresentation() {
   // Keyboard shortcuts for presentation
   useEffect(() => {
     if (!isPresenting) return;
+
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); nextSlide(); }
       else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prevSlide(); }
@@ -200,9 +201,10 @@ export function usePresentation() {
       else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); undoAnnotation(); }
       else if (e.key === 'c' && (e.ctrlKey || e.metaKey) && e.shiftKey) { e.preventDefault(); clearAnnotations(); }
     };
+
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [isPresenting, nextSlide, prevSlide, stopPresentation, goToSlide, slides.length, undoAnnotation, clearAnnotations]);
+  }, [isPresenting, nextSlide, prevSlide, stopPresentation, goToSlide, slides.length, undoAnnotation, clearAnnotations, setLaserEnabled, setIsDrawing, setShowPresenterNotes]);
 
   return {
     slides, currentSlide, currentIndex, totalSlides,
