@@ -185,7 +185,7 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
               <div className="flex justify-center">
                 <div
                   className="cf-turnstile"
-                  data-sitekey="YOUR_SITEKEY_HERE"
+                  data-sitekey="0x4AAAAAADJBiV_xIB3mw1nm"
                   data-theme="dark"
                   data-size="normal"
                 >
