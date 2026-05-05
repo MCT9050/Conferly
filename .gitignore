@@ -34,3 +34,57 @@ Thumbs.db
 
 # Vite
 vite.config.ts.timestamp-*
+
+# Security - NEVER commit these files!
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+secrets/
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Supabase specific
+supabase/
+*.supabase
+
+# API Keys and Tokens
+api-keys.txt
+tokens.txt
+credentials.json
+*.json.keys
+
+# Build artifacts with potential sensitive data
+dist/
+build/
+*.map
+*.bundle.*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs and debugging
+*.log
+logs/
+debug/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Backup files
+*.backup
+*.bak
+*~
