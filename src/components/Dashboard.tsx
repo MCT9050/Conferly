@@ -11,6 +11,22 @@ import type { StoredMeeting, ActiveSession } from '../lib/persist';
 import ProfileMenu from './ProfileMenu';
 import Logo from './Logo';
 
+// FeatureGate component for disabled features
+function FeatureGate({ allowed, label, planRequired, onUpgrade }: {
+  allowed: boolean; label: string; planRequired: string; onUpgrade: () => void;
+}) {
+  if (allowed) return null;
+  return (
+    <button
+      onClick={onUpgrade}
+      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-amber-500/5 border border-amber-500/10 text-xs text-amber-400 hover:bg-amber-500/10 transition-colors"
+    >
+      <Crown className="w-3.5 h-3.5 shrink-0" />
+      <span>{label} requires <strong>{planRequired}</strong> plan</span>
+    </button>
+  );
+}
+
 interface DashboardProps {
   setView: (v: AppView) => void;
   roomId: string;
@@ -261,41 +277,65 @@ export default function Dashboard({
                     <Shield className="w-4 h-4 text-slate-400" />
                     Security & Privacy
                   </h3>
-                  <div className="space-y-3">
-                    {[
-                      {
-                        label: 'Require password for meetings',
-                        enabled: security?.password !== null,
-                        action: () => setMeetingPassword(security?.password ? null : '123456'),
-                        disabled: !planLimits.meetingPassword
-                      },
-                      {
-                        label: 'Enable waiting room',
-                        enabled: security?.waitingRoomEnabled || false,
-                        action: toggleWaitingRoom,
-                        disabled: !planLimits.waitingRoom
-                      },
-                      {
-                        label: 'End-to-end encryption',
-                        enabled: security?.e2eEnabled !== false,
-                        action: () => { }, // E2E is always enabled for now
-                        disabled: true
-                      },
-                    ].map(setting => (
-                      <div key={setting.label} className="flex items-center justify-between">
-                        <span className="text-sm">{setting.label}</span>
-                        <button
-                          onClick={setting.action}
-                          disabled={setting.disabled}
-                          className={`w-12 h-6 rounded-full transition-colors ${setting.enabled ? 'bg-blue-500' : 'bg-slate-600'
-                            } ${setting.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                        >
-                          <div className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${setting.enabled ? 'translate-x-6' : 'translate-x-0.5'
-                            }`} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+
+                  {/* Loading state */}
+                  {!security && (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full" />
+                      <span className="ml-2 text-sm text-slate-400">Loading security settings...</span>
+                    </div>
+                  )}
+
+                  {/* Security content */}
+                  {security && (
+                    <div className="space-y-3">
+                      {[
+                        {
+                          label: 'Require password for meetings',
+                          enabled: security?.password !== null,
+                          action: () => setMeetingPassword(security?.password ? null : '123456'),
+                          disabled: !planLimits.meetingPassword,
+                          feature: 'meetingPassword'
+                        },
+                        {
+                          label: 'Enable waiting room',
+                          enabled: security?.waitingRoomEnabled || false,
+                          action: toggleWaitingRoom,
+                          disabled: !planLimits.waitingRoom,
+                          feature: 'waitingRoom'
+                        },
+                        {
+                          label: 'End-to-end encryption',
+                          enabled: security?.e2eEnabled !== false,
+                          action: () => { }, // E2E is always enabled for now
+                          disabled: false,
+                          feature: 'e2eEncryption'
+                        },
+                      ].map(setting => (
+                        <div key={setting.label} className="flex items-center justify-between">
+                          <span className="text-sm">{setting.label}</span>
+                          {setting.disabled ? (
+                            <FeatureGate
+                              allowed={false}
+                              label={setting.label}
+                              planRequired="Pro"
+                              onUpgrade={() => setView('pricing')}
+                            />
+                          ) : (
+                            <button
+                              onClick={setting.action}
+                              disabled={setting.disabled}
+                              className={`w-12 h-6 rounded-full transition-colors ${setting.enabled ? 'bg-blue-500' : 'bg-slate-600'
+                                } ${setting.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                            >
+                              <div className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${setting.enabled ? 'translate-x-6' : 'translate-x-0.5'
+                                }`} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
