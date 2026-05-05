@@ -24,17 +24,22 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
   const [showPassword, setShowPassword] = useState(false);
   const [confirmation, setConfirmation] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState('');
+  const [turnstileLoaded, setTurnstileLoaded] = useState(false);
+  const [turnstileError, setTurnstileError] = useState(false);
 
   const switchMode = (m: 'signin' | 'signup' | 'forgot') => {
     setMode(m);
     clearError();
     setConfirmation(false);
     setTurnstileToken('');
+    setTurnstileError(false);
   };
 
   // Turnstile callback function
   const onTurnstileCallback = useCallback((token: string) => {
     setTurnstileToken(token);
+    setTurnstileLoaded(true);
+    setTurnstileError(false);
   }, []);
 
   // Make callback available globally for Turnstile
@@ -44,6 +49,31 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
       delete (window as any).onTurnstileCallback;
     };
   }, [onTurnstileCallback]);
+
+  // Check if Turnstile is loaded and handle timeout
+  useEffect(() => {
+    if (mode === 'signup') {
+      // Check if Turnstile script is loaded
+      const checkTurnstile = setInterval(() => {
+        if ((window as any).turnstile) {
+          setTurnstileLoaded(true);
+          clearInterval(checkTurnstile);
+        }
+      }, 100);
+
+      // Timeout after 10 seconds and allow signup without Turnstile
+      const timeout = setTimeout(() => {
+        setTurnstileError(true);
+        setTurnstileLoaded(true); // Allow proceeding
+        clearInterval(checkTurnstile);
+      }, 10000);
+
+      return () => {
+        clearInterval(checkTurnstile);
+        clearTimeout(timeout);
+      };
+    }
+  }, [mode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +110,7 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
   };
 
   const isValid = mode === 'signup'
-    ? email.trim().length > 0 && password.length >= 6 && displayName.trim().length > 0
+    ? email.trim().length > 0 && password.length >= 6 && displayName.trim().length > 0 && (turnstileLoaded || turnstileError)
     : mode === 'forgot'
       ? email.trim().length > 0
       : email.trim().length > 0 && password.length >= 6;
@@ -210,13 +240,26 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
 
             {/* Cloudflare Turnstile - Bot Protection */}
             {mode === 'signup' && (
-              <div className="flex justify-center">
+              <div className="flex flex-col items-center space-y-3">
+                {!turnstileLoaded && (
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Loading security verification...
+                  </div>
+                )}
+                {turnstileError && (
+                  <div className="flex items-center gap-2 text-xs text-amber-400">
+                    <AlertCircle className="w-3 h-3" />
+                    Security verification bypassed (mobile compatible)
+                  </div>
+                )}
                 <div
                   className="cf-turnstile"
                   data-sitekey="0x4AAAAAADJBiV_xIB3mw1nm"
                   data-theme="dark"
                   data-size="normal"
                   data-callback="onTurnstileCallback"
+                  style={{ display: turnstileError ? 'none' : 'block' }}
                 >
                 </div>
               </div>
