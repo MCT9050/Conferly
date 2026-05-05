@@ -23,6 +23,11 @@ interface DashboardProps {
   isOfflineMode: boolean;
   onSignOut: () => void;
   onUpdateName: (name: string) => Promise<{ success: boolean }>;
+  security: MeetingSecurity;
+  isHost: boolean;
+  setMeetingPassword: (password: string | null) => void;
+  toggleMeetingLock: () => void;
+  toggleWaitingRoom: () => void;
   // Meeting history + reconnect + limits
   meetingHistory: StoredMeeting[];
   pendingReconnect: ActiveSession | null;
@@ -76,6 +81,7 @@ export default function Dashboard({
   setView, setRoomId, userName, setUserName,
   profile, subscription, planLimits,
   onSignOut, onUpdateName,
+  security, isHost, setMeetingPassword, toggleMeetingLock, toggleWaitingRoom,
   meetingHistory, pendingReconnect, onReconnect, onDismissReconnect,
   meetingsThisMonth, meetingLimitReached, maxMeetingsPerMonth,
 }: DashboardProps) {
@@ -257,15 +263,32 @@ export default function Dashboard({
                   </h3>
                   <div className="space-y-3">
                     {[
-                      { label: 'Require password for meetings', enabled: false },
-                      { label: 'Enable waiting room', enabled: false },
-                      { label: 'End-to-end encryption', enabled: true },
+                      {
+                        label: 'Require password for meetings',
+                        enabled: security?.password !== null,
+                        action: () => setMeetingPassword(security?.password ? null : '123456'),
+                        disabled: !planLimits.meetingPassword
+                      },
+                      {
+                        label: 'Enable waiting room',
+                        enabled: security?.waitingRoomEnabled || false,
+                        action: toggleWaitingRoom,
+                        disabled: !planLimits.waitingRoom
+                      },
+                      {
+                        label: 'End-to-end encryption',
+                        enabled: security?.e2eEnabled !== false,
+                        action: () => { }, // E2E is always enabled for now
+                        disabled: true
+                      },
                     ].map(setting => (
                       <div key={setting.label} className="flex items-center justify-between">
                         <span className="text-sm">{setting.label}</span>
                         <button
+                          onClick={setting.action}
+                          disabled={setting.disabled}
                           className={`w-12 h-6 rounded-full transition-colors ${setting.enabled ? 'bg-blue-500' : 'bg-slate-600'
-                            }`}
+                            } ${setting.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                         >
                           <div className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${setting.enabled ? 'translate-x-6' : 'translate-x-0.5'
                             }`} />

@@ -137,6 +137,8 @@ export default function App() {
           userName={s.userName} setUserName={s.setUserName}
           profile={s.authProfile!} subscription={s.subscription} planLimits={s.planLimits}
           isOfflineMode={s.isOfflineMode} onSignOut={s.signOut} onUpdateName={s.updateDisplayName}
+          security={s.security} isHost={s.isHost} setMeetingPassword={s.setMeetingPassword}
+          toggleMeetingLock={s.toggleMeetingLock} toggleWaitingRoom={s.toggleWaitingRoom}
           meetingHistory={s.meetingHistory}
           pendingReconnect={s.pendingReconnect}
           onReconnect={s.reconnectToMeeting}
