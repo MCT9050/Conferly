@@ -64,6 +64,18 @@ export class MobileErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Mobile Error Boundary caught an error:', error, errorInfo);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+      userAgent: navigator.userAgent,
+      timestamp: new Date().toISOString(),
+      memory: {
+        used: (performance as any).memory?.usedJSHeapSize,
+        total: (performance as any).memory?.totalJSHeapSize,
+        limit: (performance as any).memory?.jsHeapSizeLimit
+      }
+    });
   }
 
   handleRetry = () => {
@@ -144,9 +156,28 @@ export class MobileErrorBoundary extends Component<Props, State> {
               Something went wrong
             </h1>
 
-            <p className="text-slate-400 mb-6 text-sm">
+            <p className="text-slate-400 mb-4 text-sm">
               We're having trouble loading the app on your device. Please try refreshing the page.
             </p>
+
+            {/* Error details for debugging */}
+            {this.state.error && (
+              <details className="mb-4 text-left">
+                <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-400">
+                  Error Details (tap to expand)
+                </summary>
+                <div className="mt-2 p-2 bg-slate-800 rounded text-xs text-red-400 font-mono break-all">
+                  <div className="font-bold">Error:</div>
+                  <div>{this.state.error.message}</div>
+                  {this.state.error.stack && (
+                    <div className="mt-2">
+                      <div className="font-bold">Stack:</div>
+                      <div className="text-xs text-slate-400">{this.state.error.stack.slice(0, 500)}...</div>
+                    </div>
+                  )}
+                </div>
+              </details>
+            )}
 
             <button
               onClick={this.handleRetry}
@@ -162,6 +193,7 @@ export class MobileErrorBoundary extends Component<Props, State> {
                 <li>• Clear your browser cache</li>
                 <li>• Try a different browser</li>
                 <li>• Check your internet connection</li>
+                <li>• Check console for more details</li>
               </ul>
             </div>
           </div>

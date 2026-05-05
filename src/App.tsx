@@ -19,13 +19,21 @@ export default function App() {
   // Mobile debugging
   useEffect(() => {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (isMobile) {
-      console.log('Mobile device detected in App component');
-      console.log('Auth loading:', s.authLoading);
-      console.log('Is authenticated:', s.isAuthenticated);
-      console.log('Profile:', s.authProfile);
-    }
-  }, [s.authLoading, s.isAuthenticated, s.authProfile]);
+    console.log('=== App Component Debug ===');
+    console.log('Device:', navigator.userAgent);
+    console.log('Is Mobile:', isMobile);
+    console.log('Auth Loading:', s.authLoading);
+    console.log('Is Authenticated:', s.isAuthenticated);
+    console.log('Auth Profile:', s.authProfile);
+    console.log('Auth Error:', s.authError);
+    console.log('View:', s.view);
+    console.log('Memory:', {
+      used: (performance as any).memory?.usedJSHeapSize,
+      total: (performance as any).memory?.totalJSHeapSize,
+      limit: (performance as any).memory?.jsHeapSizeLimit
+    });
+    console.log('========================');
+  }, [s.authLoading, s.isAuthenticated, s.authProfile, s.authError, s.view]);
 
   const installBanner = (
     <InstallBanner
