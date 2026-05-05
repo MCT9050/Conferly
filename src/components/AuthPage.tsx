@@ -7,7 +7,7 @@ import Logo from './Logo';
 import EmailConfirmation from './EmailConfirmation';
 
 interface AuthPageProps {
-  onSignUp: (email: string, password: string, displayName: string) => Promise<{ success: boolean; needsConfirmation?: boolean }>;
+  onSignUp: (email: string, password: string, displayName: string, turnstileToken?: string) => Promise<{ success: boolean; needsConfirmation?: boolean }>;
   onSignIn: (email: string, password: string) => Promise<{ success: boolean }>;
   onResendConfirmation: (email: string) => Promise<void>;
   onResetPassword: (email: string) => Promise<void>;
