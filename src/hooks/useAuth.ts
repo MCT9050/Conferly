@@ -255,8 +255,9 @@ export function useAuth() {
           const p = buildProfile({ id: data.user.id, email: data.user.email || email, displayName: extra.displayName || data.user.user_metadata?.display_name || email.split('@')[0], avatarUrl: data.user.user_metadata?.avatar_url, createdAt: data.user.created_at }, extra);
           setProfile(p); cacheProfile(p); setIsOfflineMode(false); rehydrateMeetings(data.user.id);
           automation('user.signin', { userId: p.id, email: p.email, displayName: p.displayName, data: { source: 'supabase' } });
+          setLoading(false);
+          return { success: true };
         }
-        setLoading(false); return { success: true };
       } catch (err: any) {
         if (!err.message?.includes('fetch') && !err.message?.includes('Failed')) {
           if (err.message?.includes('email_not_confirmed')) {
@@ -268,77 +269,110 @@ export function useAuth() {
           return { success: false };
         }
       }
+    } else if (isBackendConfigured) {
+      try {
+        const { user } = await apiSignIn(email, password);
+        const p = buildProfile({ id: user.id, email: user.email, displayName: user.displayName, avatarUrl: user.avatarUrl, createdAt: user.createdAt });
+        setProfile(p); cacheProfile(p); setIsOfflineMode(false); rehydrateMeetings();
+        automation('user.signin', { userId: p.id, email: p.email, displayName: p.displayName, data: { source: 'backend' } });
+        setLoading(false);
+        return { success: true };
+      } catch (err: any) {
+        setError(err.message);
+        setLoading(false);
+        return { success: false };
+      }
     }
-  } else if (isBackendConfigured) {
-    try {
-      const { user } = await apiSignIn(email, password);
-      const p = buildProfile({ id: user.id, email: user.email, displayName: user.displayName, avatarUrl: user.avatarUrl, createdAt: user.createdAt });
-      setProfile(p); cacheProfile(p); setIsOfflineMode(false); rehydrateMeetings();
-      automation('user.signin', { userId: p.id, email: p.email, displayName: p.displayName, data: { source: 'backend' } });
+
+    // Offline mode fallback
+    const users = loadOfflineUsers();
+    const hashed = await hashPw(password);
+    const found = users.find(u => u.email === email && u.password === hashed);
+
+    if (found) {
+      const p = buildProfile({
+        id: found.id,
+        email: found.email,
+        displayName: found.displayName,
+        createdAt: new Date().toISOString()
+      }, {
+        userType: (found.userType as 'individual' | 'organization') || 'individual',
+        organizationName: found.orgName || null
+      });
+
+      setProfile(p);
+      cacheProfile(p);
+      setIsOfflineMode(true);
       setLoading(false);
+      automation('user.signin', {
+        userId: p.id,
+        email: p.email,
+        displayName: p.displayName,
+        data: { source: 'offline' }
+      });
+
       return { success: true };
     }
-    catch (err: any) { if (!err.message?.includes('fetch') && !err.message?.includes('Failed')) { setError(err.message); setLoading(false); return { success: false }; } }
-  }
-  const users = loadOfflineUsers(); const hashed = await hashPw(password);
-  const found = users.find(u => u.email === email && u.password === hashed);
-  if (found) { const p = buildProfile({ id: found.id, email: found.email, displayName: found.displayName, createdAt: new Date().toISOString() }, { userType: (found.userType as 'individual' | 'organization') || 'individual', organizationName: found.orgName || null }); setProfile(p); cacheProfile(p); setIsOfflineMode(true); setLoading(false); automation('user.signin', { userId: p.id, email: p.email, displayName: p.displayName, data: { source: 'offline' } }); return { success: true }; }
-  setError('Invalid email or password.'); setLoading(false); return { success: false };
-}, []);
 
-const signOut = useCallback(async () => {
-  if (profile) automation('user.signout', { userId: profile.id, email: profile.email, displayName: profile.displayName });
-  if (isSupabaseConfigured && supabase) { try { await supabase.auth.signOut(); } catch { /* silent */ } }
-  apiSignOut(); setProfile(null); cacheProfile(null); setIsOfflineMode(false); setSessionExpired(false);
-}, [profile]);
+    setError('Invalid email or password.');
+    setLoading(false);
+    return { success: false };
+  }, []);
 
-const updateDisplayName = useCallback(async (newName: string) => {
-  setError(null);
-  try {
-    if (isSupabaseConfigured && supabase && !isOfflineMode) {
-      await supabase.auth.updateUser({ data: { display_name: newName } });
-      if (profile) await supabase.from('profiles').update({ display_name: newName, updated_at: new Date().toISOString() }).eq('id', profile.id);
-    } else if (isBackendConfigured && !isOfflineMode) { await apiUpdateProfile({ displayName: newName }); }
-    else if (profile) { const users = loadOfflineUsers(); const idx = users.findIndex(u => u.id === profile.id); if (idx >= 0) { users[idx].displayName = newName; saveOfflineUsers(users); } }
-    const updated = profile ? { ...profile, displayName: newName } : null;
-    setProfile(updated); cacheProfile(updated); return { success: true };
-  } catch (err: any) { setError(err.message || 'Update failed'); return { success: false }; }
-}, [isOfflineMode, profile]);
+  const signOut = useCallback(async () => {
+    if (profile) automation('user.signout', { userId: profile.id, email: profile.email, displayName: profile.displayName });
+    if (isSupabaseConfigured && supabase) { try { await supabase.auth.signOut(); } catch { /* silent */ } }
+    apiSignOut(); setProfile(null); cacheProfile(null); setIsOfflineMode(false); setSessionExpired(false);
+  }, [profile]);
 
-// Complete onboarding — save user type + org details
-const completeOnboarding = useCallback(async (data: OnboardingData) => {
-  setError(null);
-  if (!profile) return { success: false };
-  const updates: Partial<UserProfile> = {
-    userType: data.userType,
-    organizationName: data.organizationName || null,
-    organizationSize: data.organizationSize || null,
-    organizationIndustry: data.organizationIndustry || null,
-    onboardingComplete: true,
-  };
-  // Write to Supabase
-  if (isSupabaseConfigured && supabase) {
+  const updateDisplayName = useCallback(async (newName: string) => {
+    setError(null);
     try {
-      await supabase.from('profiles').update({
-        user_type: data.userType,
-        organization_name: data.organizationName || null,
-        organization_size: data.organizationSize || null,
-        organization_industry: data.organizationIndustry || null,
-        onboarding_complete: true,
-        updated_at: new Date().toISOString(),
-      }).eq('id', profile.id);
-    } catch { /* silent — local still works */ }
-  }
-  // Update offline store
-  const users = loadOfflineUsers();
-  const idx = users.findIndex(u => u.id === profile.id);
-  if (idx >= 0) { users[idx].userType = data.userType; users[idx].orgName = data.organizationName || ''; saveOfflineUsers(users); }
+      if (isSupabaseConfigured && supabase && !isOfflineMode) {
+        await supabase.auth.updateUser({ data: { display_name: newName } });
+        if (profile) await supabase.from('profiles').update({ display_name: newName, updated_at: new Date().toISOString() }).eq('id', profile.id);
+      } else if (isBackendConfigured && !isOfflineMode) { await apiUpdateProfile({ displayName: newName }); }
+      else if (profile) { const users = loadOfflineUsers(); const idx = users.findIndex(u => u.id === profile.id); if (idx >= 0) { users[idx].displayName = newName; saveOfflineUsers(users); } }
+      const updated = profile ? { ...profile, displayName: newName } : null;
+      setProfile(updated); cacheProfile(updated); return { success: true };
+    } catch (err: any) { setError(err.message || 'Update failed'); return { success: false }; }
+  }, [isOfflineMode, profile]);
 
-  const updated = { ...profile, ...updates };
-  setProfile(updated); cacheProfile(updated);
-  automation('user.onboarded', {
-    userId: updated.id, email: updated.email, displayName: updated.displayName,
-    data: { userType: data.userType, organizationName: data.organizationName, organizationSize: data.organizationSize, organizationIndustry: data.organizationIndustry },
+  // Complete onboarding — save user type + org details
+  const completeOnboarding = useCallback(async (data: OnboardingData) => {
+    setError(null);
+    if (!profile) return { success: false };
+    const updates: Partial<UserProfile> = {
+      userType: data.userType,
+      organizationName: data.organizationName || null,
+      organizationSize: data.organizationSize || null,
+      organizationIndustry: data.organizationIndustry || null,
+      onboardingComplete: true,
+    };
+    // Write to Supabase
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('profiles').update({
+          user_type: data.userType,
+          organization_name: data.organizationName || null,
+          organization_size: data.organizationSize || null,
+          organization_industry: data.organizationIndustry || null,
+          onboarding_complete: true,
+          updated_at: new Date().toISOString(),
+        }).eq('id', profile.id);
+      } catch { /* silent — local still works */ }
+    }
+    // Update offline store
+    const users = loadOfflineUsers();
+    const idx = users.findIndex(u => u.id === profile.id);
+    if (idx >= 0) { users[idx].userType = data.userType; users[idx].orgName = data.organizationName || ''; saveOfflineUsers(users); }
+
+    const updated = { ...profile, ...updates };
+    setProfile(updated); cacheProfile(updated);
+    automation('user.onboarded', {
+      userId: updated.id, email: updated.email, displayName: updated.displayName,
+      data: { userType: data.userType, organizationName: data.organizationName, organizationSize: data.organizationSize, organizationIndustry: data.organizationIndustry },
+    });
   }, [profile]);
 
   // Password reset

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import {
   Mail, Lock, User, ArrowRight, Eye, EyeOff,
-  AlertCircle, CheckCircle2, Loader2
+  AlertCircle, Loader2
 } from 'lucide-react';
 import Logo from './Logo';
 import EmailConfirmation from './EmailConfirmation';

@@ -20,6 +20,7 @@ export interface StoredMeeting {
   endedAt: string | null;
   durationSeconds: number;
   participantCount: number;
+  wasHost: boolean;
 }
 
 export interface StoredTranscript {
@@ -110,9 +111,9 @@ export async function getMeetings(): Promise<StoredMeeting[]> {
 export async function deleteMeeting(id: string): Promise<void> {
   await deleteItem(STORES.meetings, id);
   // Also clean up associated data
-  await deleteItem(STORES.transcripts, id).catch(() => {});
-  await deleteItem(STORES.notes, id).catch(() => {});
-  await deleteItem(STORES.chatHistory, id).catch(() => {});
+  await deleteItem(STORES.transcripts, id).catch(() => { });
+  await deleteItem(STORES.notes, id).catch(() => { });
+  await deleteItem(STORES.chatHistory, id).catch(() => { });
 }
 
 export async function saveTranscript(meetingId: string, entries: StoredTranscript['entries']): Promise<void> {

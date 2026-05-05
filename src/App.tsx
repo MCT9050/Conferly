@@ -1,4 +1,5 @@
 import { useAppState } from './store';
+import { useEffect } from 'react';
 import AuthPage from './components/AuthPage';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
@@ -14,6 +15,17 @@ import Logo from './components/Logo';
 export default function App() {
   const s = useAppState();
   const pwa = useInstallPrompt();
+
+  // Mobile debugging
+  useEffect(() => {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+      console.log('Mobile device detected in App component');
+      console.log('Auth loading:', s.authLoading);
+      console.log('Is authenticated:', s.isAuthenticated);
+      console.log('Profile:', s.authProfile);
+    }
+  }, [s.authLoading, s.isAuthenticated, s.authProfile]);
 
   const installBanner = (
     <InstallBanner

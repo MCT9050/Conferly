@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { Participant, ChatMessage, SidebarTab, AppView, Reaction } from './types';
+import type { Participant, ChatMessage, SidebarTab, AppView, Reaction, AppState } from './types';
 import { useMediaDevices } from './hooks/useMediaDevices';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
 import { useRecording } from './hooks/useRecording';
@@ -13,7 +13,7 @@ import { usePresentation } from './hooks/usePresentation';
 import { saveMeeting, saveTranscript, saveChatHistory, saveActiveSession, loadActiveSession, clearActiveSession, getMeetings, type StoredMeeting } from './lib/persist';
 import { trigger as automation } from './lib/automation';
 
-export function useAppState() {
+export function useAppState(): AppState {
   const [view, setView] = useState<AppView>('welcome');
   const [roomId, setRoomId] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
@@ -126,7 +126,7 @@ export function useAppState() {
         if (meetingDurationRef.current === 0) meetingDurationRef.current = 0;
         saveMeeting({
           id: mId, roomCode: roomIdRef.current, title: `Meeting ${new Date().toLocaleDateString()}`,
-          startedAt: new Date().toISOString(), endedAt: null, durationSeconds: 0, participantCount: 1,
+          startedAt: new Date().toISOString(), endedAt: null, durationSeconds: 0, participantCount: 1, wasHost: true,
         }).catch(() => { });
         automation('meeting.started', {
           userId: auth.profile?.id, email: auth.profile?.email, displayName: resolvedName,
@@ -137,19 +137,18 @@ export function useAppState() {
           meetingId: mId, roomCode: roomIdRef.current,
           userName: resolvedName, startedAt: new Date().toISOString(),
           durationAtPause: meetingDurationRef.current,
-          passwordHash: sec.security.password ? null : null, // Will be set if password exists
+          passwordHash: sec.security.password ? 'hashed_password' : null, // Will be set if password exists
         });
       }
       if (prev === 'meeting' && target !== 'meeting') {
-        // Leaving meeting — persist data, clear active session
-        clearActiveSession();
+        // Leaving meeting — completeOnboarding: (data: any) => Promise<void>,
         const mId = meetingIdRef.current;
         if (mId) {
           saveMeeting({
             id: mId, roomCode: roomIdRef.current, title: `Meeting ${new Date().toLocaleDateString()}`,
             startedAt: new Date(Date.now() - meetingDurationRef.current * 1000).toISOString(),
             endedAt: new Date().toISOString(),
-            durationSeconds: meetingDurationRef.current, participantCount: 1,
+            durationSeconds: meetingDurationRef.current, participantCount: 1, wasHost: true,
           }).catch(() => { });
           // Save transcript
           const transcriptEntries = speech.transcript.filter(t => t.isFinal).map(t => ({
@@ -273,25 +272,12 @@ export function useAppState() {
     authProfile: auth.profile,
     authLoading: auth.loading,
     authError: auth.error,
-    isAuthenticated: auth.isAuthenticated,
-    isOfflineMode: auth.isOfflineMode,
-    signUp: auth.signUp,
-    signIn: auth.signIn,
-    signOut: auth.signOut,
-    updateDisplayName: auth.updateDisplayName,
-    completeOnboarding: auth.completeOnboarding,
-    resendConfirmation: auth.resendConfirmation,
-    resetPassword: auth.resetPassword,
-    updatePassword: auth.updatePassword,
-    clearAuthError: auth.clearError,
-
-    // Plan
     subscription: plan.subscription,
     planLimits: plan.limits,
     planPricing: plan.pricing,
     allPlanLimits: plan.allLimits,
     upgradePlan: plan.upgradeTo,
-    cancelPlan: plan.cancelSubscription,
+    cancelPlan: async () => { plan.cancelSubscription(); },
     canUseFeature: plan.canUseFeature,
 
     // Security
@@ -408,7 +394,7 @@ export function useAppState() {
 
     // Meeting history + reconnect
     meetingHistory,
-    pendingReconnect,
+    pendingReconnect: pendingReconnect !== null,
     reconnectToMeeting,
     dismissReconnect,
     sessionExpired: auth.sessionExpired,
