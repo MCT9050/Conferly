@@ -139,7 +139,7 @@ app.post('/api/auth/signin', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    db.prepare('UPDATE users SET updated_at = datetime("now") WHERE id = ?').run(user.id);
+    db.prepare('UPDATE users SET updated_at = datetime(\'now\') WHERE id = ?').run(user.id);
     const token = generateToken(user.id);
 
     res.json({
@@ -171,7 +171,7 @@ app.patch('/api/profile', authenticate, (req, res) => {
   if (avatarUrl !== undefined) { updates.push('avatar_url = ?'); params.push(avatarUrl); }
   if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
 
-  updates.push('updated_at = datetime("now")');
+  updates.push('updated_at = datetime(\'now\')');
   params.push(req.userId);
 
   db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
@@ -253,7 +253,7 @@ app.post('/api/meetings', authenticate, (req, res) => {
 // PATCH /api/meetings/:id/end
 app.patch('/api/meetings/:id/end', authenticate, (req, res) => {
   const { durationSeconds, participantCount } = req.body;
-  db.prepare('UPDATE meetings SET ended_at = datetime("now"), duration_seconds = ?, participant_count = ? WHERE id = ? AND user_id = ?')
+  db.prepare('UPDATE meetings SET ended_at = datetime(\'now\'), duration_seconds = ?, participant_count = ? WHERE id = ? AND user_id = ?')
     .run(durationSeconds || 0, participantCount || 1, req.params.id, req.userId);
   res.json({ success: true });
 });
