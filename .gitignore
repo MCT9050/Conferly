@@ -4,7 +4,6 @@ node_modules/
 .pnp.js
 
 # Build output
-dist/
 build/
 
 # Environment
@@ -59,7 +58,6 @@ credentials.json
 *.json.keys
 
 # Build artifacts with potential sensitive data
-dist/
 build/
 *.map
 *.bundle.*
