@@ -125,6 +125,8 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    console.log('FORM SUBMIT', { mode, isValid, hasEmail: !!email, hasPwd: !!password });
     handleClearError();
 
     console.log('SUBMIT', { mode, isValid, hasEmail: !!email, hasPwd: !!password });
@@ -221,9 +223,9 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
         {/* Card */}
         <div className="glass rounded-2xl p-8 space-y-6">
           {/* Tab Toggle */}
-          <div className="flex rounded-xl bg-slate-800/60 p-1">
+          <div className="flex rounded-xl bg-slate-800/60 p-1" onClick={() => console.log('TABS CLICK')}>
             <button
-              onClick={() => switchMode('signin')}
+              onClick={(e) => { e.stopPropagation(); console.log('SIGN IN TAB'); switchMode('signin'); }}
               className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'signin'
                 ? 'bg-blue-600 text-white shadow-lg'
                 : 'text-slate-400 hover:text-white'
