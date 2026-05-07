@@ -95,53 +95,28 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    console.log("=== SUBMIT START ===");
-    console.log({
-      mode,
-      email: email?.trim(),
-      passwordLength: password?.length,
-      loading,
-      isValid,
-      displayName: displayName?.trim(),
-      termsAccepted
-    });
+    clearError();
 
-    try {
-      console.log("Before auth call, mode:", mode);
+    if (mode === 'signup') {
+      if (!displayName.trim()) return;
 
-      if (mode === 'signup') {
-        if (!displayName.trim()) {
-          console.log("No displayName, returning early");
-          return;
-        }
-        console.log("Calling onSignUp...");
-        const result = await onSignUp(email.trim(), password, displayName.trim(), turnstileToken, termsAccepted);
-        console.log("onSignUp returned:", result);
-        if (result.success && result.needsConfirmation) {
-          setConfirmation(true);
-        }
-      } else if (mode === 'forgot') {
-        console.log("Calling onResetPassword...");
-        await onResetPassword(email.trim());
-      } else {
-        console.log("Calling onSignIn...");
-        await onSignIn(email.trim(), password);
-        console.log("onSignIn returned");
+      // TURNSTILE CHECK DISABLED FOR TESTING
+      // if (!turnstileToken || turnstileTimedOut || turnstileExpired) {
+      //   setError('Please complete the bot verification to sign up');
+      //   return;
+      // }
+
+      const result = await onSignUp(email.trim(), password, displayName.trim(), turnstileToken, termsAccepted);
+      if (result.success && result.needsConfirmation) {
+        setConfirmation(true);
       }
-
-      console.log("After auth call");
-    } catch (err) {
-      console.error("AUTH ERROR:", err);
-    } finally {
-      console.log("=== SUBMIT FINISHED ===");
+    } else if (mode === 'forgot') {
+      await onResetPassword(email.trim());
+    } else {
+      console.log('Login button pressed', { email: email.trim(), mode });
+      await onSignIn(email.trim(), password);
     }
   };
-
-  // Render state debug
-  useEffect(() => {
-    console.log("AuthPage render", { loading, isValid, mode, email: !!email, password: !!password });
-  }, [loading, isValid, mode]);
 
   // Password complexity validation (8+ chars, uppercase, lowercase, number, special char)
 const PASSWORD_POLICY = {
