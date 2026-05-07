@@ -97,8 +97,10 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
     e.preventDefault();
     clearError();
 
+    console.log('SUBMIT START', { mode, loading, email: !!email, password: !!password });
+
     if (mode === 'signup') {
-      if (!displayName.trim()) return;
+      if (!displayName.trim()) { console.log('No displayName'); return; }
 
       // TURNSTILE CHECK DISABLED FOR TESTING
       // if (!turnstileToken || turnstileTimedOut || turnstileExpired) {
@@ -106,15 +108,18 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
       //   return;
       // }
 
+      console.log('Calling onSignUp...');
       const result = await onSignUp(email.trim(), password, displayName.trim(), turnstileToken, termsAccepted);
+      console.log('onSignUp returned', result);
       if (result.success && result.needsConfirmation) {
         setConfirmation(true);
       }
     } else if (mode === 'forgot') {
       await onResetPassword(email.trim());
     } else {
-      console.log('Login button pressed', { email: email.trim(), mode });
+      console.log('Calling onSignIn...');
       await onSignIn(email.trim(), password);
+      console.log('onSignIn returned');
     }
   };
 
