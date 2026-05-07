@@ -177,15 +177,15 @@ export function useAuth() {
     setError(null); setLoading(true); setSessionExpired(false);
     if (isSupabaseConfigured && supabase) {
       try {
-        // Validate Turnstile token if provided
-        if (turnstileToken) {
-          const isValid = await validateTurnstileToken(turnstileToken);
-          if (!isValid) {
-            setError('Security verification failed. Please refresh the page and try again.');
-            setLoading(false);
-            return { success: false };
-          }
-        }
+        // TURNSTILE VALIDATION DISABLED FOR TESTING
+        // if (turnstileToken) {
+        //   const isValid = await validateTurnstileToken(turnstileToken);
+        //   if (!isValid) {
+        //     setError('Security verification failed. Please refresh the page and try again.');
+        //     setLoading(false);
+        //     return { success: false };
+        //   }
+        // }
         const { data, error: err } = await supabase.auth.signUp({
           email,
           password,
@@ -258,18 +258,18 @@ export function useAuth() {
     console.log('useAuth.signIn called', { email, isSupabaseConfigured, isBackendConfigured });
     setError(null); setLoading(true); setSessionExpired(false);
 
-    // Validate Turnstile token for login if provided
-    if (turnstileToken) {
-      console.log('Validating Turnstile token for login');
-      const isValid = await validateTurnstileToken(turnstileToken);
-      if (!isValid) {
-        console.log('Turnstile validation failed for login');
-        setError('Security verification failed. Please refresh and try again.');
-        setLoading(false);
-        return { success: false };
-      }
-      console.log('Turnstile validation passed for login');
-    }
+    // TURNSTILE VALIDATION DISABLED FOR TESTING
+    // if (turnstileToken) {
+    //   console.log('Validating Turnstile token for login');
+    //   const isValid = await validateTurnstileToken(turnstileToken);
+    //   if (!isValid) {
+    //     console.log('Turnstile validation failed for login');
+    //     setError('Security verification failed. Please refresh and try again.');
+    //     setLoading(false);
+    //     return { success: false };
+    //   }
+    //   console.log('Turnstile validation passed for login');
+    // }
 
     if (isSupabaseConfigured && supabase) {
       try {

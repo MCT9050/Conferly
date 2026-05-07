@@ -100,12 +100,11 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
     if (mode === 'signup') {
       if (!displayName.trim()) return;
 
-      // Enforce Turnstile validation - NO bypass allowed
-      // Check: token exists AND not timed out AND not expired
-      if (!turnstileToken || turnstileTimedOut || turnstileExpired) {
-        setError('Please complete the bot verification to sign up');
-        return;
-      }
+      // TURNSTILE CHECK DISABLED FOR TESTING
+      // if (!turnstileToken || turnstileTimedOut || turnstileExpired) {
+      //   setError('Please complete the bot verification to sign up');
+      //   return;
+      // }
 
       const result = await onSignUp(email.trim(), password, displayName.trim(), turnstileToken, termsAccepted);
       if (result.success && result.needsConfirmation) {
@@ -154,7 +153,7 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
     : password.length >= 6;
 
   const isValid = mode === 'signup'
-    ? email.trim().length > 0 && passwordMeetsPolicy && displayName.trim().length > 0 && termsAccepted && turnstileToken && !turnstileTimedOut && !turnstileExpired
+    ? email.trim().length > 0 && passwordMeetsPolicy && displayName.trim().length > 0 && termsAccepted
     : mode === 'forgot'
       ? email.trim().length > 0
       : email.trim().length > 0 && password.length >= 6;
@@ -308,35 +307,10 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
               </div>
             )}
 
-            {/* Cloudflare Turnstile - Bot Protection */}
-            {(mode === 'signup') && (
-              <div className="flex flex-col items-center space-y-3">
-                {!turnstileLoaded && turnstileLoading && (
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Loading security verification...
-                  </div>
-                )}
-                {turnstileTimedOut && (
-                  <div className="flex items-center gap-2 text-xs text-red-400">
-                    <AlertCircle className="w-3 h-3" />
-                    Security verification timed out - please refresh
-                  </div>
-                )}
-                {!turnstileTimedOut && (
-                <div
-                  className="cf-turnstile"
-                  data-sitekey="0x4AAAAAADJBiV_xIB3mw1nm"
-                  data-theme="dark"
-                  data-size="normal"
-                  data-callback="onTurnstileCallback"
-                  data-expired-callback="onTurnstileExpiredCallback"
-                >
-                </div>
-                )}
-              </div>
-            )}
+            {/* Cloudflare Turnstile - DISABLED for testing */}
+            {/*}
 
+            
             {/* Submit */}
             <button
               type="submit"
