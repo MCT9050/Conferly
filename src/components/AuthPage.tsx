@@ -32,7 +32,6 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
 
   const handleSignIn = useCallback(async (...args: Parameters<NonNullable<AuthPageProps['onSignIn']>>) => {
     console.log('handleSignIn called', { hasHandler: !!onSignIn });
-    alert('AuthPage handleSignIn called, onSignIn exists: ' + !!onSignIn);
     return onSignIn ? await onSignIn(...args) : { success: false };
   }, [onSignIn]);
 
@@ -142,28 +141,19 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert('FORM SUBMIT CLICKED!');
     e.stopPropagation();
-    alert(`Mode: ${mode}, isValid: ${isValid}`);
     
     handleClearError();
 
     if (mode === 'signup') {
-      if (!displayName.trim()) { alert('No display name!'); return; }
-      alert('Calling signup...');
       const result = await handleSignUp(email.trim(), password, displayName.trim(), turnstileToken, termsAccepted);
-      alert(`Signup result: ${JSON.stringify(result)}`);
       if (result.success && result.needsConfirmation) {
         setConfirmation(true);
       }
     } else if (mode === 'forgot') {
-      alert('Calling reset...');
       await handleResetPassword(email.trim());
-      alert('Reset done');
     } else {
-      alert('Calling SIGN IN...');
       await handleSignIn(email.trim(), password);
-      alert('Sign in complete!');
     }
   };
 
@@ -371,7 +361,6 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
               type="button"
               onClick={(e) => {
                 e.preventDefault();
-                alert('DIRECT BUTTON CLICK');
                 // Find form and submit
                 const form = (e.target as HTMLButtonElement).closest('form');
                 if (form) {
