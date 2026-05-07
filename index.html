@@ -49,18 +49,10 @@
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
   <script>
-    // Handle SPA redirect from 404.html
-    (function () {
-      const redirect = sessionStorage.getItem('redirect');
-      if (redirect) {
-        sessionStorage.removeItem('redirect');
-        history.replaceState({}, '', redirect);
-      }
-    })();
-
+    // Service worker for PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(() => { });
+        navigator.register('/sw.js').catch(() => { });
       });
     }
   </script>

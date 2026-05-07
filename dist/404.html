@@ -1,37 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conferly</title>
-    <script>
-        // Hash-based SPA routing for GitHub Pages
-        // Convert /path to /#/path to avoid server 404
-        var path = location.pathname;
-        
-        // Known SPA routes
-        var spaRoutes = ['/terms', '/privacy', '/pricing'];
-        var isSpaRoute = spaRoutes.some(function(r) { return path === r || path.startsWith(r + '/'); });
-        
-        if (isSpaRoute) {
-            // Preserve the original path using hash
-            // e.g., /terms becomes /#/terms
-            location.replace('/#' + path);
-        } else {
-            // Unknown routes - just redirect to home
-            location.replace('/');
-        }
-    </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conferly</title>
+  <script>
+    // Fallback: load React app from root
+    // GitHub Pages sends 404 for routes not in repo
+    // This loads index.html which hydrates the React app
+  </script>
 </head>
 <body>
-    <noscript>
-        <p>Please enable JavaScript to use Conferly.</p>
-    </noscript>
-    <p>Loading...</p>
+  <noscript><p>Please enable JavaScript.</p></noscript>
+  <p>Loading Conferly...</p>
 </body>
 </html>
-<!-- 
-    The SPA needs to load its content. On GitHub Pages, when a 404 is returned,
-    the JS in the page can detect the path and initialize the React app,
-    which will then route to the correct component.
--->

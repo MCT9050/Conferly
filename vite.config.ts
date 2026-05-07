@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: "/", // Root path for custom domain www.conferly.site
+  base: "/", // For www.conferly.site (root) - GitHub Pages uses hash routing so this is fine
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
