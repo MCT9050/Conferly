@@ -146,14 +146,14 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
     handleClearError();
 
     if (mode === 'signup') {
-      const result = await handleSignUp(email.trim(), password, displayName.trim(), turnstileToken, termsAccepted);
+      const result = await handleSignUp(email.trim(), password, displayName.trim(), '', termsAccepted);
       if (result.success && result.needsConfirmation) {
         setConfirmation(true);
       }
     } else if (mode === 'forgot') {
       await handleResetPassword(email.trim());
     } else {
-      await handleSignIn(email.trim(), password);
+      await handleSignIn(email.trim(), password, '');
     }
   };
 
