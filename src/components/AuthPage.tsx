@@ -97,46 +97,25 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
     e.preventDefault();
     clearError();
 
-    console.log('=== SUBMIT CLICKED ===', { 
-      mode, 
-      isValid,
-      loading,
-      hasEmail: !!email, 
-      emailLen: email?.length,
-      hasPassword: !!password, 
-      pwdLen: password?.length,
-      hasDisplayName: !!displayName,
-      termsAccepted 
-    });
+    console.log('SUBMIT', { mode, isValid, hasEmail: !!email, hasPwd: !!password });
 
     if (mode === 'signup') {
-      if (!displayName.trim()) { console.log('No displayName'); return; }
-
-      // TURNSTILE CHECK DISABLED FOR TESTING
-      // if (!turnstileToken || turnstileTimedOut || turnstileExpired) {
-      //   setError('Please complete the bot verification to sign up');
-      //   return;
-      // }
-
-      console.log('Calling onSignUp...');
+      if (!displayName.trim()) return;
       const result = await onSignUp(email.trim(), password, displayName.trim(), turnstileToken, termsAccepted);
-      console.log('onSignUp returned', result);
       if (result.success && result.needsConfirmation) {
         setConfirmation(true);
       }
     } else if (mode === 'forgot') {
       await onResetPassword(email.trim());
     } else {
-      console.log('Calling onSignIn...');
       await onSignIn(email.trim(), password);
-      console.log('onSignIn returned');
     }
   };
 
-  // Log form state changes
+  // Remove dynamic dependencies that cause TDZ error - only log mode changes
   useEffect(() => {
-    console.log('FORM STATE', { mode, loading, isValid, email: email?.length, pwd: !!password, displayName: !!displayName });
-  }, [mode, loading, isValid, displayName]);
+    console.log('MODE:', mode);
+  }, [mode]);
 
   // Password complexity validation (8+ chars, uppercase, lowercase, number, special char)
 const PASSWORD_POLICY = {
