@@ -319,7 +319,9 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
             {/* Submit */}
             <button
               type="submit"
-              disabled={!isValid || loading}
+              // BYPASS LOADING CHECK FOR DEBUG
+              // disabled={!isValid || loading}
+              disabled={!isValid}
               className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold flex items-center justify-center gap-2 hover:from-blue-500 hover:to-cyan-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg glow-blue"
             >
               {loading ? (
