@@ -275,13 +275,16 @@ export function useAuth() {
     if (isSupabaseConfigured && supabase) {
       try {
         const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
+        alert('Supabase signIn result: ' + (err ? err.message : 'no error'));
         if (err) throw err;
         if (data.user) {
           const extra = await fetchSupabaseProfile(data.user.id);
           const p = buildProfile({ id: data.user.id, email: data.user.email || email, displayName: extra.displayName || data.user.user_metadata?.display_name || email.split('@')[0], avatarUrl: data.user.user_metadata?.avatar_url, createdAt: data.user.created_at }, extra);
+          alert('Profile built: ' + p.email);
           setProfile(p); cacheProfile(p); setIsOfflineMode(false); rehydrateMeetings(data.user.id);
           automation('user.signin', { userId: p.id, email: p.email, displayName: p.displayName, data: { source: 'supabase' } });
           console.log('Login success (Supabase)', { userId: p.id });
+          alert('LOGIN SUCCESS - profile set: ' + p.email);
           setLoading(false);
           return { success: true };
         }
@@ -299,11 +302,14 @@ export function useAuth() {
       }
     } else if (isBackendConfigured) {
       try {
+        alert('Backend sign in...');
         const { user } = await apiSignIn(email, password);
+        alert('Backend returned user: ' + user.email);
         const p = buildProfile({ id: user.id, email: user.email, displayName: user.displayName, avatarUrl: user.avatarUrl, createdAt: user.createdAt });
         setProfile(p); cacheProfile(p); setIsOfflineMode(false); rehydrateMeetings();
         automation('user.signin', { userId: p.id, email: p.email, displayName: p.displayName, data: { source: 'backend' } });
         setLoading(false);
+        alert('BACKEND LOGIN SUCCESS');
         return { success: true };
       } catch (err: any) {
         setError(err.message);
