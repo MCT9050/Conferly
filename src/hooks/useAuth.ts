@@ -175,6 +175,14 @@ export function useAuth() {
   // Sign up
   const signUp = useCallback(async (email: string, password: string, displayName: string, turnstileToken?: string, termsAccepted?: boolean) => {
     setError(null); setLoading(true); setSessionExpired(false);
+    
+    // Security: Require terms acceptance
+    if (!termsAccepted) {
+      setError('You must accept the Terms of Service and Privacy Policy to create an account.');
+      setLoading(false);
+      return { success: false };
+    }
+    
     if (isSupabaseConfigured && supabase) {
       try {
         // TURNSTILE VALIDATION DISABLED FOR TESTING
