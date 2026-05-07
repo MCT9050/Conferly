@@ -33,6 +33,14 @@ export default function App() {
   const initialRoute = getRouteFromURL();
   const isTermsPage = initialRoute === 'terms';
   const isPrivacyPage = initialRoute === 'privacy';
+  
+  // Debug
+  console.log('=== Route Debug ===');
+  console.log('Hash:', window.location.hash);
+  console.log('Path:', window.location.pathname);
+  console.log('Initial Route:', initialRoute);
+  console.log('isTermsPage:', isTermsPage);
+  console.log('isPrivacyPage:', isPrivacyPage);
 
   // Mobile debugging
   useEffect(() => {
