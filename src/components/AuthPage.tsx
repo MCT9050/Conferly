@@ -32,6 +32,7 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
 
   const handleSignIn = useCallback(async (...args: Parameters<NonNullable<AuthPageProps['onSignIn']>>) => {
     console.log('handleSignIn called', { hasHandler: !!onSignIn });
+    alert('AuthPage handleSignIn called, onSignIn exists: ' + !!onSignIn);
     return onSignIn ? await onSignIn(...args) : { success: false };
   }, [onSignIn]);
 
