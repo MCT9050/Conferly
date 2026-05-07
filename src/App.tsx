@@ -1,5 +1,5 @@
 import { useAppState } from './store';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import AuthPage from './components/AuthPage';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
@@ -14,11 +14,25 @@ import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { Loader2 } from 'lucide-react';
 import Logo from './components/Logo';
 
+// Get initial route state synchronously
+function getRouteFromURL() {
+  const path = window.location.pathname;
+  const hash = window.location.hash;
+  const effectivePath = hash.startsWith('#/') ? hash.substring(1) : path;
+  
+  if (effectivePath === '/terms' || effectivePath === '/terms/') return 'terms';
+  if (effectivePath === '/privacy' || effectivePath === '/privacy/') return 'privacy';
+  return 'none';
+}
+
 export default function App() {
   const s = useAppState();
   const pwa = useInstallPrompt();
-  const [showTerms, setShowTerms] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false);
+  
+  // Route state - initialized synchronously before auth check
+  const initialRoute = getRouteFromURL();
+  const isTermsPage = initialRoute === 'terms';
+  const isPrivacyPage = initialRoute === 'privacy';
 
   // Mobile debugging
   useEffect(() => {
@@ -121,25 +135,19 @@ export default function App() {
   }
 
   // Show Terms page for /terms route
-  if (showTerms) {
+  if (isTermsPage) {
     return (
       <>
-        <TermsPage onClose={() => {
-          setShowTerms(false);
-          window.history.back();
-        }} />
+        <TermsPage onClose={() => window.location.hash = ''} />
       </>
     );
   }
 
   // Show Privacy page for /privacy route
-  if (showPrivacy) {
+  if (isPrivacyPage) {
     return (
       <>
-        <PrivacyPage onClose={() => {
-          setShowPrivacy(false);
-          window.history.back();
-        }} />
+        <PrivacyPage onClose={() => window.location.hash = ''} />
       </>
     );
   }
