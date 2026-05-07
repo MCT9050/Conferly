@@ -255,6 +255,7 @@ export function useAuth() {
 
   // Sign in
   const signIn = useCallback(async (email: string, password: string) => {
+    console.log('useAuth.signIn called', { email, isSupabaseConfigured, isBackendConfigured });
     setError(null); setLoading(true); setSessionExpired(false);
     if (isSupabaseConfigured && supabase) {
       try {
@@ -265,6 +266,7 @@ export function useAuth() {
           const p = buildProfile({ id: data.user.id, email: data.user.email || email, displayName: extra.displayName || data.user.user_metadata?.display_name || email.split('@')[0], avatarUrl: data.user.user_metadata?.avatar_url, createdAt: data.user.created_at }, extra);
           setProfile(p); cacheProfile(p); setIsOfflineMode(false); rehydrateMeetings(data.user.id);
           automation('user.signin', { userId: p.id, email: p.email, displayName: p.displayName, data: { source: 'supabase' } });
+          console.log('Login success (Supabase)', { userId: p.id });
           setLoading(false);
           return { success: true };
         }
@@ -275,6 +277,7 @@ export function useAuth() {
           } else {
             setError(err.message);
           }
+          console.log('Login error (Supabase)', { error: err.message });
           setLoading(false);
           return { success: false };
         }

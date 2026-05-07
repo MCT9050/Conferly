@@ -112,6 +112,7 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
     } else if (mode === 'forgot') {
       await onResetPassword(email.trim());
     } else {
+      console.log('Login button pressed', { email: email.trim(), mode });
       await onSignIn(email.trim(), password);
     }
   };
