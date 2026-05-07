@@ -22,9 +22,8 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-    setTermsAccepted(false);
-  };
 
+  // Terms acceptance state
   const [termsAccepted, setTermsAccepted] = useState(false);
   
   // Turnstile state management - enforce validation, no bypass

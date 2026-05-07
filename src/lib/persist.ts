@@ -185,6 +185,8 @@ export function loadActiveSession(): ActiveSession | null {
 
 export function clearActiveSession() {
   localStorage.removeItem(SESSION_KEY);
+}
+
 // ─── Meeting History Sync ───
 // Sync meeting history between IndexedDB and backend/Supabase
 
