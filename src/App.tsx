@@ -113,41 +113,9 @@ export default function App() {
     );
   }
 
-  // Show Terms page for /terms route
-  if (isTermsPage) {
-    return (
-      <>
-        <TermsPage onClose={() => window.location.hash = ''} />
-      </>
-    );
-  }
-
-  // Show Privacy page for /privacy route
-  if (isPrivacyPage) {
-    return (
-      <>
-        <PrivacyPage onClose={() => window.location.hash = ''} />
-      </>
-    );
-  }
-
   // Not authenticated
   if (!s.isAuthenticated) {
-    // Show LandingPage only for welcome view (not for /auth, /pricing routes)
-    if (s.view === 'welcome') {
-      return (
-        <>
-          <LandingPage
-            setView={s.setView} roomId={s.roomId} setRoomId={s.setRoomId}
-            userName={s.userName} setUserName={s.setUserName}
-            profile={null} isOfflineMode={false}
-            onSignOut={() => { }} onUpdateName={async () => ({ success: false })}
-          />
-          {installBanner}
-        </>
-      );
-    }
-    // Show AuthPage for /auth route (when not authenticated)
+    // Show AuthPage FIRST for /auth route (before checking view)
     if (isAuthPage) {
       return (
         <>
@@ -177,17 +145,14 @@ export default function App() {
         </>
       );
     }
-    // Default: show Auth page
+    // Default: show LandingPage
     return (
       <>
-        <AuthPage
-          onSignUp={s.signUp}
-          onSignIn={s.signIn}
-          onResendConfirmation={s.resendConfirmation}
-          onResetPassword={s.resetPassword}
-          error={s.authError}
-          clearError={s.clearAuthError}
-          loading={s.authLoading}
+        <LandingPage
+          setView={s.setView} roomId={s.roomId} setRoomId={s.setRoomId}
+          userName={s.userName} setUserName={s.setUserName}
+          profile={null} isOfflineMode={false}
+          onSignOut={() => { }} onUpdateName={async () => ({ success: false })}
         />
         {installBanner}
       </>
