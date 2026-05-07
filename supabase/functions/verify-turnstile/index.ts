@@ -18,7 +18,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { token } = await req.json();
+    const { token, action } = await req.json();
 
     if (!token) {
       return new Response(JSON.stringify({ error: 'Turnstile token is required' }), {
@@ -26,6 +26,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
         headers: { 'Content-Type': 'application/json' }
       });
     }
+
+    console.log('Verifying Turnstile token', { action: action || 'unknown' });
 
     // Verify token with Cloudflare
     const result = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {

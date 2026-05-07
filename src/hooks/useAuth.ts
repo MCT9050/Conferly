@@ -254,9 +254,23 @@ export function useAuth() {
   }, []);
 
   // Sign in
-  const signIn = useCallback(async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string, turnstileToken?: string) => {
     console.log('useAuth.signIn called', { email, isSupabaseConfigured, isBackendConfigured });
     setError(null); setLoading(true); setSessionExpired(false);
+
+    // Validate Turnstile token for login if provided
+    if (turnstileToken) {
+      console.log('Validating Turnstile token for login');
+      const isValid = await validateTurnstileToken(turnstileToken);
+      if (!isValid) {
+        console.log('Turnstile validation failed for login');
+        setError('Security verification failed. Please refresh and try again.');
+        setLoading(false);
+        return { success: false };
+      }
+      console.log('Turnstile validation passed for login');
+    }
+
     if (isSupabaseConfigured && supabase) {
       try {
         const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });

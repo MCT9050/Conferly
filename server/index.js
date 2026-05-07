@@ -303,6 +303,12 @@ runMigrations();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 
+// CSP headers for Turnstile iframe
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', "frame-ancestors https://challenges.cloudflare.com;");
+  next();
+});
+
 // Auth middleware
 function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;

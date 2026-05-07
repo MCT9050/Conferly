@@ -8,7 +8,7 @@ import EmailConfirmation from './EmailConfirmation';
 
 interface AuthPageProps {
   onSignUp: (email: string, password: string, displayName: string, turnstileToken?: string) => Promise<{ success: boolean; needsConfirmation?: boolean }>;
-  onSignIn: (email: string, password: string) => Promise<{ success: boolean }>;
+  onSignIn: (email: string, password: string, turnstileToken?: string) => Promise<{ success: boolean }>;
   onResendConfirmation: (email: string) => Promise<void>;
   onResetPassword: (email: string) => Promise<void>;
   error: string | null;
@@ -112,8 +112,8 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
     } else if (mode === 'forgot') {
       await onResetPassword(email.trim());
     } else {
-      console.log('Login button pressed', { email: email.trim(), mode });
-      await onSignIn(email.trim(), password);
+      console.log('Login button pressed', { email: email.trim(), mode, hasTurnstile: !!turnstileToken });
+      await onSignIn(email.trim(), password, turnstileToken);
     }
   };
 
@@ -307,7 +307,7 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
             )}
 
             {/* Cloudflare Turnstile - Bot Protection */}
-            {mode === 'signup' && (
+            {(mode === 'signup' || mode === 'signin') && (
               <div className="flex flex-col items-center space-y-3">
                 {!turnstileLoaded && turnstileLoading && (
                   <div className="flex items-center gap-2 text-xs text-slate-400">
