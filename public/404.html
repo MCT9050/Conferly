@@ -3,15 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conferly - Page Not Found</title>
+    <title>Conferly</title>
     <script>
-        // SPA redirect for GitHub Pages
-        // Store the original path in sessionStorage before redirecting
-        sessionStorage.setItem('redirect', location.pathname + location.search + location.hash);
-        location.replace('/');
+        // Hash-based SPA routing for GitHub Pages
+        // Convert /path to /#/path to avoid server 404
+        var path = location.pathname;
+        
+        // Known SPA routes
+        var spaRoutes = ['/terms', '/privacy', '/pricing'];
+        var isSpaRoute = spaRoutes.some(function(r) { return path === r || path.startsWith(r + '/'); });
+        
+        if (isSpaRoute) {
+            // Preserve the original path using hash
+            // e.g., /terms becomes /#/terms
+            location.replace('/#' + path);
+        } else {
+            // Unknown routes - just redirect to home
+            location.replace('/');
+        }
     </script>
 </head>
 <body>
-    <p>Redirecting to Conferly...</p>
+    <noscript>
+        <p>Please enable JavaScript to use Conferly.</p>
+    </noscript>
+    <p>Loading...</p>
 </body>
 </html>
+<!-- 
+    The SPA needs to load its content. On GitHub Pages, when a 404 is returned,
+    the JS in the page can detect the path and initialize the React app,
+    which will then route to the correct component.
+-->

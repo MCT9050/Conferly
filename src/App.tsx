@@ -1,5 +1,5 @@
 import { useAppState } from './store';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import AuthPage from './components/AuthPage';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
@@ -8,6 +8,8 @@ import MeetingRoom from './components/MeetingRoom';
 import PricingPage from './components/PricingPage';
 import InstallBanner from './components/InstallBanner';
 import OnboardingPage from './components/OnboardingPage';
+import TermsPage from './components/TermsPage';
+import PrivacyPage from './components/PrivacyPage';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { Loader2 } from 'lucide-react';
 import Logo from './components/Logo';
@@ -15,6 +17,8 @@ import Logo from './components/Logo';
 export default function App() {
   const s = useAppState();
   const pwa = useInstallPrompt();
+  const [showTerms, setShowTerms] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   // Mobile debugging
   useEffect(() => {
@@ -35,6 +39,57 @@ export default function App() {
     console.log('========================');
   }, [s.authLoading, s.isAuthenticated, s.authProfile, s.authError, s.view]);
 
+  // Handle SPA routing for /terms and /privacy
+  useEffect(() => {
+    var path = window.location.pathname;
+    var hash = window.location.hash;
+    
+    // Check both pathname and hash for routes
+    // Hash format: #/terms
+    var effectivePath = path;
+    if (hash && hash.startsWith('#/')) {
+      effectivePath = hash.substring(1); // Remove the # to get /terms
+    }
+    
+    if (effectivePath === '/terms' || effectivePath === '/terms/') {
+      setShowTerms(true);
+      setShowPrivacy(false);
+    } else if (effectivePath === '/privacy' || effectivePath === '/privacy/') {
+      setShowPrivacy(true);
+      setShowTerms(false);
+    } else {
+      setShowTerms(false);
+      setShowPrivacy(false);
+    }
+  }, []);
+
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      var path = window.location.pathname;
+      var hash = window.location.hash;
+      
+      // Check both pathname and hash for routes
+      var effectivePath = path;
+      if (hash && hash.startsWith('#/')) {
+        effectivePath = hash.substring(1);
+      }
+      
+      if (effectivePath === '/terms' || effectivePath === '/terms/') {
+        setShowTerms(true);
+        setShowPrivacy(false);
+      } else if (effectivePath === '/privacy' || effectivePath === '/privacy/') {
+        setShowPrivacy(true);
+        setShowTerms(false);
+      } else {
+        setShowTerms(false);
+        setShowPrivacy(false);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const installBanner = (
     <InstallBanner
       show={pwa.showBanner}
@@ -53,6 +108,30 @@ export default function App() {
           <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
         </div>
       </div>
+    );
+  }
+
+  // Show Terms page for /terms route
+  if (showTerms) {
+    return (
+      <>
+        <TermsPage onClose={() => {
+          setShowTerms(false);
+          window.history.back();
+        }} />
+      </>
+    );
+  }
+
+  // Show Privacy page for /privacy route
+  if (showPrivacy) {
+    return (
+      <>
+        <PrivacyPage onClose={() => {
+          setShowPrivacy(false);
+          window.history.back();
+        }} />
+      </>
     );
   }
 

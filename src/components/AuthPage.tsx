@@ -345,9 +345,9 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
                 />
                 <label htmlFor="terms" className="text-xs text-slate-400">
                   I agree to the{' '}
-                  <a href="/terms" className="text-blue-400 hover:underline">Terms of Service</a>
+                  <a href="#/terms" className="text-blue-400 hover:underline">Terms of Service</a>
                   {' '}and{' '}
-                  <a href="/privacy" className="text-blue-400 hover:underline">Privacy Policy</a>
+                  <a href="#/privacy" className="text-blue-400 hover:underline">Privacy Policy</a>
                 </label>
               </div>
             )}
