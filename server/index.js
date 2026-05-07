@@ -148,7 +148,9 @@ function createErrorHandler(app) {
       path: req.path,
       method: req.method
     });
-    return apiError(res, 500, 'INTERNAL_ERROR', 'An unexpected error occurred');
+    // Include error details in development, generic message in production
+    const details = process.env.NODE_ENV !== 'production' ? { originalError: err.message } : null;
+    return apiError(res, 500, 'INTERNAL_ERROR', 'An unexpected error occurred', details);
   });
 }
 
@@ -440,7 +442,7 @@ app.post('/api/auth/signup', async (req, res) => {
     });
   } catch (err) {
     console.error('Signup error:', err);
-    res.status(500).json({ error: 'Server error' });
+    return apiError(res, 500, 'INTERNAL_ERROR', 'An unexpected error occurred');;
   }
 });
 
@@ -467,7 +469,7 @@ app.get('/api/auth/verify-email', (req, res) => {
     res.json({ success: true, message: 'Email verified successfully' });
   } catch (err) {
     console.error('Verify email error:', err);
-    res.status(500).json({ error: 'Server error' });
+    return apiError(res, 500, 'INTERNAL_ERROR', 'An unexpected error occurred');;
   }
 });
 
@@ -531,7 +533,7 @@ app.post('/api/auth/signin', async (req, res) => {
     });
   } catch (err) {
     console.error('Signin error:', err);
-    res.status(500).json({ error: 'Server error' });
+    return apiError(res, 500, 'INTERNAL_ERROR', 'An unexpected error occurred');;
   }
 });
 
@@ -566,7 +568,7 @@ app.post('/api/auth/refresh', async (req, res) => {
     });
   } catch (err) {
     console.error('Refresh error:', err);
-    res.status(500).json({ error: 'Server error' });
+    return apiError(res, 500, 'INTERNAL_ERROR', 'An unexpected error occurred');;
   }
 });
 

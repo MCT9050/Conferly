@@ -83,7 +83,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-    throw new Error(body.error || `Request failed: ${res.status}`);
+    // Parse structured API error response
+    if (body.status === 'error' && body.code && body.message) {
+      throw new Error(`[${body.code}] ${body.message}`);
+    }
+    throw new Error(body.error || body.message || `Request failed: ${res.status}`);
   }
 
   return res.json();
