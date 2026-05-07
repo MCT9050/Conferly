@@ -198,13 +198,13 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
   // Password validation
   const passwordMeetsPolicy = mode === 'signup'
     ? validatePassword(password).valid
-    : password.length >= 6;
+    : password.length >= 8;
 
   const isValid = mode === 'signup'
     ? email.trim().length > 0 && passwordMeetsPolicy && displayName.trim().length > 0 && termsAccepted
     : mode === 'forgot'
       ? email.trim().length > 0
-      : email.trim().length > 0 && password.length >= 6;
+      : email.trim().length > 0 && password.length >= 8;
 
   // Show confirmation screen if needed
   if (confirmation) {
@@ -367,10 +367,18 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
             
             {/* Submit */}
             <button
-              type="submit"
-              disabled={!isValid}
-              onClick={() => console.log('BUTTON CLICK', { isValid, mode })}
-              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold flex items-center justify-center gap-2 hover:from-blue-500 hover:to-cyan-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg glow-blue"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                alert('DIRECT BUTTON CLICK');
+                // Find form and submit
+                const form = (e.target as HTMLButtonElement).closest('form');
+                if (form) {
+                  const event = new Event('submit', { bubbles: true, cancelable: true });
+                  form.dispatchEvent(event);
+                }
+              }}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold flex items-center justify-center gap-2 hover:from-blue-500 hover:to-cyan-400 transition-all shadow-lg glow-blue"
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
