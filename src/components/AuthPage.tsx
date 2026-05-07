@@ -24,6 +24,23 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
     clearError?.();
   }, [clearError]);
 
+  // Safe auth handlers - all wrap optional props
+  const handleSignUp = useCallback(async (...args: Parameters<NonNullable<AuthPageProps['onSignUp']>>) => {
+    return onSignUp ? await onSignUp(...args) : { success: false };
+  }, [onSignUp]);
+
+  const handleSignIn = useCallback(async (...args: Parameters<NonNullable<AuthPageProps['onSignIn']>>) => {
+    return onSignIn ? await onSignIn(...args) : { success: false };
+  }, [onSignIn]);
+
+  const handleResend = useCallback(async (...args: Parameters<NonNullable<AuthPageProps['onResendConfirmation']>>) => {
+    return onResendConfirmation ? await onResendConfirmation(...args) : Promise.resolve();
+  }, [onResendConfirmation]);
+
+  const handleResetPassword = useCallback(async (...args: Parameters<NonNullable<AuthPageProps['onResetPassword']>>) => {
+    return onResetPassword ? await onResetPassword(...args) : Promise.resolve();
+  }, [onResetPassword]);
+
   // Mode switching helper - required by UI  
   const switchMode = useCallback((newMode: 'signin' | 'signup' | 'forgot') => {
     setMode(newMode);
@@ -112,14 +129,14 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
 
     if (mode === 'signup') {
       if (!displayName.trim()) return;
-      const result = await onSignUp(email.trim(), password, displayName.trim(), turnstileToken, termsAccepted);
+      const result = await handleSignUp(email.trim(), password, displayName.trim(), turnstileToken, termsAccepted);
       if (result.success && result.needsConfirmation) {
         setConfirmation(true);
       }
     } else if (mode === 'forgot') {
-      await onResetPassword(email.trim());
+      await handleResetPassword(email.trim());
     } else {
-      await onSignIn(email.trim(), password);
+      await handleSignIn(email.trim(), password);
     }
   };
 
@@ -168,7 +185,7 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
     return (
       <EmailConfirmation
         email={email}
-        onResend={onResendConfirmation}
+        onResend={handleResend}
         onBack={() => switchMode('signin')}
       />
     );
