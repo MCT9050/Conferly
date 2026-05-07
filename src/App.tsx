@@ -16,9 +16,11 @@ import Logo from './components/Logo';
 
 // Get initial route state synchronously
 function getRouteFromURL() {
+  console.log('getRouteFromURL called');
   const path = window.location.pathname;
   const hash = window.location.hash;
   const effectivePath = hash.startsWith('#/') ? hash.substring(1) : path;
+  console.log('effectivePath:', effectivePath);
   
   if (effectivePath === '/terms' || effectivePath === '/terms/') return 'terms';
   if (effectivePath === '/privacy' || effectivePath === '/privacy/') return 'privacy';
@@ -130,6 +132,24 @@ export default function App() {
       onDismiss={pwa.dismiss}
     />
   );
+
+  // Show Terms page for /terms route - check BEFORE loading!
+  if (isTermsPage) {
+    return (
+      <>
+        <TermsPage onClose={() => window.location.hash = ''} />
+      </>
+    );
+  }
+
+  // Show Privacy page for /privacy route
+  if (isPrivacyPage) {
+    return (
+      <>
+        <PrivacyPage onClose={() => window.location.hash = ''} />
+      </>
+    );
+  }
 
   if (s.authLoading) {
     return (
