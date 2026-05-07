@@ -5,9 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Conferly</title>
   <script>
-    // Fallback: load React app from root
-    // GitHub Pages sends 404 for routes not in repo
-    // This loads index.html which hydrates the React app
+    // SPA redirect: handle hash-based routing
+    // Extract the path from the URL and redirect to hash route
+    var path = window.location.pathname;
+    var hash = window.location.hash;
+    
+    // If already has hash, use it directly
+    if (hash && hash.startsWith('#/')) {
+      window.location.replace('/' + hash);
+    } else if (path !== '/') {
+      // Redirect non-root paths to hash route
+      window.location.replace('/#' + path);
+    } else {
+      // Load the React app
+      window.location.replace('/');
+    }
   </script>
 </head>
 <body>

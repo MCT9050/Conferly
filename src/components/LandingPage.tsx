@@ -70,15 +70,25 @@ export default function LandingPage({ setView, setRoomId, userName, setUserName,
             <a href="#features" className="hover:text-white transition-colors duration-200">Features</a>
             <a href="#languages" className="hover:text-white transition-colors duration-200">Languages</a>
             <a href="#business" className="hover:text-white transition-colors duration-200">Business</a>
-            <button onClick={() => setView('pricing')} className="hover:text-white transition-colors duration-200">Pricing</button>
+            <button onClick={() => window.location.hash = '#/pricing'} className="hover:text-white transition-colors duration-200">Pricing</button>
           </div>
           <div className="flex items-center gap-3">
             {isLoggedIn ? (
               <ProfileMenu profile={profile!} isOfflineMode={isOfflineMode} onSignOut={onSignOut} onUpdateName={onUpdateName} />
             ) : (
               <>
-                <button onClick={() => setView('dashboard')} className="hidden sm:block text-[13px] text-slate-400 hover:text-white font-medium transition-colors">Log in</button>
-                <button onClick={() => setView('dashboard')} className="px-5 py-2 rounded-full bg-white text-slate-900 text-[13px] font-semibold hover:bg-slate-100 transition-colors shadow-lg shadow-white/10">Start Trial</button>
+                <button 
+                  onClick={() => window.location.hash = '#/auth'} 
+                  className="hidden sm:block text-[13px] text-slate-400 hover:text-white font-medium transition-colors"
+                >
+                  Log in
+                </button>
+                <button 
+                  onClick={() => window.location.hash = '#/auth'} 
+                  className="px-5 py-2 rounded-full bg-white text-slate-900 text-[13px] font-semibold hover:bg-slate-100 transition-colors shadow-lg shadow-white/10"
+                >
+                  Start Trial
+                </button>
               </>
             )}
           </div>
@@ -327,7 +337,7 @@ export default function LandingPage({ setView, setRoomId, userName, setUserName,
                     </div>
                   ))}
                 </div>
-                <button onClick={() => setView('pricing')}
+                <button onClick={() => window.location.hash = '#/pricing'}
                   className={`w-full py-3 min-h-[44px] rounded-xl bg-gradient-to-r ${plan.gradient} text-white font-semibold text-sm transition-all duration-300 hover:opacity-90 shadow-lg`}>
                   {plan.price === 'Custom' ? 'Contact Sales' : `Get ${plan.name}`}
                 </button>
@@ -382,7 +392,7 @@ export default function LandingPage({ setView, setRoomId, userName, setUserName,
                   <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
                   {isLoggedIn ? 'Start Meeting' : 'Start 14-Day Trial'}
                 </button>
-                <button onClick={() => setView('pricing')}
+                <button onClick={() => window.location.hash = '#/pricing'}
                   className="px-10 py-4 rounded-full border border-white/10 text-slate-300 font-medium text-[15px] hover:bg-white/5 transition-all duration-300 flex items-center gap-2">
                   <Building2 className="w-5 h-5" />
                   Business Plans

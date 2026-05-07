@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import {
   Mail, Lock, User, ArrowRight, Eye, EyeOff,
-  AlertCircle, Loader2
+  AlertCircle, Loader2, CheckCircle
 } from 'lucide-react';
 import Logo from './Logo';
 import EmailConfirmation from './EmailConfirmation';
@@ -223,11 +223,23 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
           </p>
         </div>
 
-        {/* Error */}
+        {/* Error or Success */}
         {error && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-            <p className="text-sm text-red-400">{error}</p>
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-xl ${
+            error.includes('🎉') || error.includes('Welcome') || error.includes('check your email')
+              ? 'bg-green-500/10 border border-green-500/20' 
+              : 'bg-red-500/10 border border-red-500/20'
+          }`}>
+            {error.includes('🎉') || error.includes('Welcome') || error.includes('check your email') ? (
+              <CheckCircle className="w-5 h-5 text-green-400 shrink-0" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+            )}
+            <p className={`text-sm ${
+              error.includes('🎉') || error.includes('Welcome') || error.includes('check your email')
+                ? 'text-green-400' 
+                : 'text-red-400'
+            }`}>{error}</p>
           </div>
         )}
 

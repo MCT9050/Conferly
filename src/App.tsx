@@ -22,8 +22,13 @@ function getRouteFromURL() {
   const effectivePath = hash.startsWith('#/') ? hash.substring(1) : path;
   console.log('effectivePath:', effectivePath);
   
+  // Handle hash-based routes (SPA routing)
   if (effectivePath === '/terms' || effectivePath === '/terms/') return 'terms';
   if (effectivePath === '/privacy' || effectivePath === '/privacy/') return 'privacy';
+  if (effectivePath === '/auth' || effectivePath === '/auth?mode=signin' || effectivePath === '/auth?mode=signup') return 'auth';
+  if (effectivePath === '/dashboard' || effectivePath === '/dashboard/') return 'dashboard';
+  if (effectivePath === '/pricing' || effectivePath === '/pricing/') return 'pricing';
+  if (effectivePath && effectivePath.startsWith('/meeting/')) return 'none'; // meeting ID handled elsewhere
   return 'none';
 }
 
@@ -35,6 +40,9 @@ export default function App() {
   const initialRoute = getRouteFromURL();
   const isTermsPage = initialRoute === 'terms';
   const isPrivacyPage = initialRoute === 'privacy';
+  const isAuthPage = initialRoute === 'auth';
+  const isDashboardPage = initialRoute === 'dashboard';
+  const isPricingPage = initialRoute === 'pricing';
   
   // Debug
   console.log('=== Route Debug ===');
@@ -43,6 +51,9 @@ export default function App() {
   console.log('Initial Route:', initialRoute);
   console.log('isTermsPage:', isTermsPage);
   console.log('isPrivacyPage:', isPrivacyPage);
+  console.log('isAuthPage:', isAuthPage);
+  console.log('isDashboardPage:', isDashboardPage);
+  console.log('isPricingPage:', isPricingPage);
 
   // Mobile debugging
   useEffect(() => {
@@ -122,7 +133,8 @@ export default function App() {
 
   // Not authenticated
   if (!s.isAuthenticated) {
-    if (s.view === 'welcome') {
+    // Show LandingPage for welcome view OR when no specific route
+    if (s.view === 'welcome' || (!isAuthPage && !isPricingPage)) {
       return (
         <>
           <LandingPage
@@ -135,6 +147,37 @@ export default function App() {
         </>
       );
     }
+    // Show AuthPage for /auth route (when not authenticated)
+    if (isAuthPage) {
+      return (
+        <>
+          <AuthPage
+            onSignUp={s.signUp}
+            onSignIn={s.signIn}
+            onResendConfirmation={s.resendConfirmation}
+            onResetPassword={s.resetPassword}
+            error={s.authError}
+            clearError={s.clearAuthError}
+            loading={s.authLoading}
+          />
+          {installBanner}
+        </>
+      );
+    }
+    // Show Pricing page for /pricing route
+    if (isPricingPage) {
+      return (
+        <>
+          <PricingPage
+            setView={s.setView} subscription={s.subscription}
+            pricing={s.pricing} allLimits={s.allLimits}
+            onUpgrade={s.upgradeSubscription}
+          />
+          {installBanner}
+        </>
+      );
+    }
+    // Default: show Auth page
     return (
       <>
         <AuthPage
