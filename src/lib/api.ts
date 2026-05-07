@@ -1,3 +1,10 @@
+/**
+ * Conferly Backend API Client
+ * JWT auth with auto-expiry detection and 401 re-auth trigger.
+ * Falls back to localStorage when backend is unreachable.
+ *
+ * @module api
+ */
 // Conferly Backend API Client
 // JWT auth with auto-expiry detection and 401 re-auth trigger.
 // Falls back to localStorage when backend is unreachable.
@@ -7,11 +14,24 @@ export const isBackendConfigured = !!(API_URL && API_URL.startsWith('http'));
 
 const TOKEN_KEY = 'conferly_jwt';
 const TOKEN_ISSUED_KEY = 'conferly_jwt_issued';
+const REFRESH_TOKEN_KEY = 'conferly_refresh';
 
 // ─── Token Management ───
 
 function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
+}
+
+export function getRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export function setRefreshToken(token: string | null) {
+  if (token) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+  }
 }
 
 export function setToken(token: string | null) {
@@ -28,7 +48,7 @@ export function isTokenExpired(): boolean {
   const issued = localStorage.getItem(TOKEN_ISSUED_KEY);
   if (!issued) return true;
   const ageMs = Date.now() - parseInt(issued, 10);
-  const maxAgeMs = 29 * 24 * 60 * 60 * 1000; // 29 days (token is 30d, check early)
+  const maxAgeMs = 55 * 60 * 1000; // 55 minutes (access token is 1h, check early for refresh)
   return ageMs > maxAgeMs;
 }
 
@@ -79,26 +99,36 @@ export interface ApiUser {
   createdAt: string;
 }
 
-export async function apiSignUp(email: string, password: string, displayName: string): Promise<{ token: string; user: ApiUser }> {
-  const result = await request<{ token: string; user: ApiUser }>('/api/auth/signup', {
+export async function apiSignUp(email: string, password: string, displayName: string, termsAccepted: boolean): Promise<{ token: string; refreshToken: string; user: ApiUser }> {
+  const result = await request<{ token: string; refreshToken: string; user: ApiUser }>('/api/auth/signup', {
     method: 'POST',
-    body: JSON.stringify({ email, password, displayName }),
+    body: JSON.stringify({ email, password, displayName, termsAccepted }),
   });
   setToken(result.token);
+  setRefreshToken(result.refreshToken);
   return result;
 }
 
-export async function apiSignIn(email: string, password: string): Promise<{ token: string; user: ApiUser }> {
-  const result = await request<{ token: string; user: ApiUser }>('/api/auth/signin', {
+export async function apiRefresh(refreshToken: string): Promise<{ token: string; refreshToken: string; expiresIn: number }> {
+  return request<{ token: string; refreshToken: string; expiresIn: number }>('/api/auth/refresh', {
+    method: 'POST',
+    body: JSON.stringify({ refreshToken }),
+  });
+}
+
+export async function apiSignIn(email: string, password: string): Promise<{ token: string; refreshToken: string; expiresIn: number; user: ApiUser }> {
+  const result = await request<{ token: string; refreshToken: string; expiresIn: number; user: ApiUser }>('/api/auth/signin', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
   setToken(result.token);
+  setRefreshToken(result.refreshToken);
   return result;
 }
 
 export function apiSignOut() {
   setToken(null);
+  setRefreshToken(null);
 }
 
 export async function apiGetProfile(): Promise<ApiUser> {

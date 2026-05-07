@@ -1,3 +1,8 @@
+/**
+ * Conferly Client Authentication Module
+ * Handles sign-in, sign-up, session management, and token refresh.
+ * @module useAuth
+ */
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import {
@@ -168,7 +173,7 @@ export function useAuth() {
   }, []);
 
   // Sign up
-  const signUp = useCallback(async (email: string, password: string, displayName: string, turnstileToken?: string) => {
+  const signUp = useCallback(async (email: string, password: string, displayName: string, turnstileToken?: string, termsAccepted?: boolean) => {
     setError(null); setLoading(true); setSessionExpired(false);
     if (isSupabaseConfigured && supabase) {
       try {
@@ -206,9 +211,14 @@ export function useAuth() {
     }
     if (isBackendConfigured) {
       try {
-        const { user } = await apiSignUp(email, password, displayName);
+        if (!termsAccepted) {
+          setError('You must accept the Terms of Service to create an account.');
+          setLoading(false);
+          return { success: false };
+        }
+        const { user } = await apiSignUp(email, password, displayName, termsAccepted);
         const p = buildProfile({ id: user.id, email: user.email, displayName: user.displayName, avatarUrl: user.avatarUrl, createdAt: user.createdAt });
-        setProfile(p); cacheProfile(p); setIsOfflineMode(false); setLoading(false); automation('user.signup', { userId: p.id, email: p.email, displayName: p.displayName, data: { source: 'backend' } }); return { success: true, needsConfirmation: false };
+        setProfile(p); cacheProfile(p); setIsOfflineMode(false); setLoading(false); automation('user.signup', { userId: p.id, email: p.email, displayName: p.displayName, data: { source: 'backend' } }); return { success: true, needsConfirmation: !user.emailVerified };
       } catch (err: any) { if (!err.message?.includes('fetch') && !err.message?.includes('Failed')) { setError(err.message); setLoading(false); return { success: false }; } }
     }
     const users = loadOfflineUsers();

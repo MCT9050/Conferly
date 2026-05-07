@@ -25,7 +25,18 @@ services:
       - "3001:3001"
     environment:
       - PORT=3001
-      - JWT_SECRET=${JWT_SECRET:-conferly-change-this-secret}
+      # JWT_SECRET must be set via environment variable - generate a strong secret in production
+      # Use: openssl rand -base64 32 (or similar) to generate a secure 256-bit key
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set - generate a strong secret in production}
+      # Webhook secrets for HMAC signature verification
+      - N8N_WEBHOOK_SECRET=${N8N_WEBHOOK_SECRET:-}
+      - PEACH_SECRET=${PEACH_SECRET:-}
+      # Database encryption key (for SQLCipher)
+      - DB_ENCRYPTION_KEY=${DB_ENCRYPTION_KEY:-}
+      # Sentry DSN for error tracking
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      # Query timeout in milliseconds (prevents hanging requests)
+      - DB_QUERY_TIMEOUT=5000
     volumes:
       - conferly-data:/data
     restart: unless-stopped

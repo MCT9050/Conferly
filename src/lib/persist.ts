@@ -1,3 +1,9 @@
+/**
+ * Conferly Persistence Layer
+ * Stores meeting history, transcripts, notes, and chat in IndexedDB.
+ * Syncs to backend when available, falls back to local-only.
+ * @module persist
+ */
 // Conferly Persistence Layer
 // Stores meeting history, transcripts, notes, and chat in IndexedDB.
 // Syncs to backend when available, falls back to local-only.
@@ -10,6 +16,7 @@ const STORES = {
   transcripts: 'transcripts',
   notes: 'notes',
   chatHistory: 'chatHistory',
+  syncQueue: 'syncQueue',  // Queue for pending syncs
 } as const;
 
 export interface StoredMeeting {
@@ -21,6 +28,18 @@ export interface StoredMeeting {
   durationSeconds: number;
   participantCount: number;
   wasHost: boolean;
+  syncedAt?: string;       // Last sync timestamp
+  needsSync?: boolean;     // Pending sync flag
+}
+
+// Sync queue for meeting history consistency
+interface SyncQueueItem {
+  id: string;
+  type: 'meeting' | 'transcript' | 'notes';
+  action: 'create' | 'update' | 'delete';
+  data: any;
+  timestamp: string;
+  retries: number;
 }
 
 export interface StoredTranscript {
@@ -166,4 +185,62 @@ export function loadActiveSession(): ActiveSession | null {
 
 export function clearActiveSession() {
   localStorage.removeItem(SESSION_KEY);
+// ─── Meeting History Sync ───
+// Sync meeting history between IndexedDB and backend/Supabase
+
+let syncInterval: number | null = null;
+
+async function syncMeetingToBackend(meeting: StoredMeeting): Promise<boolean> {
+  try {
+    const response = await fetch('/api/meetings', {
+      method: meeting.id ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(meeting)
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function syncMeetings(): Promise<{ synced: number; failed: number }> {
+  const meetings = await getMeetings();
+  let synced = 0;
+  let failed = 0;
+  
+  for (const meeting of meetings) {
+    if (meeting.needsSync) {
+      const success = await syncMeetingToBackend(meeting);
+      if (success) {
+        meeting.needsSync = false;
+        meeting.syncedAt = new Date().toISOString();
+        await saveMeeting(meeting);
+        synced++;
+      } else {
+        failed++;
+      }
+    }
+  }
+  
+  return { synced, failed };
+}
+
+export async function markMeetingForSync(meeting: StoredMeeting): Promise<void> {
+  meeting.needsSync = true;
+  await saveMeeting(meeting);
+}
+
+export function startMeetingSync(intervalMs = 60000): void {
+  if (syncInterval) return;
+  // Sync every minute by default
+  syncInterval = window.setInterval(() => {
+    syncMeetings().catch(console.error);
+  }, intervalMs);
+}
+
+export function stopMeetingSync(): void {
+  if (syncInterval) {
+    clearInterval(syncInterval);
+    syncInterval = null;
+  }
 }

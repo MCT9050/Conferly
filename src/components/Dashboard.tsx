@@ -65,6 +65,20 @@ function generateRoomId() {
   return segs.join('-');
 }
 
+// Generate secure dynamic meeting password with uppercase, numbers, and special chars
+function generateSecurePassword() {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+  let password = '';
+  for (let i = 0; i < 8; i++) {
+    password += chars[Math.floor(Math.random() * chars.length)];
+  }
+  // Ensure at least one uppercase, one number, one special char
+  if (!/[A-Z]/.test(password)) password = password.slice(0, -1) + 'A';
+  if (!/[0-9]/.test(password)) password = password.slice(0, -1) + '5';
+  if (!/[!@#$%^&*]/.test(password)) password = password.slice(0, -1) + '!';
+  return password;
+}
+
 const PLAN_COLORS: Record<PlanTier, string> = {
   trial: 'from-amber-500 to-orange-400',
   pro: 'from-blue-500 to-cyan-400',
@@ -293,7 +307,7 @@ export default function Dashboard({
                         {
                           label: 'Require password for meetings',
                           enabled: security?.password !== null,
-                          action: () => setMeetingPassword(security?.password ? null : '123456'),
+                          action: () => setMeetingPassword(security?.password ? null : generateSecurePassword()),
                           disabled: !planLimits.meetingPassword,
                           feature: 'meetingPassword'
                         },

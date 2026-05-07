@@ -33,7 +33,10 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
     setConfirmation(false);
     setTurnstileToken('');
     setTurnstileError(false);
+    setTermsAccepted(false);
   };
+
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Turnstile callback function
   const onTurnstileCallback = useCallback((token: string) => {
@@ -91,14 +94,14 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
         if (!fallbackToken) {
           return; // No token available, don't proceed
         }
-        const result = await onSignUp(email.trim(), password, displayName.trim(), fallbackToken);
+        const result = await onSignUp(email.trim(), password, displayName.trim(), fallbackToken, termsAccepted);
         if (result.success && result.needsConfirmation) {
           setConfirmation(true);
         }
         return;
       }
 
-      const result = await onSignUp(email.trim(), password, displayName.trim(), turnstileToken);
+      const result = await onSignUp(email.trim(), password, displayName.trim(), turnstileToken, termsAccepted);
       if (result.success && result.needsConfirmation) {
         setConfirmation(true);
       }
@@ -109,8 +112,13 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
     }
   };
 
+  // Password meets policy: 8+ chars, uppercase, lowercase, number, special char
+  const passwordMeetsPolicy = mode === 'signup'
+    ? password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password) && /[!@#$%^&*]/.test(password)
+    : password.length >= 6;
+
   const isValid = mode === 'signup'
-    ? email.trim().length > 0 && password.length >= 6 && displayName.trim().length > 0 && (turnstileLoaded || turnstileError)
+    ? email.trim().length > 0 && passwordMeetsPolicy && displayName.trim().length > 0 && termsAccepted && (turnstileLoaded || turnstileError)
     : mode === 'forgot'
       ? email.trim().length > 0
       : email.trim().length > 0 && password.length >= 6;
@@ -220,7 +228,7 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
+                    placeholder={mode === 'signup' ? 'Min 8 chars, uppercase, number, special char' : '••••••••'}
                     autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                     className="w-full px-4 py-3 pr-12 rounded-xl bg-slate-800/80 border border-slate-700/50 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
                   />
@@ -232,9 +240,47 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                {mode === 'signup' && password.length > 0 && password.length < 6 && (
-                  <p className="text-[10px] text-amber-400 mt-1.5">Password must be at least 6 characters</p>
+                {mode === 'signup' && password.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {password.length < 8 && (
+                      <p className="text-[10px] text-amber-400">✗ At least 8 characters</p>
+                    )}
+                    {!/[A-Z]/.test(password) && (
+                      <p className="text-[10px] text-amber-400">✗ At least one uppercase letter</p>
+                    )}
+                    {!/[a-z]/.test(password) && (
+                      <p className="text-[10px] text-amber-400">✗ At least one lowercase letter</p>
+                    )}
+                    {!/[0-9]/.test(password) && (
+                      <p className="text-[10px] text-amber-400">✗ At least one number</p>
+                    )}
+                    {!/[!@#$%^&*]/.test(password) && (
+                      <p className="text-[10px] text-amber-400">✗ At least one special character (!@#$%^&*)</p>
+                    )}
+                    {password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password) && /[!@#$%^&*]/.test(password) && (
+                      <p className="text-[10px] text-green-400">✓ Password meets requirements</p>
+                    )}
+                  </div>
                 )}
+              </div>
+            )}
+
+            {/* Terms of Service (signup only) */}
+            {mode === 'signup' && (
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="terms"
+                  checked={termsAccepted}
+                  onChange={e => setTermsAccepted(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded bg-slate-800 border border-slate-600 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="terms" className="text-xs text-slate-400">
+                  I agree to the{' '}
+                  <a href="/terms" className="text-blue-400 hover:underline">Terms of Service</a>
+                  {' '}and{' '}
+                  <a href="/privacy" className="text-blue-400 hover:underline">Privacy Policy</a>
+                </label>
               </div>
             )}
 

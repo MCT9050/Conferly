@@ -1,182 +1,135 @@
-export interface UserProfile {
+/**
+ * Unified Type Definitions for Conferly
+ * Consolidates all interface types across the application.
+ */
+
+/**
+ * User types - unified from SupabaseUser and ApiUser
+ */
+export interface User {
   id: string;
   email: string;
   displayName: string;
-  avatarUrl: string | null;
+  avatarUrl?: string;
+  emailVerified: boolean;
+  termsAccepted: boolean;
   createdAt: string;
-  userType: 'individual' | 'organization';
-  organizationName: string | null;
-  organizationSize: number | null;
-  organizationIndustry: string | null;
-  onboardingComplete: boolean;
+  updatedAt?: string;
 }
 
-export interface Participant {
-  id: string;
-  name: string;
-  avatar: string;
-  isMuted: boolean;
-  isVideoOn: boolean;
-  isScreenSharing: boolean;
-  isSpeaking: boolean;
-  stream: MediaStream | null;
-  audioLevel: number;
-  role?: 'host' | 'cohost' | 'participant';
-}
-
-export interface TranscriptEntry {
-  id: string;
-  speaker: string;
-  text: string;
-  timestamp: Date;
-  isFinal: boolean;
-}
-
-export interface ChatMessage {
-  id: string;
-  sender: string;
-  text: string;
-  timestamp: Date;
-}
-
-export interface Reaction {
-  id: string;
-  emoji: string;
-  sender: string;
-  timestamp: number;
-}
-
-// Meeting security
-export interface MeetingSecurity {
-  password: string | null;
-  isLocked: boolean;
-  waitingRoomEnabled: boolean;
-  waitingRoom: WaitingRoomEntry[];
-  e2eEnabled: boolean;
-  hostId: string;
-}
-
-export interface StoredMeeting {
-  id: string;
-  roomCode: string;
-  title: string;
-  startedAt: string;
-  endedAt: string | null;
-  durationSeconds: number;
-  participantCount: number;
-  wasHost: boolean;
-}
-
-export interface WaitingRoomEntry {
-  id: string;
-  name: string;
-  avatar: string;
-  requestedAt: Date;
-}
-
-// Subscription plans
-export type PlanTier = 'trial' | 'pro' | 'business' | 'enterprise';
-
-export interface PlanLimits {
-  maxParticipants: number;
-  maxDurationMinutes: number;
-  maxMeetingsPerMonth: number;
-  recording: boolean;
-  transcription: boolean;
-  aiPulse: boolean;
-  customBranding: boolean;
-  cloudStorage: boolean;
-  storageLimitGb: number;
-  sso: boolean;
-  analytics: boolean;
-  prioritySupport: boolean;
-  adminDashboard: boolean;
-  waitingRoom: boolean;
-  meetingPassword: boolean;
-  meetingLock: boolean;
-}
-
+/**
+ * Subscription types - unified across all contexts
+ */
 export interface Subscription {
-  tier: PlanTier;
-  billingCycle: 'monthly' | 'annual';
-  currentPeriodEnd: string | null;
+  tier: 'free' | 'pro' | 'business';
+  billingCycle: 'monthly' | 'yearly';
+  currentPeriodEnd?: string;
   cancelAtPeriodEnd: boolean;
 }
 
-export type SidebarTab = 'chat' | 'transcript' | 'notes' | 'pulse' | 'participants' | 'security' | 'translate' | 'slides';
+/**
+ * Meeting types
+ */
+export interface Meeting {
+  id: string;
+  roomCode: string;
+  title?: string;
+  startedAt: string;
+  endedAt?: string | null;
+  durationSeconds: number;
+  participantCount: number;
+  userId?: string;
+}
 
-export type AppView = 'welcome' | 'dashboard' | 'lobby' | 'meeting' | 'pricing';
+/**
+ * Meeting notes with version control for collaboration
+ */
+export interface MeetingNotes {
+  meetingId: string;
+  content: string;
+  version: number;
+  updatedAt: string;
+  userId?: string;
+}
 
-export interface AppState {
-  // Auth
-  authProfile: UserProfile | null;
-  authLoading: boolean;
-  authError: string | null;
-  isAuthenticated: boolean;
-  isOfflineMode: boolean;
-  signUp: (email: string, password: string, displayName: string, turnstileToken?: string) => Promise<{ success: boolean; needsConfirmation?: boolean }>;
-  signIn: (email: string, password: string) => Promise<{ success: boolean }>;
-  signOut: () => Promise<void>;
-  updateDisplayName: (newName: string) => Promise<void>;
-  completeOnboarding: (data: any) => Promise<void>;
-  resendConfirmation: (email: string) => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  updatePassword: (newPassword: string) => Promise<{ success: boolean }>;
-  clearAuthError: () => void;
-  sessionExpired: boolean;
+/**
+ * Chat message types
+ */
+export interface ChatMessage {
+  id: string;
+  meetingId: string;
+  userId: string;
+  senderName: string;
+  content: string;
+  createdAt: string;
+}
 
-  // Plan
+/**
+ * Analytics event types
+ */
+export type AnalyticsEventType = 
+  | 'meeting.started'
+  | 'meeting.ended'
+  | 'meeting.joined'
+  | 'subscription.upgraded'
+  | 'page.view'
+  | 'error.occurred';
+
+export interface AnalyticsEvent {
+  id: string;
+  eventType: AnalyticsEventType;
+  userId?: string;
+  sessionId?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+/**
+ * API Response types
+ */
+export interface ApiResponse<T = unknown> {
+  status: 'success' | 'error';
+  code: string;
+  message?: string;
+  data?: T;
+  details?: Record<string, unknown>;
+}
+
+export interface PaginatedResponse<T = unknown> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+}
+
+/**
+ * Auth types
+ */
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string;
+}
+
+export interface AuthState {
+  user: User | null;
   subscription: Subscription | null;
-  planLimits: PlanLimits;
-  planPricing: Record<PlanTier, { monthly: number; annual: number }>;
-  allPlanLimits: Record<PlanTier, PlanLimits>;
-  upgradePlan: (tier: PlanTier, cycle: "monthly" | "annual") => Promise<void>;
-  cancelPlan: () => Promise<void>;
-  canUseFeature: (feature: keyof PlanLimits) => boolean;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}
 
-  // Security
-  security: MeetingSecurity;
-  isHost: boolean;
-  setMeetingPassword: (password: string | null) => void;
-  toggleMeetingLock: () => void;
-  toggleWaitingRoom: () => void;
-  admitFromWaitingRoom: (participantId: string) => void;
-  denyFromWaitingRoom: (participantId: string) => void;
-
-  // Media
-  devices: MediaDeviceInfo[];
-  speechEnabled: boolean;
-  isRecording: boolean;
-  recordingTime: number;
-  recordingDuration: number;
-  startRecording: () => void;
-  stopRecording: () => void;
-  clearRecording: () => void;
-  toggleRecording: () => void;
-
-  // Meeting
-  meetingSecurity: MeetingSecurity;
-  participants: Participant[];
-  localStream: MediaStream | null;
-  meetingHistory: StoredMeeting[];
-  reconnectToMeeting: (meetingId: string) => void;
-  dismissReconnect: () => void;
-  pendingReconnect: boolean;
-  meetingsThisMonth: number;
-  meetingLimitReached: boolean;
-  maxMeetingsPerMonth: number;
-
-  // UI State
-  view: AppView;
-  roomId: string;
-  userName: string;
-  chatMessages: ChatMessage[];
-  sidebarOpen: boolean;
-  sidebarTab: SidebarTab;
-  meetingDuration: number;
-  reactions: Reaction[];
-  handRaised: boolean;
-  payment: (tier: PlanTier) => Promise<{ success: boolean; clientSecret?: string }>;
-  presentation: any;
-  translation: any;
+/**
+ * Error boundary types
+ */
+export interface ErrorInfo {
+  componentStack?: string;
+  error: Error;
+  timestamp: string;
+  userId?: string;
+  sessionId?: string;
 }
