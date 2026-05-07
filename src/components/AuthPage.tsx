@@ -22,54 +22,67 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [confirmation, setConfirmation] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState('');
-  const [turnstileLoaded, setTurnstileLoaded] = useState(false);
-  const [turnstileError, setTurnstileError] = useState(false);
-
-  const switchMode = (m: 'signin' | 'signup' | 'forgot') => {
-    setMode(m);
-    clearError();
-    setConfirmation(false);
-    setTurnstileToken('');
-    setTurnstileError(false);
     setTermsAccepted(false);
   };
 
   const [termsAccepted, setTermsAccepted] = useState(false);
+  
+  // Turnstile state management - enforce validation, no bypass
+  const TURNSTILE_TIMEOUT_MS = 15000; // 15 seconds to load
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const [turnstileLoaded, setTurnstileLoaded] = useState(false);
+  const [turnstileLoading, setTurnstileLoading] = useState(true); // Tracks if still trying to load
+  const [turnstileTimedOut, setTurnstileTimedOut] = useState(false);
+  const [turnstileExpired, setTurnstileExpired] = useState(false); // Track token expiry
 
   // Turnstile callback function
   const onTurnstileCallback = useCallback((token: string) => {
     setTurnstileToken(token);
     setTurnstileLoaded(true);
-    setTurnstileError(false);
+    setTurnstileLoading(false);
+    setTurnstileTimedOut(false);
   }, []);
 
-  // Make callback available globally for Turnstile
+  // Turnstile expiration handler - tokens expire after ~120 seconds
+  const onTurnstileExpiredCallback = useCallback(() => {
+    setTurnstileExpired(true);
+    setTurnstileToken('');
+  }, []);
+
+  // Make callbacks available globally for Turnstile
   useEffect(() => {
     (window as any).onTurnstileCallback = onTurnstileCallback;
+    (window as any).onTurnstileExpiredCallback = onTurnstileExpiredCallback;
     return () => {
       delete (window as any).onTurnstileCallback;
+      delete (window as any).onTurnstileExpiredCallback;
     };
-  }, [onTurnstileCallback]);
+  }, [onTurnstileCallback, onTurnstileExpiredCallback]);
 
-  // Check if Turnstile is loaded and handle timeout
+  // Monitor Turnstile loading with strict timeout - NO bypass allowed
   useEffect(() => {
     if (mode === 'signup') {
-      // Check if Turnstile script is loaded
+      setTurnstileLoading(true);
+      setTurnstileTimedOut(false);
+      setTurnstileExpired(false);
+      
       const checkTurnstile = setInterval(() => {
         if ((window as any).turnstile) {
           setTurnstileLoaded(true);
+          setTurnstileLoading(false);
           clearInterval(checkTurnstile);
         }
       }, 100);
 
-      // Timeout after 10 seconds and allow signup without Turnstile
+      // Strict timeout - block signup if Turnstile fails to load
       const timeout = setTimeout(() => {
-        setTurnstileError(true);
-        setTurnstileLoaded(true); // Allow proceeding
+        if (!turnstileToken) {
+          setTurnstileTimedOut(true);
+          setTurnstileLoading(false);
+          // Do NOT set turnstileLoaded(true) - this is a security feature
+        }
         clearInterval(checkTurnstile);
-      }, 10000);
+      }, TURNSTILE_TIMEOUT_MS);
 
       return () => {
         clearInterval(checkTurnstile);
@@ -85,19 +98,10 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
     if (mode === 'signup') {
       if (!displayName.trim()) return;
 
-      // Use Turnstile token for bot protection
-      if (!turnstileToken) {
-        clearError();
-        // Try to get token from DOM as fallback
-        const turnstileInput = document.querySelector('input[name="cf-turnstile-response"]') as HTMLInputElement;
-        const fallbackToken = turnstileInput?.value || '';
-        if (!fallbackToken) {
-          return; // No token available, don't proceed
-        }
-        const result = await onSignUp(email.trim(), password, displayName.trim(), fallbackToken, termsAccepted);
-        if (result.success && result.needsConfirmation) {
-          setConfirmation(true);
-        }
+      // Enforce Turnstile validation - NO bypass allowed
+      // Check: token exists AND not timed out AND not expired
+      if (!turnstileToken || turnstileTimedOut || turnstileExpired) {
+        setError('Please complete the bot verification to sign up');
         return;
       }
 
@@ -118,7 +122,7 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
     : password.length >= 6;
 
   const isValid = mode === 'signup'
-    ? email.trim().length > 0 && passwordMeetsPolicy && displayName.trim().length > 0 && termsAccepted && (turnstileLoaded || turnstileError)
+    ? email.trim().length > 0 && passwordMeetsPolicy && displayName.trim().length > 0 && termsAccepted && turnstileToken && !turnstileTimedOut && !turnstileExpired
     : mode === 'forgot'
       ? email.trim().length > 0
       : email.trim().length > 0 && password.length >= 6;
@@ -287,27 +291,29 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
             {/* Cloudflare Turnstile - Bot Protection */}
             {mode === 'signup' && (
               <div className="flex flex-col items-center space-y-3">
-                {!turnstileLoaded && (
+                {!turnstileLoaded && turnstileLoading && (
                   <div className="flex items-center gap-2 text-xs text-slate-400">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     Loading security verification...
                   </div>
                 )}
-                {turnstileError && (
-                  <div className="flex items-center gap-2 text-xs text-amber-400">
+                {turnstileTimedOut && (
+                  <div className="flex items-center gap-2 text-xs text-red-400">
                     <AlertCircle className="w-3 h-3" />
-                    Security verification bypassed (mobile compatible)
+                    Security verification timed out - please refresh
                   </div>
                 )}
+                {!turnstileTimedOut && (
                 <div
                   className="cf-turnstile"
                   data-sitekey="0x4AAAAAADJBiV_xIB3mw1nm"
                   data-theme="dark"
                   data-size="normal"
                   data-callback="onTurnstileCallback"
-                  style={{ display: turnstileError ? 'none' : 'block' }}
+                  data-expired-callback="onTurnstileExpiredCallback"
                 >
                 </div>
+                )}
               </div>
             )}
 
