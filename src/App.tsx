@@ -1,5 +1,5 @@
 import { useAppState } from './store';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import AuthPage from './components/AuthPage';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
@@ -15,6 +15,23 @@ import Logo from './components/Logo';
 export default function App() {
   const s = useAppState();
   const pwa = useInstallPrompt();
+  const lastClickRef = useRef(0);
+
+  // DEBUG: Detect if clicks are intercepted by anything
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      const now = Date.now();
+      console.log('CLICK DETECTED', { 
+        time: now - lastClickRef.current,
+        target: (e.target as HTMLElement).tagName,
+        x: e.clientX, 
+        y: e.clientY 
+      });
+      lastClickRef.current = now;
+    };
+    document.addEventListener('click', handleClick, true);
+    return () => document.removeEventListener('click', handleClick, true);
+  }, []);
 
   // Mobile debugging
   useEffect(() => {

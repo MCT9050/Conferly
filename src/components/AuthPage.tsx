@@ -97,7 +97,17 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
     e.preventDefault();
     clearError();
 
-    console.log('SUBMIT START', { mode, loading, email: !!email, password: !!password });
+    console.log('=== SUBMIT CLICKED ===', { 
+      mode, 
+      isValid,
+      loading,
+      hasEmail: !!email, 
+      emailLen: email?.length,
+      hasPassword: !!password, 
+      pwdLen: password?.length,
+      hasDisplayName: !!displayName,
+      termsAccepted 
+    });
 
     if (mode === 'signup') {
       if (!displayName.trim()) { console.log('No displayName'); return; }
@@ -122,6 +132,11 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
       console.log('onSignIn returned');
     }
   };
+
+  // Log form state changes
+  useEffect(() => {
+    console.log('FORM STATE', { mode, loading, isValid, email: email?.length, pwd: !!password, displayName: !!displayName });
+  }, [mode, loading, isValid, displayName]);
 
   // Password complexity validation (8+ chars, uppercase, lowercase, number, special char)
 const PASSWORD_POLICY = {
