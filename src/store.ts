@@ -272,6 +272,7 @@ export function useAppState(): AppState {
     authProfile: auth.profile,
     authLoading: auth.loading,
     authError: auth.error,
+    isAuthenticated: !!auth.profile,
     subscription: plan.subscription,
     planLimits: plan.limits,
     planPricing: plan.pricing,
