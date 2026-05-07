@@ -201,7 +201,16 @@ export function useAuth() {
             data: { display_name: displayName }
           }
         });
-        if (err) throw err;
+        
+        // Handle duplicate email error specifically  
+        if (err) {
+          if (err.message.includes('already been registered') || err.message.includes('already exists') || err.message.includes('User already registered')) {
+            setError('An account with this email already exists. Please sign in instead.');
+            setLoading(false);
+            return { success: false };
+          }
+          throw err;
+        }
         if (data.user) {
           const p = buildProfile({ id: data.user.id, email, displayName, createdAt: data.user.created_at });
           setProfile(p); cacheProfile(p); setIsOfflineMode(false);
