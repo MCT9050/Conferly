@@ -256,6 +256,7 @@ export function useAuth() {
   // Sign in
   const signIn = useCallback(async (email: string, password: string, turnstileToken?: string) => {
     console.log('useAuth.signIn called', { email, isSupabaseConfigured, isBackendConfigured });
+    alert('useAuth.signIn CALLED: email=' + email);
     setError(null); setLoading(true); setSessionExpired(false);
 
     // TURNSTILE VALIDATION DISABLED FOR TESTING

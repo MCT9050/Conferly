@@ -141,25 +141,28 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert('FORM SUBMIT CLICKED - DEBUG!');
+    alert('FORM SUBMIT CLICKED!');
     e.stopPropagation();
-    console.log('FORM SUBMIT', { mode, isValid, hasEmail: !!email, hasPwd: !!password });
+    alert(`Mode: ${mode}, isValid: ${isValid}`);
+    
     handleClearError();
 
-    console.log('SUBMIT', { mode, isValid, hasEmail: !!email, hasPwd: !!password });
-
     if (mode === 'signup') {
-      if (!displayName.trim()) return;
+      if (!displayName.trim()) { alert('No display name!'); return; }
+      alert('Calling signup...');
       const result = await handleSignUp(email.trim(), password, displayName.trim(), turnstileToken, termsAccepted);
+      alert(`Signup result: ${JSON.stringify(result)}`);
       if (result.success && result.needsConfirmation) {
         setConfirmation(true);
       }
     } else if (mode === 'forgot') {
+      alert('Calling reset...');
       await handleResetPassword(email.trim());
+      alert('Reset done');
     } else {
-      console.log('Calling handleSignIn...');
+      alert('Calling SIGN IN...');
       await handleSignIn(email.trim(), password);
-      console.log('handleSignIn complete');
+      alert('Sign in complete!');
     }
   };
 
