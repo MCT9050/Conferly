@@ -1,9 +1,9 @@
 // Peach Payments Integration — Hosted Checkout via Form POST
 // Uses form submission (no CORS issues) to redirect to Peach's hosted payment page.
-// Credentials are provided via environment variables at build time.
+// Credentials are retrieved via secrets manager (see lib/secrets.ts)
 
-const PEACH_ENTITY_ID = import.meta.env.VITE_PEACH_ENTITY_ID || '';
-const PEACH_SECRET = import.meta.env.VITE_PEACH_SECRET || '';
+import { getPeachSecret, getPeachEntityId } from './secrets';
+
 const PEACH_MODE = import.meta.env.VITE_PEACH_MODE || 'sandbox';
 
 const CHECKOUT_URLS: Record<string, string> = {
@@ -11,7 +11,17 @@ const CHECKOUT_URLS: Record<string, string> = {
   live: 'https://secure.peachpayments.com/checkout/initiate',
 };
 
-export const isPeachConfigured = !!(PEACH_ENTITY_ID && PEACH_SECRET);
+/**
+ * Check if Peach is configured (async, should be called after auth)
+ * For runtime checks, use isPeachConfiguredAsync()
+ */
+export const isPeachConfigured = false; // Placeholder - use isPeachConfiguredAsync() for actual check
+
+export async function isPeachConfiguredAsync(): Promise<boolean> {
+  const entityId = await getPeachEntityId();
+  const secret = await getPeachSecret();
+  return !!(entityId && secret);
+}
 
 // ZAR pricing per user
 export const PLAN_PRICES_ZAR: Record<string, { monthly: number; annual: number }> = {
@@ -29,7 +39,8 @@ function generateNonce(): string {
 async function computeSignature(params: Record<string, string>): Promise<string> {
   // Peach signature: SHA-256 of sorted param key+value pairs concatenated with the secret
   const sorted = Object.keys(params).sort();
-  const message = sorted.map(k => `${k}${params[k]}`).join('') + PEACH_SECRET;
+  const secret = await getPeachSecret();
+  const message = sorted.map(k => `${k}${params[k]}`).join('') + secret;
   const encoded = new TextEncoder().encode(message);
   const buffer = await crypto.subtle.digest('SHA-256', encoded);
   return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -51,10 +62,12 @@ export interface CheckoutParams {
  * After payment, Peach redirects back to shopperResultUrl.
  */
 export async function redirectToCheckout(params: CheckoutParams): Promise<void> {
-  if (!isPeachConfigured) {
+  const configured = await isPeachConfiguredAsync();
+  if (!configured) {
     throw new Error('Peach Payments not configured.');
   }
 
+  const entityId = await getPeachEntityId();
   const prices = PLAN_PRICES_ZAR[params.planTier];
   if (!prices || prices.monthly === 0) throw new Error(`No pricing for plan: ${params.planTier}`);
 
@@ -64,7 +77,7 @@ export async function redirectToCheckout(params: CheckoutParams): Promise<void> 
   const resultUrl = `${window.location.origin}/?payment=complete&plan=${params.planTier}&cycle=${params.billingCycle}`;
 
   const formParams: Record<string, string> = {
-    'authentication.entityId': PEACH_ENTITY_ID,
+    'authentication.entityId': entityId,
     'merchantTransactionId': txId,
     'amount': totalAmount,
     'currency': 'ZAR',

@@ -1,6 +1,6 @@
 // Conferly Automation Layer — sends events to n8n workflows
 // All calls are fire-and-forget (non-blocking) so app performance is never affected.
-// Without VITE_N8N_WEBHOOK_URL configured, calls are silently no-ops.
+// Secrets are retrieved via secrets manager (see lib/secrets.ts)
 
 const N8N_BASE = import.meta.env.VITE_N8N_WEBHOOK_URL || '';
 export const isAutomationConfigured = !!(N8N_BASE && N8N_BASE.startsWith('http'));
