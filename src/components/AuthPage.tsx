@@ -19,11 +19,16 @@ interface AuthPageProps {
 export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onResetPassword, error, clearError, loading }: AuthPageProps) {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
 
-  // Mode switching helper - required by UI
-  const switchMode = useCallback((newMode: 'signin' | 'signup' | 'forgot') => {
-    setMode(newMode);
+  // Safe clear error handler - handles undefined
+  const handleClearError = useCallback(() => {
     clearError?.();
   }, [clearError]);
+
+  // Mode switching helper - required by UI  
+  const switchMode = useCallback((newMode: 'signin' | 'signup' | 'forgot') => {
+    setMode(newMode);
+    handleClearError();
+  }, [handleClearError]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -101,7 +106,7 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    clearError();
+    handleClearError();
 
     console.log('SUBMIT', { mode, isValid, hasEmail: !!email, hasPwd: !!password });
 
