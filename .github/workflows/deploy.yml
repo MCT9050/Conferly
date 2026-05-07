@@ -39,15 +39,10 @@ jobs:
       - name: Build with environment variables
         run: npm run build
         env:
-          # Environment variables for production build
-          # These can be set in GitHub repo Settings → Secrets and variables → Actions
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_PEACH_ENTITY_ID: ${{ secrets.VITE_PEACH_ENTITY_ID }}
-          VITE_PEACH_SECRET: ${{ secrets.VITE_PEACH_SECRET }}
-          VITE_PEACH_MODE: ${{ secrets.VITE_PEACH_MODE }}
-          VITE_N8N_WEBHOOK_URL: ${{ secrets.VITE_N8N_WEBHOOK_URL }}
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
           
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
