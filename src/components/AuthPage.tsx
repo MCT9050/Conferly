@@ -33,9 +33,9 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
   const TURNSTILE_TIMEOUT_MS = 15000; // 15 seconds to load
   const [turnstileToken, setTurnstileToken] = useState('');
   const [turnstileLoaded, setTurnstileLoaded] = useState(false);
-  const [turnstileLoading, setTurnstileLoading] = useState(true); // Tracks if still trying to load
+  const [turnstileLoading, setTurnstileLoading] = useState(false); // Start false, only true for signup
   const [turnstileTimedOut, setTurnstileTimedOut] = useState(false);
-  const [turnstileExpired, setTurnstileExpired] = useState(false); // Track token expiry
+  const [turnstileExpired, setTurnstileExpired] = useState(false);
 
   // Turnstile callback function
   const onTurnstileCallback = useCallback((token: string) => {
@@ -114,8 +114,8 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
     } else if (mode === 'forgot') {
       await onResetPassword(email.trim());
     } else {
-      console.log('Login button pressed', { email: email.trim(), mode, hasTurnstile: !!turnstileToken });
-      await onSignIn(email.trim(), password, turnstileToken);
+      console.log('Login button pressed', { email: email.trim(), mode });
+      await onSignIn(email.trim(), password);
     }
   };
 
@@ -309,7 +309,7 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
             )}
 
             {/* Cloudflare Turnstile - Bot Protection */}
-            {(mode === 'signup' || mode === 'signin') && (
+            {(mode === 'signup') && (
               <div className="flex flex-col items-center space-y-3">
                 {!turnstileLoaded && turnstileLoading && (
                   <div className="flex items-center gap-2 text-xs text-slate-400">
