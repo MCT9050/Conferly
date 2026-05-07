@@ -141,6 +141,7 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    alert('FORM SUBMIT CLICKED - DEBUG!');
     e.stopPropagation();
     console.log('FORM SUBMIT', { mode, isValid, hasEmail: !!email, hasPwd: !!password });
     handleClearError();
