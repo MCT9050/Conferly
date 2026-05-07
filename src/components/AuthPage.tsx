@@ -246,52 +246,58 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
             {/* Display Name (signup only) */}
             {mode === 'signup' && (
               <div>
-                <label className="flex items-center gap-2 text-xs text-slate-400 mb-1.5 font-medium">
+                <label htmlFor="displayname-input" className="flex items-center gap-2 text-xs text-slate-400 mb-1.5 font-medium">
                   <User className="w-3.5 h-3.5" />
                   Display Name
                 </label>
                 <input
+                  id="displayname-input"
+                  name="displayName"
                   type="text"
                   value={displayName}
                   onChange={e => setDisplayName(e.target.value)}
                   placeholder="How others will see you"
                   autoComplete="name"
-                  className="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-700/50 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-700/50 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all autofill:bg-slate-800"
                 />
               </div>
             )}
 
             {/* Email */}
             <div>
-              <label className="flex items-center gap-2 text-xs text-slate-400 mb-1.5 font-medium">
+              <label htmlFor="email-input" className="flex items-center gap-2 text-xs text-slate-400 mb-1.5 font-medium">
                 <Mail className="w-3.5 h-3.5" />
                 Email Address
               </label>
               <input
+                id="email-input"
+                name="email"
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 autoComplete="email"
-                className="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-700/50 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                className="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-700/50 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all autofill:bg-slate-800"
               />
             </div>
 
             {/* Password (hidden for forgot password) */}
             {mode !== 'forgot' && (
               <div>
-                <label className="flex items-center gap-2 text-xs text-slate-400 mb-1.5 font-medium">
+                <label htmlFor="password-input" className="flex items-center gap-2 text-xs text-slate-400 mb-1.5 font-medium">
                   <Lock className="w-3.5 h-3.5" />
                   Password
                 </label>
                 <div className="relative">
                   <input
+                    id="password-input"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder={mode === 'signup' ? 'Min 8 chars, uppercase, number, special char' : '••••••••'}
                     autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                    className="w-full px-4 py-3 pr-12 rounded-xl bg-slate-800/80 border border-slate-700/50 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full px-4 py-3 pr-12 rounded-xl bg-slate-800/80 border border-slate-700/50 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all autofill:bg-slate-800"
                   />
                   <button
                     type="button"
