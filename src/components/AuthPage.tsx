@@ -123,6 +123,22 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
     }
   }, [mode]);
 
+  // Add window click listener for debugging
+  useEffect(() => {
+    const logClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      console.log('WINDOW CLICK', { 
+        tag: target.tagName, 
+        id: target.id, 
+        className: target.className?.substring(0, 50),
+        form: target.closest('form')?.tagName,
+        button: target.closest('button')?.tagName
+      });
+    };
+    window.addEventListener('click', logClick, true);
+    return () => window.removeEventListener('click', logClick, true);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
