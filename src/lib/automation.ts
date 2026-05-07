@@ -40,7 +40,13 @@ export function trigger(
   event: AutomationEvent,
   payload?: { userId?: string; email?: string; displayName?: string; data?: Record<string, unknown> },
 ): void {
-  if (!isAutomationConfigured) return;
+  // DEBUG: Log automation events
+  console.log('AUTOMATION', { event, hasPayload: !!payload, configured: isAutomationConfigured });
+  
+  if (!isAutomationConfigured) {
+    console.log('AUTOMATION SKIPPED', { event, reason: 'not configured' });
+    return;
+  }
 
   const body: EventPayload = {
     event,
@@ -54,5 +60,9 @@ export function trigger(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
     keepalive: true, // Allow request to complete even if page unloads
-  }).catch(() => { /* silent */ });
+  }).then(() => {
+    console.log('AUTOMATION SENT', { event, status: 'success' });
+  }).catch((err) => { 
+    console.log('AUTOMATION ERROR', { event, error: err?.message });
+  });
 }
