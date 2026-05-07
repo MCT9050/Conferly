@@ -41,26 +41,35 @@ export default function App() {
 
   // Handle SPA routing for /terms and /privacy
   useEffect(() => {
-    var path = window.location.pathname;
-    var hash = window.location.hash;
+    const checkRoute = () => {
+      var path = window.location.pathname;
+      var hash = window.location.hash;
+      
+      // Check both pathname and hash for routes
+      // Hash format: #/terms
+      var effectivePath = path;
+      if (hash && hash.startsWith('#/')) {
+        effectivePath = hash.substring(1); // Remove the # to get /terms
+      }
+      
+      if (effectivePath === '/terms' || effectivePath === '/terms/') {
+        setShowTerms(true);
+        setShowPrivacy(false);
+      } else if (effectivePath === '/privacy' || effectivePath === '/privacy/') {
+        setShowPrivacy(true);
+        setShowTerms(false);
+      } else {
+        setShowTerms(false);
+        setShowPrivacy(false);
+      }
+    };
     
-    // Check both pathname and hash for routes
-    // Hash format: #/terms
-    var effectivePath = path;
-    if (hash && hash.startsWith('#/')) {
-      effectivePath = hash.substring(1); // Remove the # to get /terms
-    }
+    // Check route on mount
+    checkRoute();
     
-    if (effectivePath === '/terms' || effectivePath === '/terms/') {
-      setShowTerms(true);
-      setShowPrivacy(false);
-    } else if (effectivePath === '/privacy' || effectivePath === '/privacy/') {
-      setShowPrivacy(true);
-      setShowTerms(false);
-    } else {
-      setShowTerms(false);
-      setShowPrivacy(false);
-    }
+    // Listen for hash changes (for SPA navigation)
+    window.addEventListener('hashchange', checkRoute);
+    return () => window.removeEventListener('hashchange', checkRoute);
   }, []);
 
   // Handle browser back/forward navigation
