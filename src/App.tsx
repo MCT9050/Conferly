@@ -133,8 +133,8 @@ export default function App() {
 
   // Not authenticated
   if (!s.isAuthenticated) {
-    // Show LandingPage for welcome view OR when no specific route
-    if (s.view === 'welcome' || (!isAuthPage && !isPricingPage)) {
+    // Show LandingPage only for welcome view (not for /auth, /pricing routes)
+    if (s.view === 'welcome') {
       return (
         <>
           <LandingPage
