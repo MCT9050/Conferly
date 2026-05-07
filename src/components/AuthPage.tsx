@@ -116,9 +116,38 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
     }
   };
 
-  // Password meets policy: 8+ chars, uppercase, lowercase, number, special char
+  // Password complexity validation (8+ chars, uppercase, lowercase, number, special char)
+const PASSWORD_POLICY = {
+  minLength: 8,
+  requireUppercase: /[A-Z]/,
+  requireLowercase: /[a-z]/,
+  requireNumber: /[0-9]/,
+  requireSpecial: /[!@#$%^&*]/,
+};
+
+const validatePassword = (password: string): { valid: boolean; errors: string[] } => {
+  const errors: string[] = [];
+  if (password.length < PASSWORD_POLICY.minLength) {
+    errors.push(`At least ${PASSWORD_POLICY.minLength} characters`);
+  }
+  if (!PASSWORD_POLICY.requireUppercase.test(password)) {
+    errors.push('At least one uppercase letter');
+  }
+  if (!PASSWORD_POLICY.requireLowercase.test(password)) {
+    errors.push('At least one lowercase letter');
+  }
+  if (!PASSWORD_POLICY.requireNumber.test(password)) {
+    errors.push('At least one number');
+  }
+  if (!PASSWORD_POLICY.requireSpecial.test(password)) {
+    errors.push('At least one special character (!@#$%^&*)');
+  }
+  return { valid: errors.length === 0, errors };
+};
+
+  // Password validation
   const passwordMeetsPolicy = mode === 'signup'
-    ? password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password) && /[!@#$%^&*]/.test(password)
+    ? validatePassword(password).valid
     : password.length >= 6;
 
   const isValid = mode === 'signup'
@@ -246,22 +275,10 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
                 </div>
                 {mode === 'signup' && password.length > 0 && (
                   <div className="mt-2 space-y-1">
-                    {password.length < 8 && (
-                      <p className="text-[10px] text-amber-400">✗ At least 8 characters</p>
-                    )}
-                    {!/[A-Z]/.test(password) && (
-                      <p className="text-[10px] text-amber-400">✗ At least one uppercase letter</p>
-                    )}
-                    {!/[a-z]/.test(password) && (
-                      <p className="text-[10px] text-amber-400">✗ At least one lowercase letter</p>
-                    )}
-                    {!/[0-9]/.test(password) && (
-                      <p className="text-[10px] text-amber-400">✗ At least one number</p>
-                    )}
-                    {!/[!@#$%^&*]/.test(password) && (
-                      <p className="text-[10px] text-amber-400">✗ At least one special character (!@#$%^&*)</p>
-                    )}
-                    {password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password) && /[!@#$%^&*]/.test(password) && (
+                    {validatePassword(password).errors.map((err, i) => (
+                      <p key={i} className="text-[10px] text-amber-400">✗ {err}</p>
+                    ))}
+                    {validatePassword(password).valid && (
                       <p className="text-[10px] text-green-400">✓ Password meets requirements</p>
                     )}
                   </div>
