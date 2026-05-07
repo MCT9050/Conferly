@@ -26,10 +26,12 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
 
   // Safe auth handlers - all wrap optional props
   const handleSignUp = useCallback(async (...args: Parameters<NonNullable<AuthPageProps['onSignUp']>>) => {
+    console.log('handleSignUp called', { hasHandler: !!onSignUp });
     return onSignUp ? await onSignUp(...args) : { success: false };
   }, [onSignUp]);
 
   const handleSignIn = useCallback(async (...args: Parameters<NonNullable<AuthPageProps['onSignIn']>>) => {
+    console.log('handleSignIn called', { hasHandler: !!onSignIn });
     return onSignIn ? await onSignIn(...args) : { success: false };
   }, [onSignIn]);
 
@@ -136,7 +138,9 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
     } else if (mode === 'forgot') {
       await handleResetPassword(email.trim());
     } else {
+      console.log('Calling handleSignIn...');
       await handleSignIn(email.trim(), password);
+      console.log('handleSignIn complete');
     }
   };
 
