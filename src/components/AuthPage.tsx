@@ -18,6 +18,12 @@ interface AuthPageProps {
 
 export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onResetPassword, error, clearError, loading }: AuthPageProps) {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
+
+  // Mode switching helper - required by UI
+  const switchMode = useCallback((newMode: 'signin' | 'signup' | 'forgot') => {
+    setMode(newMode);
+    clearError?.();
+  }, [clearError]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -111,11 +117,6 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
       await onSignIn(email.trim(), password);
     }
   };
-
-  // Remove dynamic dependencies that cause TDZ error - only log mode changes
-  useEffect(() => {
-    console.log('MODE:', mode);
-  }, [mode]);
 
   // Password complexity validation (8+ chars, uppercase, lowercase, number, special char)
 const PASSWORD_POLICY = {
