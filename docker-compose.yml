@@ -6,17 +6,29 @@ services:
     build:
       context: .
       args:
-        VITE_API_URL: http://localhost:3001
+        # Use https://localhost:443 in production
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
         VITE_PEACH_ENTITY_ID: ${PEACH_ENTITY_ID:-}
         VITE_PEACH_SECRET: ${PEACH_SECRET:-}
         VITE_PEACH_MODE: ${PEACH_MODE:-sandbox}
         VITE_N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678/webhook/conferly}
     ports:
-      - "8080:80"
+      # Expose both HTTP (for redirect) and HTTPS
+      - "${WEB_PORT:-8080}:80"
+      - "${HTTPS_PORT:-8443}:443"
+    volumes:
+      # Mount SSL certificates from host
+      - ./ssl:/etc/nginx/ssl:ro
     depends_on:
       - api
       - n8n
     restart: unless-stopped
+    # Health check for HTTPS
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # ─── Conferly Backend (Express + SQLite) ───
   api:
@@ -90,3 +102,22 @@ services:
 volumes:
   conferly-data:
   n8n-data:
+
+# ─────────────────────────────────────────────────────────────
+# SSL Certificate Setup (for HTTPS)
+# ─────────────────────────────────────────────────────────────
+#
+# Generate self-signed certificates for local development:
+#   mkdir -p ssl && openssl req -x509 -newkey rsa:4096 -keyout ssl/key.pem -out ssl/cert.pem -days 365 -nodes -subj "/C=ZA/ST=Gauteng/L=Johannesburg/O=Conferly/CN=localhost"
+#
+# For production, use Let's Encrypt or purchase from a CA:
+#   - Let's Encrypt (free): certbot --nginx -d conferly.site
+#   - Purchase: DigiCert, Sectigo, etc.
+#   - Place certificate files in ./ssl/ directory:
+#       ssl/cert.pem   - certificate (plus intermediate certs)
+#       ssl/key.pem   - private key
+#
+# Environment variables:
+#   WEB_PORT=8080       # HTTP port (default: 8080)
+#   HTTPS_PORT=8443      # HTTPS port (default: 8443)
+#   VITE_API_URL=https://localhost:443  # Use https in production
