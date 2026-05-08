@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { log, state, session, supabase as traceSupabase, error as traceError, race } from '../lib/authTracer';
+import { emit, emitLoginAttempt, emitLoginSuccess, emitLoginFailure, emitLoginBlocked, emitRegisterAttempt, emitRegisterSuccess, emitRegisterFailure, emitSessionRestoreStart, emitSessionRestored, emitSessionExpired, emitSessionNone, generateAuthReport, detectPatterns, getSessionSummary } from '../lib/authEvents';
 import {
   isBackendConfigured, setToken, hasStoredToken, isTokenExpired,
   setAuthExpiredCallback,
@@ -214,6 +215,8 @@ export function useAuth() {
     let mounted = true;
     // TRACING: Session restore start
     session('restore:start', { isSupabase: isSupabaseConfigured, isBackend: isBackendConfigured });
+    // EVENT SOURCING: Session restore start
+    emitSessionRestoreStart();
     
     (async () => {
       if (isSupabaseConfigured && supabase) {
@@ -238,6 +241,8 @@ export function useAuth() {
             
             // TRACING: Session hydrated
             session('hydrated', { userId: p.id, provider: 'supabase' });
+            // EVENT SOURCING: Session restored
+            emitSessionRestored(p.id);
             if (mounted) setLoading(false);
             return;
           }
@@ -268,12 +273,16 @@ export function useAuth() {
             setToken(null); 
             // TRACING: Session expired
             session('expired', { provider: 'backend' });
+            // EVENT SOURCING: Session expired
+            emitSessionExpired();
             setSessionExpired(true); setError('Session expired.'); 
           } 
         }
       }
       // TRACING: No session found
       session('none');
+      // EVENT SOURCING: Session none
+      emitSessionNone();
       if (mounted) { 
         const cached = loadCachedProfile(); 
         if (cached) {
@@ -438,6 +447,8 @@ export function useAuth() {
   const signIn = useCallback(async (email: string, password: string, turnstileToken?: string) => {
     // TRACING: Login flow start
     log('login:start', { email: email.split('@')[0] + '@[masked]' });
+    // EVENT SOURCING: Emit login attempt
+    emitLoginAttempt(email.split('@')[0] + '@[domain]');
     setError(null); setLoading(true); setSessionExpired(false);
     state('login:loading', { loading: true });
 
@@ -496,6 +507,8 @@ export function useAuth() {
           automation('user.signin', { userId: p.id, email: p.email, displayName: p.displayName, data: { source: 'supabase' } });
           // TRACING: Login complete
           log('login:complete', { userId: p.id });
+          // EVENT SOURCING: Login success
+          emitLoginSuccess(p.id, p.email, 'supabase');
           state('login:complete', { success: true, userId: p.id });
           setLoading(false);
           return { success: true };
@@ -509,6 +522,8 @@ export function useAuth() {
           }
           // TRACING: Login error
           traceError('login:error', { error: err.message, type: 'supabase' });
+          // EVENT SOURCING: Login failure
+          emitLoginFailure(email.split('@')[0] + '@[domain]', err.message, 'supabase');
           setLoading(false);
           return { success: false };
         }
