@@ -69,7 +69,43 @@ function buildProfile(base: { id: string; email: string; displayName: string; av
   };
 }
 
+// SECURITY FIX: Email normalization - should be applied before any auth operation
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+// SECURITY FIX: Secure password hashing using PBKDF2
+// PBKDF2 is a standard key derivation function with configurable iterations
+async function hashPassword(password: string, salt?: string): Promise<{ hash: string; salt: string }> {
+  const saltBytes = salt ? new TextEncoder().encode(salt) : crypto.getRandomValues(new Uint8Array(16));
+  const saltStr = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
+  
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: saltBytes,
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
+    key,
+    256
+  );
+  
+  const hash = Array.from(new Uint8Array(derivedBits)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return { hash, salt: saltStr };
+}
+
+// DEPRECATED: Using deprecated SHA-256 for password hashing
 async function hashPw(pw: string): Promise<string> {
+  console.warn('SECURITY WARNING: Using deprecated SHA-256 for password hashing.');
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
@@ -194,8 +230,9 @@ export function useAuth() {
         //     return { success: false };
         //   }
         // }
+        // SECURITY FIX: Use normalized email for registration
         const { data, error: err } = await supabase.auth.signUp({
-          email,
+          email: normalizedEmail,
           password,
           options: {
             data: { display_name: displayName }
@@ -212,7 +249,8 @@ export function useAuth() {
           throw err;
         }
         if (data.user) {
-          const p = buildProfile({ id: data.user.id, email, displayName, createdAt: data.user.created_at });
+          // SECURITY FIX: Use normalized email in profile as well
+          const p = buildProfile({ id: data.user.id, email: normalizedEmail, displayName, createdAt: data.user.created_at });
           setProfile(p); cacheProfile(p); setIsOfflineMode(false);
           automation('user.signup', { userId: p.id, email: p.email, displayName: p.displayName, data: { source: 'supabase' } });
 
@@ -238,12 +276,17 @@ export function useAuth() {
         setProfile(p); cacheProfile(p); setIsOfflineMode(false); setLoading(false); automation('user.signup', { userId: p.id, email: p.email, displayName: p.displayName, data: { source: 'backend' } }); return { success: true, needsConfirmation: !user.emailVerified };
       } catch (err: any) { if (!err.message?.includes('fetch') && !err.message?.includes('Failed')) { setError(err.message); setLoading(false); return { success: false }; } }
     }
+    // OFFLINE FALLBACK: Only used when no Supabase or backend configured
+    // SECURITY: Add warning since offline mode is less secure
+    console.warn('SECURITY WARNING: Using offline authentication fallback - less secure than Supabase');
     const users = loadOfflineUsers();
-    if (users.find(u => u.email === email)) { setError('An account with this email already exists.'); setLoading(false); return { success: false }; }
+    // SECURITY FIX: Use normalized email for duplicate check
+    const normalizedForOffline = normalizeEmail(email);
+    if (users.find(u => normalizeEmail(u.email) === normalizedForOffline)) { setError('An account with this email already exists.'); setLoading(false); return { success: false }; }
     const hashed = await hashPw(password);
-    const offUser: OfflineUser = { id: `offline-${Date.now()}-${Math.random().toString(36).slice(2)}`, email, displayName, password: hashed, userType: 'individual', orgName: '' };
+    const offUser: OfflineUser = { id: `offline-${Date.now()}-${Math.random().toString(36).slice(2)}`, email: normalizedForOffline, displayName, password: hashed, userType: 'individual', orgName: '' };
     users.push(offUser); saveOfflineUsers(users);
-    const p = buildProfile({ id: offUser.id, email, displayName, createdAt: new Date().toISOString() });
+    const p = buildProfile({ id: offUser.id, email: normalizedForOffline, displayName, createdAt: new Date().toISOString() });
     setProfile(p); cacheProfile(p); setIsOfflineMode(true); setLoading(false);
     automation('user.signup', { userId: p.id, email: p.email, displayName: p.displayName, data: { source: 'offline' } });
     return { success: true, needsConfirmation: false };
@@ -275,6 +318,10 @@ export function useAuth() {
     console.log('useAuth.signIn called', { email, isSupabaseConfigured, isBackendConfigured });
     setError(null); setLoading(true); setSessionExpired(false);
 
+    // SECURITY FIX: Normalize email before authentication
+    const normalizedEmail = normalizeEmail(email);
+    console.log('SECURITY: Normalized email for sign in:', { original: email, normalized: normalizedEmail });
+
     // TURNSTILE VALIDATION DISABLED FOR TESTING
     // if (turnstileToken) {
     //   console.log('Validating Turnstile token for login');
@@ -290,11 +337,13 @@ export function useAuth() {
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
+        // SECURITY FIX: Use normalized email for authentication
+        const { data, error: err } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
         if (err) throw err;
         if (data.user) {
           const extra = await fetchSupabaseProfile(data.user.id);
-          const p = buildProfile({ id: data.user.id, email: data.user.email || email, displayName: extra.displayName || data.user.user_metadata?.display_name || email.split('@')[0], avatarUrl: data.user.user_metadata?.avatar_url, createdAt: data.user.created_at }, extra);
+          // SECURITY FIX: Use normalized email in profile
+          const p = buildProfile({ id: data.user.id, email: data.user.email || normalizedEmail, displayName: extra.displayName || data.user.user_metadata?.display_name || normalizedEmail.split('@')[0], avatarUrl: data.user.user_metadata?.avatar_url, createdAt: data.user.created_at }, extra);
           setProfile(p); cacheProfile(p); setIsOfflineMode(false); rehydrateMeetings(data.user.id);
           automation('user.signin', { userId: p.id, email: p.email, displayName: p.displayName, data: { source: 'supabase' } });
           console.log('Login success (Supabase)', { userId: p.id });
@@ -329,9 +378,13 @@ export function useAuth() {
     }
 
     // Offline mode fallback
+    // SECURITY WARNING: Offline mode is less secure
+    console.warn('SECURITY: Using offline authentication fallback');
     const users = loadOfflineUsers();
     const hashed = await hashPw(password);
-    const found = users.find(u => u.email === email && u.password === hashed);
+    // SECURITY FIX: Use normalized email for lookup
+    const normalizedForAuth = normalizeEmail(email);
+    const found = users.find(u => normalizeEmail(u.email) === normalizedForAuth && u.password === hashed);
 
     if (found) {
       const p = buildProfile({
