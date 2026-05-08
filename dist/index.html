@@ -8,6 +8,28 @@
   <meta name="description"
     content="Conferly: A premium video conferencing and collaboration platform rooted in the African philosophy of Ubuntu. Connecting with purpose — secure, inclusive, scalable." />
   
+  <!-- SECURITY: Content Security Policy -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self';
+    object-src 'none';
+    base-uri 'self';
+    frame-ancestors 'none';
+    img-src 'self' data: https:;
+    style-src 'self' 'unsafe-inline';
+    connect-src 'self' https://*.supabase.co https://*.cloudflare.com;
+    font-src 'self';
+    media-src 'self' blob:;
+    worker-src 'self' blob:;
+    frame-src 'self';
+  " />
+  
+  <!-- SECURITY: Additional Headers (via meta) -->
+  <meta http-equiv="X-Frame-Options" content="DENY" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+  <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
+  
   <!-- SPA redirect: handle direct path access (/terms, /privacy, /auth, /dashboard, /pricing) -->
   <script>
     (function() {
