@@ -70,8 +70,9 @@ export default function TermsPage({ onClose }: TermsPageProps) {
             </p>
             <ul className="list-disc list-inside text-slate-300 space-y-1 ml-2">
               <li><strong>Company Name:</strong> Mathonsi Tech Creations (PTY) LTD</li>
-              <li><strong>Registration Number:</strong> 2024/123456/07</li>
-              <li><strong>Registered Address:</strong> 123 Innovation Drive, Sandton, Johannesburg, 2196, South Africa</li>
+              <li><strong>Registration Number:</strong> 2025/756031/07</li>
+              <li><strong>Registration Date:</strong> December 11, 2025</li>
+              <li><strong>Registered Address:</strong> 01 Chatsworth Mariannehill Pinetown Kwa-Zulu Natal 3609, South Africa</li>
               <li><strong>Email:</strong> support@conferly.site</li>
               <li><strong>Website:</strong> www.conferly.site</li>
             </ul>
