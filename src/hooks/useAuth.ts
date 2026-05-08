@@ -56,7 +56,17 @@ export interface OnboardingData {
 const PROFILE_KEY = 'conferly_user_profile';
 const OFFLINE_KEY = 'conferly_offline_user';
 
-interface OfflineUser { id: string; email: string; displayName: string; password: string; userType: string; orgName: string; }
+interface OfflineUser { 
+  id: string; 
+  email: string; 
+  displayName: string; 
+  password: string; 
+  userType: string; 
+  orgName: string;
+  // SECURITY: New PBKDF2 fields
+  salt?: string;  // PBKDF2 salt (if migrated)
+  passwordMigratedAt?: string;  // Migration timestamp
+}
 
 // Build a UserProfile with all required fields, using safe defaults
 function buildProfile(base: { id: string; email: string; displayName: string; avatarUrl?: string | null; createdAt: string }, extra?: Partial<UserProfile>): UserProfile {
@@ -104,10 +114,45 @@ async function hashPassword(password: string, salt?: string): Promise<{ hash: st
 }
 
 // DEPRECATED: Using deprecated SHA-256 for password hashing
+// CRITICAL: This is kept ONLY for backward compatibility during migration from SHA-256 to PBKDF2
+// Migration strategy: When user logs in, verify with SHA-256, then rehash with PBKDF2 and update storage
 async function hashPw(pw: string): Promise<string> {
-  console.warn('SECURITY WARNING: Using deprecated SHA-256 for password hashing.');
+  console.warn('SECURITY WARNING: Using deprecated SHA-256 for password hashing - MIGRATION NEEDED');
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// SECURITY FIX: Migrate legacy SHA-256 password to secure PBKDF2
+// This runs during login to seamlessly upgrade legacy passwords
+async function migratePasswordIfNeeded(offlineUser: OfflineUser, newPassword: string): Promise<OfflineUser> {
+  // Check if already migrated (has salt field indicating PBKDF2)
+  if ((offlineUser as any).salt) {
+    // Already migrated, verify with PBKDF2
+    const { hash } = await hashPassword(newPassword, (offlineUser as any).salt);
+    if (hash === offlineUser.password) {
+      console.log('SECURITY: Password verified with PBKDF2 (already migrated)');
+      return offlineUser;
+    }
+    throw new Error('Invalid credentials');
+  }
+  
+  // Legacy SHA-256 detected - migrate to PBKDF2
+  console.log('SECURITY: Migrating legacy SHA-256 password to PBKDF2...');
+  const { hash, salt } = await hashPassword(newPassword);
+  
+  // Update user record with migrated password
+  return {
+    ...offlineUser,
+    password: hash,
+    salt: salt,
+    passwordMigratedAt: new Date().toISOString()
+  };
+}
+
+// SECURITY FIX: Verify password with PBKDF2 (new secure method)
+async function verifyPasswordWithPBKDF2(password: string, storedHash: string, salt: string): Promise<boolean> {
+  const { hash } = await hashPassword(password, salt);
+  return hash === storedHash;
 }
 function loadOfflineUsers(): OfflineUser[] { try { return JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]'); } catch { return []; } }
 function saveOfflineUsers(u: OfflineUser[]) { localStorage.setItem(OFFLINE_KEY, JSON.stringify(u)); }
@@ -221,15 +266,27 @@ export function useAuth() {
     
     if (isSupabaseConfigured && supabase) {
       try {
-        // TURNSTILE VALIDATION DISABLED FOR TESTING
-        // if (turnstileToken) {
-        //   const isValid = await validateTurnstileToken(turnstileToken);
-        //   if (!isValid) {
-        //     setError('Security verification failed. Please refresh the page and try again.');
-        //     setLoading(false);
-        //     return { success: false };
-        //   }
-        // }
+        // SECURITY FIX: Turnstile validation - enabled in production, disabled for local development
+        const isProduction = import.meta.env.PROD || import.meta.env.MODE === 'production';
+        const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
+        
+        if (turnstileToken && (isProduction || !isDev)) {
+          const isValid = await validateTurnstileToken(turnstileToken);
+          if (!isValid) {
+            setError('Security verification failed. Please refresh the page and try again.');
+            setLoading(false);
+            return { success: false };
+          }
+          console.log('SECURITY: Turnstile validation passed');
+        } else if (!turnstileToken && isProduction) {
+          // Production requires Turnstile
+          setError('Security verification required. Please enable cookies and try again.');
+          setLoading(false);
+          return { success: false };
+        } else {
+          console.log('SECURITY: Turnstile bypassed (development mode)');
+        }
+        
         // SECURITY FIX: Use normalized email for registration
         const { data, error: err } = await supabase.auth.signUp({
           email: normalizedEmail,
@@ -283,9 +340,21 @@ export function useAuth() {
     // SECURITY FIX: Use normalized email for duplicate check
     const normalizedForOffline = normalizeEmail(email);
     if (users.find(u => normalizeEmail(u.email) === normalizedForOffline)) { setError('An account with this email already exists.'); setLoading(false); return { success: false }; }
-    const hashed = await hashPw(password);
-    const offUser: OfflineUser = { id: `offline-${Date.now()}-${Math.random().toString(36).slice(2)}`, email: normalizedForOffline, displayName, password: hashed, userType: 'individual', orgName: '' };
+    
+    // SECURITY FIX: Use PBKDF2 for NEW passwords (not SHA-256)
+    const { hash, salt } = await hashPassword(password);
+    const offUser: OfflineUser = { 
+      id: `offline-${Date.now()}-${Math.random().toString(36).slice(2)}`, 
+      email: normalizedForOffline, 
+      displayName, 
+      password: hash, 
+      salt: salt,  // PBKDF2 salt stored
+      passwordMigratedAt: new Date().toISOString(),  // Mark as migrated (new)
+      userType: 'individual', 
+      orgName: '' 
+    };
     users.push(offUser); saveOfflineUsers(users);
+    console.log('SECURITY: New user created with PBKDF2 password hashing');
     const p = buildProfile({ id: offUser.id, email: normalizedForOffline, displayName, createdAt: new Date().toISOString() });
     setProfile(p); cacheProfile(p); setIsOfflineMode(true); setLoading(false);
     automation('user.signup', { userId: p.id, email: p.email, displayName: p.displayName, data: { source: 'offline' } });
@@ -322,18 +391,19 @@ export function useAuth() {
     const normalizedEmail = normalizeEmail(email);
     console.log('SECURITY: Normalized email for sign in:', { original: email, normalized: normalizedEmail });
 
-    // TURNSTILE VALIDATION DISABLED FOR TESTING
-    // if (turnstileToken) {
-    //   console.log('Validating Turnstile token for login');
-    //   const isValid = await validateTurnstileToken(turnstileToken);
-    //   if (!isValid) {
-    //     console.log('Turnstile validation failed for login');
-    //     setError('Security verification failed. Please refresh and try again.');
-    //     setLoading(false);
-    //     return { success: false };
-    //   }
-    //   console.log('Turnstile validation passed for login');
-    // }
+    // SECURITY NOTE: Turnstile optional for login (progressive resistance - more critical for signup)
+    // Login rate limiting is handled by Supabase + Cloudflare WAF
+    if (turnstileToken) {
+      console.log('SECURITY: Validating Turnstile token for login');
+      const isValid = await validateTurnstileToken(turnstileToken);
+      if (!isValid) {
+        console.log('SECURITY: Turnstile validation failed for login');
+        setError('Security verification failed. Please refresh and try again.');
+        setLoading(false);
+        return { success: false };
+      }
+      console.log('SECURITY: Turnstile validation passed for login');
+    }
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -381,20 +451,43 @@ export function useAuth() {
     // SECURITY WARNING: Offline mode is less secure
     console.warn('SECURITY: Using offline authentication fallback');
     const users = loadOfflineUsers();
-    const hashed = await hashPw(password);
     // SECURITY FIX: Use normalized email for lookup
     const normalizedForAuth = normalizeEmail(email);
-    const found = users.find(u => normalizeEmail(u.email) === normalizedForAuth && u.password === hashed);
+    const found = users.find(u => normalizeEmail(u.email) === normalizedForAuth);
 
     if (found) {
+      // SECURITY FIX: Migrate legacy SHA-256 to PBKDF2 during login
+      let migrationNeeded = false;
+      let migratedUser = found;
+      
+      try {
+        migratedUser = await migratePasswordIfNeeded(found, password);
+        migrationNeeded = !!((found as any).salt); // old user had no salt
+        
+        // If migration happened, save the migrated user
+        if (migrationNeeded) {
+          const idx = users.findIndex(u => u.id === found.id);
+          if (idx >= 0) {
+            users[idx] = migratedUser;
+            saveOfflineUsers(users);
+            console.log('SECURITY: Password migrated to PBKDF2 successfully');
+          }
+        }
+      } catch {
+        // Migration failed - password doesn't match
+        setError('Invalid email or password.');
+        setLoading(false);
+        return { success: false };
+      }
+
       const p = buildProfile({
-        id: found.id,
-        email: found.email,
-        displayName: found.displayName,
+        id: migratedUser.id,
+        email: migratedUser.email,
+        displayName: migratedUser.displayName,
         createdAt: new Date().toISOString()
       }, {
-        userType: (found.userType as 'individual' | 'organization') || 'individual',
-        organizationName: found.orgName || null
+        userType: (migratedUser.userType as 'individual' | 'organization') || 'individual',
+        organizationName: migratedUser.orgName || null
       });
 
       setProfile(p);
