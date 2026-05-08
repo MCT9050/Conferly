@@ -289,3 +289,164 @@ Sign Out → Clear localStorage
 
 *Generated: 2026-05-07*
 *Platform Version: 0.0.0*
+
+---
+
+# APPENDIX: EXECUTION TRACE (Runtime-Level Analysis)
+
+## PHASE 1 — React Runtime Execution Model
+
+### Startup Sequence with Timestamps
+
+```
+Step 1 (t=0ms): Browser receives index.html
+Step 2 (t=1ms): SPA redirect script executes
+Step 3 (t=2ms): React.createRoot() mounts
+Step 4 (t=3ms): App initializes, getRouteFromURL() runs
+Step 5 (t=4ms): useAuth instantiates
+  - loadCachedProfile() SYNCHRONOUS (localStorage read)
+  - Returns cached profile OR null
+Step 6 (t=5ms): Render #1 - Loader spinner
+Step 7 (t=10ms): useEffect runs getSession() ASYNC
+  - fetchSupabaseProfile() if user exists
+  - setProfile() triggers Render #2
+```
+
+## PHASE 2 — Authentication Execution Trace
+
+### Login Exact Flow
+
+```
+1. User clicks Sign In
+2. setLoading(true), error=null SYNC
+3. normalizeEmail() - trim + toLowerCase
+4. Turnstile check (if token) ASYNC
+5. supabase.auth.signInWithPassword()
+6. Supabase validates: bcrypt compare server-side
+7. JWT generated: HS256 signed
+8. fetchSupabaseProfile() ASYNC
+9. setProfile(), cacheProfile() SYNC
+10. Re-render to dashboard
+```
+
+### Register Exact Flow
+
+```
+1. Validate termsAcceptance
+2. normalizeEmail()
+3. Turnstile validation (production required)
+4. supabase.auth.signUp()
+5. Supabase: INSERT auth.users, UNIQUE check
+6. Profile build + cache
+7. trigger automation event
+8. Return success/needsConfirmation
+```
+
+## PHASE 3 — Supabase Internal Simulation
+
+### Auth Flow Internals
+
+```
+POST /auth/v1/token?grant_type=password
+  → Parse {email, password}
+  → SELECT auth.users WHERE email
+  → bcrypt.compare(password, hash)
+  → JWT.sign(payload, secret)
+  → Refresh token generate
+  → RETURN {user, session}
+```
+
+### RLS Execution Timing
+
+```
+Query arrives
+  → Add JWT claims to session
+  → Execute SELECT
+  → For EACH row: evaluate RLS policy
+  → auth.uid() from JWT claims
+  → Return filtered rows
+```
+
+## PHASE 4 — Database Execution Model
+
+### auth.users Lifecycle
+
+```
+INSERT auth.users
+  1. NOT NULL constraints
+  2. UNIQUE email check (DUPLICATE BLOCKS HERE)
+  3. Password hashed server-side (bcrypt)
+  4. BEFORE INSERT trigger
+  5. Row inserted
+  6. AFTER INSERT trigger
+```
+
+### Orphan Profile Possibility
+
+```
+auth.users created: ✓
+profiles INSERT: ? (RLS may block)
+Result: User has auth, no profile
+```
+
+## PHASE 5 — Race Conditions
+
+### Race 1: Login + Session Restore
+
+```
+t=0: User opens app (cached profile)
+t=5: getSession() starts
+t=6: User clicks login (different account)
+t=10: getSession() returns session A
+t=11: login() sets profile = B
+Result: Last-write-wins, possible flicker
+```
+
+### Race 2: Duplicate Signup
+
+```
+t=0: Click signup #1
+t+1ms: Click signup #2
+t+100: #1 returns user
+t+101: #2 returns "already registered"
+Result: First succeeds
+```
+
+## PHASE 6 — Trust Boundary Execution
+
+| Layer | Trust | Can Spoof |
+|-------|-------|-----------|
+| Browser/JS | UNTRUSTED | localStorage values |
+| Client validation | UNTRUSTED | Form bypass |
+| Supabase Auth | TRUSTED | Nothing |
+| PostgreSQL+RLS | TRUSTED | Nothing |
+
+## PHASE 7 — Consistency Model
+
+### Authoritative Sources
+
+```
+PRIMARY: auth.users (Supabase)
+  - Email, password hash, created_at
+  
+SECONDARY: profiles (Supabase)
+  - Extended fields, ON CONFLICT uses defaults
+  
+TERTIARY: localStorage cache
+  - Copy but non-authoritative
+
+FALLBACK: OfflineUser
+  - Separate identity, NO sync back
+```
+
+### Conflict Resolution
+
+```
+auth.users vs profiles: profiles merged
+localStorage vs Supabase: Supabase wins
+Offliner vs Online: NO reconciliation
+```
+
+---
+
+END OF EXECUTION TRACE APPENDIX
