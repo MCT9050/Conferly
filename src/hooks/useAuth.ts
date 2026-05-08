@@ -5,6 +5,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { log, state, session, supabase as traceSupabase, error as traceError, race } from '../lib/authTracer';
 import {
   isBackendConfigured, setToken, hasStoredToken, isTokenExpired,
   setAuthExpiredCallback,
@@ -211,29 +212,80 @@ export function useAuth() {
   // Auto-login
   useEffect(() => {
     let mounted = true;
+    // TRACING: Session restore start
+    session('restore:start', { isSupabase: isSupabaseConfigured, isBackend: isBackendConfigured });
+    
     (async () => {
       if (isSupabaseConfigured && supabase) {
         try {
+          // TRACING: getSession request
+          traceSupabase('getSession:request');
           const { data: { session } } = await supabase.auth.getSession();
+          // TRACING: getSession response
+          traceSupabase('getSession:response', { hasSession: !!session, hasUser: !!session?.user });
+          
           if (mounted && session?.user) {
             const u = session.user;
+            // TRACING: Profile fetch start
+            log('session:profile:fetch', { userId: u.id });
             const extra = await fetchSupabaseProfile(u.id);
+            // TRACING: Profile hydrated
+            log('session:profile:hydrated', { userId: u.id });
+            
             const p = buildProfile({ id: u.id, email: u.email || '', displayName: extra.displayName || u.user_metadata?.display_name || u.email?.split('@')[0] || 'User', avatarUrl: u.user_metadata?.avatar_url, createdAt: u.created_at }, extra);
             setProfile(p); cacheProfile(p); setIsOfflineMode(false);
             rehydrateMeetings(u.id);
+            
+            // TRACING: Session hydrated
+            session('hydrated', { userId: p.id, provider: 'supabase' });
             if (mounted) setLoading(false);
             return;
           }
-        } catch { /* fall through */ }
+        } catch (err: any) {
+          // TRACING: getSession error
+          traceSupabase('getSession:error', { error: err.message });
+        }
       }
       if (isBackendConfigured && hasStoredToken()) {
         try {
+          // TRACING: Backend getProfile
+          traceSupabase('getProfile:request');
           const user = await apiGetProfile();
-          if (mounted) { const p = buildProfile({ id: user.id, email: user.email, displayName: user.displayName, avatarUrl: user.avatarUrl, createdAt: user.createdAt }); setProfile(p); cacheProfile(p); setIsOfflineMode(false); rehydrateMeetings(); }
+          // TRACING: Backend getProfile response
+          traceSupabase('getProfile:response', { userId: user.id });
+          
+          if (mounted) { 
+            const p = buildProfile({ id: user.id, email: user.email, displayName: user.displayName, avatarUrl: user.avatarUrl, createdAt: user.createdAt }); 
+            setProfile(p); cacheProfile(p); setIsOfflineMode(false); 
+            rehydrateMeetings();
+            
+            // TRACING: Backend session hydrated
+            session('hydrated', { userId: p.id, provider: 'backend' });
+          }
           if (mounted) setLoading(false); return;
-        } catch { if (mounted && isTokenExpired()) { setToken(null); setSessionExpired(true); setError('Session expired.'); } }
+        } catch (err: any) { 
+          if (mounted && isTokenExpired()) { 
+            setToken(null); 
+            // TRACING: Session expired
+            session('expired', { provider: 'backend' });
+            setSessionExpired(true); setError('Session expired.'); 
+          } 
+        }
       }
-      if (mounted) { const cached = loadCachedProfile(); if (cached) { setProfile(cached); setIsOfflineMode(true); } setLoading(false); }
+      // TRACING: No session found
+      session('none');
+      if (mounted) { 
+        const cached = loadCachedProfile(); 
+        if (cached) {
+          // TRACING: Offline session from cache
+          session('offline:cache', { userId: cached.id });
+          setProfile(cached); setIsOfflineMode(true); 
+        } else {
+          // TRACING: No session at all
+          log('session:none');
+        }
+        setLoading(false); 
+      }
     })();
     let unsub: (() => void) | undefined;
     if (isSupabaseConfigured && supabase) {
@@ -384,39 +436,67 @@ export function useAuth() {
 
   // Sign in
   const signIn = useCallback(async (email: string, password: string, turnstileToken?: string) => {
-    console.log('useAuth.signIn called', { email, isSupabaseConfigured, isBackendConfigured });
+    // TRACING: Login flow start
+    log('login:start', { email: email.split('@')[0] + '@[masked]' });
     setError(null); setLoading(true); setSessionExpired(false);
+    state('login:loading', { loading: true });
 
     // SECURITY FIX: Normalize email before authentication
     const normalizedEmail = normalizeEmail(email);
-    console.log('SECURITY: Normalized email for sign in:', { original: email, normalized: normalizedEmail });
+    // TRACING: Email normalized
+    log('email:normalized', { email: normalizedEmail.split('@')[0] + '@[masked]' });
+    state('email:normalized', { normalized: true });
 
     // SECURITY NOTE: Turnstile optional for login (progressive resistance - more critical for signup)
     // Login rate limiting is handled by Supabase + Cloudflare WAF
     if (turnstileToken) {
-      console.log('SECURITY: Validating Turnstile token for login');
+      // TRACING: Turnstile validation start
+      log('turnstile:verified:start', { hasToken: true });
       const isValid = await validateTurnstileToken(turnstileToken);
       if (!isValid) {
-        console.log('SECURITY: Turnstile validation failed for login');
+        // TRACING: Turnstile failed
+        log('turnstile:verified:failed', { step: 'login' });
+        traceError('login:turnstile', { type: 'failed', step: 'login' });
         setError('Security verification failed. Please refresh and try again.');
         setLoading(false);
+        state('login:error', { error: 'turnstile_failed' });
         return { success: false };
       }
-      console.log('SECURITY: Turnstile validation passed for login');
+      // TRACING: Turnstile passed
+      log('turnstile:verified:success', { step: 'login' });
+    } else {
+      // TRACING: Turnstile skipped
+      log('turnstile:skipped', { step: 'login' });
     }
 
     if (isSupabaseConfigured && supabase) {
       try {
+        // TRACING: Supabase signIn request
+        traceSupabase('signin:request', { method: 'signInWithPassword', email: normalizedEmail.split('@')[0] + '@[masked]' });
         // SECURITY FIX: Use normalized email for authentication
         const { data, error: err } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+        // TRACING: Supabase response
+        if (err) {
+          traceSupabase('signin:error', { error: err.message });
+        } else {
+          traceSupabase('signin:response', { hasUser: !!data.user, hasSession: !!data.session });
+        }
         if (err) throw err;
         if (data.user) {
+          // TRACING: Profile fetch start
+          log('profile:fetch:start', { userId: data.user.id });
           const extra = await fetchSupabaseProfile(data.user.id);
+          // TRACING: Profile hydrated
+          log('profile:hydrated', { userId: data.user.id, hasExtra: !!extra });
           // SECURITY FIX: Use normalized email in profile
           const p = buildProfile({ id: data.user.id, email: data.user.email || normalizedEmail, displayName: extra.displayName || data.user.user_metadata?.display_name || normalizedEmail.split('@')[0], avatarUrl: data.user.user_metadata?.avatar_url, createdAt: data.user.created_at }, extra);
           setProfile(p); cacheProfile(p); setIsOfflineMode(false); rehydrateMeetings(data.user.id);
+          // TRACING: Session stored
+          session('stored', { userId: p.id, provider: 'supabase' });
           automation('user.signin', { userId: p.id, email: p.email, displayName: p.displayName, data: { source: 'supabase' } });
-          console.log('Login success (Supabase)', { userId: p.id });
+          // TRACING: Login complete
+          log('login:complete', { userId: p.id });
+          state('login:complete', { success: true, userId: p.id });
           setLoading(false);
           return { success: true };
         }
@@ -427,7 +507,8 @@ export function useAuth() {
           } else {
             setError(err.message);
           }
-          console.log('Login error (Supabase)', { error: err.message });
+          // TRACING: Login error
+          traceError('login:error', { error: err.message, type: 'supabase' });
           setLoading(false);
           return { success: false };
         }
