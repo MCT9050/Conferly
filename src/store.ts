@@ -95,6 +95,10 @@ export function useAppState(): AppState {
   const MEETING_COUNT_KEY = 'conferly_meeting_count';
   const getMeetingCount = useCallback((): { count: number; month: number } => {
     try {
+      // Guard: check localStorage availability
+      if (typeof localStorage === 'undefined') {
+        return { count: 0, month: new Date().getMonth() };
+      }
       const raw = localStorage.getItem(MEETING_COUNT_KEY);
       if (raw) {
         const data = JSON.parse(raw);
@@ -105,10 +109,16 @@ export function useAppState(): AppState {
   }, []);
 
   const incrementMeetingCount = useCallback(() => {
-    const current = getMeetingCount();
-    const updated = { count: current.count + 1, month: new Date().getMonth() };
-    localStorage.setItem(MEETING_COUNT_KEY, JSON.stringify(updated));
-    return updated.count;
+    try {
+      const current = getMeetingCount();
+      const updated = { count: current.count + 1, month: new Date().getMonth() };
+      // Guard: check localStorage availability
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(MEETING_COUNT_KEY, JSON.stringify(updated));
+      }
+      return updated.count;
+    } catch { /* ignore */ }
+    return 0;
   }, [getMeetingCount]);
 
   const meetingCountData = getMeetingCount();
@@ -193,6 +203,9 @@ export function useAppState(): AppState {
 
   // Keyboard shortcuts (global)
   useEffect(() => {
+    // Guard: check window availability
+    if (typeof window === 'undefined') return;
+    
     const handler = (e: KeyboardEvent) => {
       if (view !== 'meeting') return;
       const tag = (e.target as HTMLElement)?.tagName;
