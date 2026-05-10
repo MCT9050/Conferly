@@ -212,29 +212,26 @@ Features:
 
 ## Configuration Required
 
-### LiveKit Cloud
+### LiveKit Cloud (Already Configured)
 
-1. Create account at [livekit.io](https://livekit.io)
-2. Create project
-3. Get credentials:
-   - API Key
-   - API Secret  
-   - Server URL (wss://...)
+- **Websocket URL**: wss://conferly-zowpgxek.livekit.cloud
+- **API Key**: APIw9qozT7ckR8j  
+- **API Secret**: W6t5wDTIcixzrfZl4R8EDheB6sLndzmfLZFOHUdxWkeC
 
 ### Supabase Edge Function
 
-Set environment secrets:
+Set environment secrets (run in Supabase CLI):
 ```bash
-supabase secrets set LIVEKIT_API_KEY=your_key
-supabase secrets set LIVEKIT_API_SECRET=your_secret
-supabase secrets set LIVEKIT_URL=wss://your-project.lky.dev
+supabase secrets set LIVEKIT_URL=wss://conferly-zowpgxek.livekit.cloud
+supabase secrets set LIVEKIT_API_KEY=APIw9qozT7ckR8j
+supabase secrets set LIVEKIT_API_SECRET=W6t5wDTIcixzrfZl4R8EDheB6sLndzmfLZFOHUdxWkeC
 ```
 
 ### Frontend Environment
 
-Add to `.env`:
+Add to your `.env` file:
 ```
-VITE_LIVEKIT_URL=wss://your-project.lky.dev
+VITE_LIVEKIT_URL=wss://conferly-zowpgxek.livekit.cloud
 ```
 
 ---
@@ -391,14 +388,14 @@ room.on(RoomEvent.ParticipantLeft, (participant) => {
 
 ## Pre-Flight Checklist
 
-- [ ] LiveKit Cloud account created
-- [ ] API Key + Secret obtained
-- [ ] Edge Function deployed
-- [ ] LIVEKIT_API_KEY secret set
-- [ ] LIVEKIT_API_SECRET secret set
-- [ ] LIVEKIT_URL secret set
-- [ ] Frontend VITE_LIVEKIT_URL set
-- [ ] useLiveKitRoom.ts imported in App
+- [x] LiveKit Cloud account created
+- [x] API Key + Secret obtained
+- [x] Edge Function deployed (`supabase/functions/generate-livekit-token/index.ts`)
+- [x] LIVEKIT_API_KEY secret set (in Supabase config.toml)
+- [x] LIVEKIT_API_SECRET secret set (in Supabase config.toml)
+- [x] LIVEKIT_URL secret set (in Supabase config.toml)
+- [x] Frontend VITE_LIVEKIT_URL set (in .env file)
+- [x] useLiveKitRoom.ts imported in App
 - [ ] RoomJoin component added to routes
 - [ ] Test with two browser tabs
 
