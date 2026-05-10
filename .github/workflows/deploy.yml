@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
         
+      - name: Clean build directory
+        run: rm -rf dist
+        
       - name: Build with environment variables
         run: npm run build
         env:
@@ -43,6 +46,19 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          
+      - name: Verify build output
+        run: |
+          echo "Verifying build integrity..."
+          # Check that all referenced assets exist
+          for asset in $(grep -o "assets/[^/]*" dist/index.html | sort -u); do
+            if [ ! -f "dist/$asset" ]; then
+              echo "ERROR: Missing asset: $asset"
+              exit 1
+            fi
+            echo "✓ $asset exists"
+          done
+          echo "Build verification passed!"
           
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
