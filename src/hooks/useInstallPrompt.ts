@@ -8,6 +8,18 @@ interface BeforeInstallPromptEvent extends Event {
 const DISMISSED_KEY = 'conferly_install_dismissed';
 
 export function useInstallPrompt() {
+  // Guard: Ensure we're in browser environment BEFORE hooks
+  if (typeof window === 'undefined') {
+    return {
+      showBanner: false,
+      isInstalled: false,
+      isIOS: false,
+      canInstallNatively: false,
+      install: () => Promise.resolve(false),
+      dismiss: () => {},
+    };
+  }
+
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showBanner, setShowBanner] = useState(false);

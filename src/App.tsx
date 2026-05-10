@@ -30,16 +30,21 @@ function RouteLoader() {
 
 // Get initial route state synchronously - lightweight
 function getRouteFromURL() {
-  const path = window.location.pathname;
-  const hash = window.location.hash;
-  const effectivePath = hash.startsWith('#/') ? hash.substring(1) : path;
+  try {
+    const path = typeof window !== 'undefined' ? window.location.pathname : '';
+    const hash = typeof window !== 'undefined' ? window.location.hash : '';
+    const effectivePath = hash.startsWith('#/') ? hash.substring(1) : path;
   
-  if (effectivePath === '/terms' || effectivePath === '/terms/') return 'terms';
-  if (effectivePath === '/privacy' || effectivePath === '/privacy/') return 'privacy';
-  if (effectivePath === '/auth' || effectivePath === '/auth?mode=signin' || effectivePath === '/auth?mode=signup') return 'auth';
-  if (effectivePath === '/dashboard' || effectivePath === '/dashboard/') return 'dashboard';
-  if (effectivePath === '/pricing' || effectivePath === '/pricing/') return 'pricing';
-  if (effectivePath && effectivePath.startsWith('/meeting/')) return 'none';
+    if (effectivePath === '/terms' || effectivePath === '/terms/') return 'terms';
+    if (effectivePath === '/privacy' || effectivePath === '/privacy/') return 'privacy';
+    if (effectivePath === '/auth' || effectivePath === '/auth?mode=signin' || effectivePath === '/auth?mode=signup') return 'auth';
+    if (effectivePath === '/dashboard' || effectivePath === '/dashboard/') return 'dashboard';
+    if (effectivePath === '/pricing' || effectivePath === '/pricing/') return 'pricing';
+    if (effectivePath && effectivePath.startsWith('/meeting/')) return 'none';
+  } catch (e) {
+    // If window access fails, return default route
+    console.warn('Failed to get route from URL:', e);
+  }
   return 'none';
 }
 
