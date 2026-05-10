@@ -86,8 +86,12 @@
 <body class="bg-slate-950 text-white">
   <div id="root"></div>
   <script>
-    // Service worker for PWA
+    // Unregister any existing service workers to fix cache issues
     if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        registrations.forEach(reg => reg.unregister());
+      });
+      // Then register new one
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch(() => { });
       });

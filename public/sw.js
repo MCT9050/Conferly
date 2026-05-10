@@ -1,5 +1,5 @@
 // Conferly Service Worker — enables PWA install + offline shell
-const CACHE_NAME = 'conferly-v1';
+const CACHE_NAME = 'conferly-v6';
 const OFFLINE_URL = '/';
 
 // Assets to pre-cache on install

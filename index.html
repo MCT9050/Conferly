@@ -80,8 +80,12 @@
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
   <script>
-    // Service worker for PWA
+    // Unregister any existing service workers to fix cache issues
     if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        registrations.forEach(reg => reg.unregister());
+      });
+      // Then register new one
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch(() => { });
       });
