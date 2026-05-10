@@ -17,6 +17,12 @@ export function useMediaDevices() {
   const screenStreamRef = useRef<MediaStream | null>(null);
 
   const startMedia = useCallback(async () => {
+    // Guard: Check for media devices API
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setError('Media devices not supported in this environment');
+      return;
+    }
+
     try {
       // Adaptive quality: detect connection speed and set resolution accordingly
       const conn = (navigator as any).connection;
