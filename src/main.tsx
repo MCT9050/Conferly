@@ -6,8 +6,8 @@ import MobileErrorBoundary from "./components/MobileErrorBoundary";
 const rootElement = document.getElementById("root");
 if (rootElement) {
   createRoot(rootElement).render(
-    <MobileErrorBoundary>
+    
       <App />
-    </MobileErrorBoundary>
+    
   );
 }
