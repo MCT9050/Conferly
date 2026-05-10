@@ -1,10 +1,7 @@
 import { Suspense, lazy, useState, useEffect } from 'react';
+import { useAppState } from './store';
 import { Loader2 } from 'lucide-react';
 import Logo from './components/Logo';
-
-// Simple test - just store hook
-const AuthPage = lazy(() => import('./components/AuthPage').then(m => ({ default: m.AuthPage })));
-const LandingPage = lazy(() => import('./components/LandingPage').then(m => ({ default: m.LandingPage })));
 
 function RouteLoader() {
   return (
@@ -16,6 +13,7 @@ function RouteLoader() {
 
 export default function App() {
   const [loading, setLoading] = useState(true);
+  const s = useAppState(); // THIS LINE added
   
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 2000);
@@ -29,7 +27,7 @@ export default function App() {
   return (
     <div style={{ padding: 20 }}>
       <h1>Conferly App</h1>
-      <p>Store hook test...</p>
+      <p>Store state: {s.view}</p>
     </div>
   );
 }
