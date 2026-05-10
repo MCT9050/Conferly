@@ -3,7 +3,7 @@ import { useEffect, lazy, Suspense, useMemo } from 'react';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { Loader2 } from 'lucide-react';
 import Logo from './components/Logo';
-import InstallBanner from './components/InstallBanner';
+//import InstallBanner from './components/InstallBanner';
 
 // Lazy load heavy route components
 const AuthPage = lazy(() => import('./components/AuthPage').then(m => ({ default: m.AuthPage })));
@@ -50,7 +50,7 @@ function getRouteFromURL() {
 
 export default function App() {
   const s = useAppState();
-  const pwa = useInstallPrompt();
+  //const pwa = useInstallPrompt();
   
   // Route state - initialized synchronously before auth check
   const initialRoute = useMemo(() => getRouteFromURL(), []);
