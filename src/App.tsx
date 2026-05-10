@@ -1,25 +1,20 @@
 import { useAppState } from './store';
 import { useEffect, lazy, Suspense, useMemo } from 'react';
-import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { Loader2 } from 'lucide-react';
 import Logo from './components/Logo';
 import InstallBanner from './components/InstallBanner';
 
-// Safe install prompt hook with fallback defaults
+// Safe install prompt hook - always return safe defaults
 function useSafeInstallPrompt() {
-  try {
-    return useInstallPrompt();
-  } catch (e) {
-    // Return safe defaults if hook fails
-    return {
-      showBanner: false,
-      isInstalled: false,
-      isIOS: false,
-      canInstallNatively: false,
-      install: async () => false,
-      dismiss: () => {},
-    };
-  }
+  // Always return safe defaults to prevent any hook call issues
+  return {
+    showBanner: false,
+    isInstalled: false,
+    isIOS: false,
+    canInstallNatively: false,
+    install: async () => false,
+    dismiss: () => {},
+  };
 }
 
 // Lazy load heavy route components
@@ -66,7 +61,7 @@ function getRouteFromURL() {
 }
 
 export default function App() {
-  const s = useAppState();
+  // const s = useAppState();
   const pwa = useSafeInstallPrompt();
   
   // Route state - initialized synchronously before auth check
