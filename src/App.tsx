@@ -1,34 +1,44 @@
 import { useAppState } from './store';
-import { useEffect } from 'react';
-import AuthPage from './components/AuthPage';
-import LandingPage from './components/LandingPage';
-import Dashboard from './components/Dashboard';
-import Lobby from './components/Lobby';
-import MeetingRoom from './components/MeetingRoom';
-import PricingPage from './components/PricingPage';
-import InstallBanner from './components/InstallBanner';
-import OnboardingPage from './components/OnboardingPage';
-import TermsPage from './components/TermsPage';
-import PrivacyPage from './components/PrivacyPage';
+import { useEffect, lazy, Suspense, useMemo } from 'react';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { Loader2 } from 'lucide-react';
 import Logo from './components/Logo';
 
-// Get initial route state synchronously
+// Lazy load heavy route components
+const AuthPage = lazy(() => import('./components/AuthPage').then(m => ({ default: m.AuthPage })));
+const LandingPage = lazy(() => import('./components/LandingPage').then(m => ({ default: m.LandingPage })));
+const Dashboard = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
+const Lobby = lazy(() => import('./components/Lobby').then(m => ({ default: m.Lobby })));
+const MeetingRoom = lazy(() => import('./components/MeetingRoom').then(m => ({ default: m.MeetingRoom })));
+const PricingPage = lazy(() => import('./components/PricingPage').then(m => ({ default: m.PricingPage })));
+const OnboardingPage = lazy(() => import('./components/OnboardingPage').then(m => ({ default: m.OnboardingPage })));
+const TermsPage = lazy(() => import('./components/TermsPage').then(m => ({ default: m.TermsPage })));
+const PrivacyPage = lazy(() => import('./components/PrivacyPage').then(m => ({ default: m.PrivacyPage })));
+
+// Lightweight fallback for lazy loading
+function RouteLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <Logo size="xl" />
+        <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
+      </div>
+    </div>
+  );
+}
+
+// Get initial route state synchronously - lightweight
 function getRouteFromURL() {
-  console.log('getRouteFromURL called');
   const path = window.location.pathname;
   const hash = window.location.hash;
   const effectivePath = hash.startsWith('#/') ? hash.substring(1) : path;
-  console.log('effectivePath:', effectivePath);
   
-  // Handle hash-based routes (SPA routing)
   if (effectivePath === '/terms' || effectivePath === '/terms/') return 'terms';
   if (effectivePath === '/privacy' || effectivePath === '/privacy/') return 'privacy';
   if (effectivePath === '/auth' || effectivePath === '/auth?mode=signin' || effectivePath === '/auth?mode=signup') return 'auth';
   if (effectivePath === '/dashboard' || effectivePath === '/dashboard/') return 'dashboard';
   if (effectivePath === '/pricing' || effectivePath === '/pricing/') return 'pricing';
-  if (effectivePath && effectivePath.startsWith('/meeting/')) return 'none'; // meeting ID handled elsewhere
+  if (effectivePath && effectivePath.startsWith('/meeting/')) return 'none';
   return 'none';
 }
 
@@ -37,42 +47,24 @@ export default function App() {
   const pwa = useInstallPrompt();
   
   // Route state - initialized synchronously before auth check
-  const initialRoute = getRouteFromURL();
-  const isTermsPage = initialRoute === 'terms';
-  const isPrivacyPage = initialRoute === 'privacy';
-  const isAuthPage = initialRoute === 'auth';
-  const isDashboardPage = initialRoute === 'dashboard';
-  const isPricingPage = initialRoute === 'pricing';
+  const initialRoute = useMemo(() => getRouteFromURL(), []);
   
-  // Debug
-  console.log('=== Route Debug ===');
-  console.log('Hash:', window.location.hash);
-  console.log('Path:', window.location.pathname);
-  console.log('Initial Route:', initialRoute);
-  console.log('isTermsPage:', isTermsPage);
-  console.log('isPrivacyPage:', isPrivacyPage);
-  console.log('isAuthPage:', isAuthPage);
-  console.log('isDashboardPage:', isDashboardPage);
-  console.log('isPricingPage:', isPricingPage);
+  // Only compute derived state after initial route is known
+  const isTermsPage = useMemo(() => initialRoute === 'terms', [initialRoute]);
+  const isPrivacyPage = useMemo(() => initialRoute === 'privacy', [initialRoute]);
+  const isAuthPage = useMemo(() => initialRoute === 'auth', [initialRoute]);
+  const isDashboardPage = useMemo(() => initialRoute === 'dashboard', [initialRoute]);
+  const isPricingPage = useMemo(() => initialRoute === 'pricing', [initialRoute]);
 
-  // Mobile debugging
+  // Debug - only in development
   useEffect(() => {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    console.log('=== App Component Debug ===');
-    console.log('Device:', navigator.userAgent);
-    console.log('Is Mobile:', isMobile);
-    console.log('Auth Loading:', s.authLoading);
-    console.log('Is Authenticated:', s.isAuthenticated);
-    console.log('Auth Profile:', s.authProfile);
-    console.log('Auth Error:', s.authError);
-    console.log('View:', s.view);
-    console.log('Memory:', {
-      used: (performance as any).memory?.usedJSHeapSize,
-      total: (performance as any).memory?.totalJSHeapSize,
-      limit: (performance as any).memory?.jsHeapSizeLimit
-    });
-    console.log('========================');
-  }, [s.authLoading, s.isAuthenticated, s.authProfile, s.authError, s.view]);
+    if (import.meta.env.DEV) {
+      console.log('=== Route Debug ===');
+      console.log('Initial Route:', initialRoute);
+      console.log('Auth Loading:', s.authLoading);
+      console.log('Is Authenticated:', s.isAuthenticated);
+    }
+  }, [initialRoute, s.authLoading, s.isAuthenticated]);
 
   const installBanner = (
     <InstallBanner
@@ -84,41 +76,33 @@ export default function App() {
     />
   );
 
-  // Show Terms page for /terms route - check BEFORE loading!
+  // Early route returns - before auth check for speed
   if (isTermsPage) {
     return (
-      <>
+      <Suspense fallback={<RouteLoader />}>
         <TermsPage onClose={() => window.location.hash = ''} />
-      </>
+      </Suspense>
     );
   }
 
-  // Show Privacy page for /privacy route
   if (isPrivacyPage) {
     return (
-      <>
+      <Suspense fallback={<RouteLoader />}>
         <PrivacyPage onClose={() => window.location.hash = ''} />
-      </>
+      </Suspense>
     );
   }
 
+  // Auth loading state - show lightweight loader immediately
   if (s.authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Logo size="xl" />
-          <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
-        </div>
-      </div>
-    );
+    return <RouteLoader />;
   }
 
-  // Not authenticated
+  // Not authenticated routes - lightweight and fast
   if (!s.isAuthenticated) {
-    // Show AuthPage FIRST for /auth route (before checking view)
     if (isAuthPage) {
       return (
-        <>
+        <Suspense fallback={<RouteLoader />}>
           <AuthPage
             onSignUp={s.signUp}
             onSignIn={s.signIn}
@@ -129,25 +113,24 @@ export default function App() {
             loading={s.authLoading}
           />
           {installBanner}
-        </>
+        </Suspense>
       );
     }
-    // Show Pricing page for /pricing route
     if (isPricingPage) {
       return (
-        <>
+        <Suspense fallback={<RouteLoader />}>
           <PricingPage
             setView={s.setView} subscription={s.subscription}
             pricing={s.pricing} allLimits={s.allLimits}
             onUpgrade={s.upgradeSubscription}
           />
           {installBanner}
-        </>
+        </Suspense>
       );
     }
-    // Default: show LandingPage
+    // Default: show LandingPage - lazy load it
     return (
-      <>
+      <Suspense fallback={<RouteLoader />}>
         <LandingPage
           setView={s.setView} roomId={s.roomId} setRoomId={s.setRoomId}
           userName={s.userName} setUserName={s.setUserName}
@@ -155,26 +138,26 @@ export default function App() {
           onSignOut={() => { }} onUpdateName={async () => ({ success: false })}
         />
         {installBanner}
-      </>
+      </Suspense>
     );
   }
 
-  // Authenticated — check onboarding
+  // Authenticated routes - lazy loaded
   if (s.authProfile && !s.authProfile.onboardingComplete) {
     return (
-      <>
+      <Suspense fallback={<RouteLoader />}>
         <OnboardingPage
           displayName={s.authProfile.displayName}
           onComplete={s.completeOnboarding}
         />
         {installBanner}
-      </>
+      </Suspense>
     );
   }
 
   if (s.view === 'pricing') {
     return (
-      <>
+      <Suspense fallback={<RouteLoader />}>
         <PricingPage
           setView={s.setView} subscription={s.subscription}
           pricing={s.planPricing} allLimits={s.allPlanLimits}
@@ -197,13 +180,13 @@ export default function App() {
           clearPaymentResult={s.clearPaymentResult}
         />
         {installBanner}
-      </>
+      </Suspense>
     );
   }
 
   if (s.view === 'welcome' || s.view === 'dashboard') {
     return (
-      <>
+      <Suspense fallback={<RouteLoader />}>
         <Dashboard
           setView={s.setView} roomId={s.roomId} setRoomId={s.setRoomId}
           userName={s.userName} setUserName={s.setUserName}
@@ -220,13 +203,13 @@ export default function App() {
           maxMeetingsPerMonth={s.maxMeetingsPerMonth}
         />
         {installBanner}
-      </>
+      </Suspense>
     );
   }
 
   if (s.view === 'lobby') {
     return (
-      <>
+      <Suspense fallback={<RouteLoader />}>
         <Lobby
           roomId={s.roomId} userName={s.authProfile?.displayName || s.userName}
           setView={s.setView} stream={s.stream} startMedia={s.startMedia}
@@ -235,12 +218,13 @@ export default function App() {
           audioLevel={s.audioLevel} mediaError={s.mediaError}
         />
         {installBanner}
-      </>
+      </Suspense>
     );
   }
 
+  // Meeting room - the heaviest component
   return (
-    <>
+    <Suspense fallback={<RouteLoader />}>
       <MeetingRoom
         roomId={s.roomId} userName={s.authProfile?.displayName || s.userName}
         participants={s.participants} stream={s.stream} screenStream={s.screenStream}
@@ -284,6 +268,6 @@ export default function App() {
         presentation={s.presentation}
       />
       {installBanner}
-    </>
+    </Suspense>
   );
 }

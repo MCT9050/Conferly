@@ -1,169 +1,177 @@
-# Conferly
+# Supabase CLI
 
-**Connecting with Purpose.**
+[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=develop)](https://coveralls.io/github/supabase/cli?branch=develop) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
+](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
 
-Conferly is a premium conferencing and collaboration platform rooted in the African philosophy of Ubuntu — *"I am because we are."* It offers a seamless digital space where people can connect with purpose, share ideas, and build meaningful relationships.
+[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
 
-🌍 **Live at:** [www.conferly.site](https://www.conferly.site)
+This repository contains all the functionality for Supabase CLI.
 
-[![MIT License](https://img.shields.io/badge/License-MIT-amber.svg)](LICENSE)
-[![Built with Vite](https://img.shields.io/badge/Built%20with-Vite-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
-[![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev)
-[![Tailwind CSS v4](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![Supabase](https://img.shields.io/badge/Supabase-Connected-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com)
+- [x] Running Supabase locally
+- [x] Managing database migrations
+- [x] Creating and deploying Supabase Functions
+- [x] Generating types directly from your database schema
+- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
 
----
+## Getting started
 
-## ✨ Why Conferly?
+### Install the CLI
 
-| Pillar | What It Means |
-|---|---|
-| 🛡️ **Secure & Reliable** | Enterprise-grade encryption, Supabase-backed infrastructure |
-| 💎 **Premium Experience** | High-quality audio/video with minimal latency |
-| 🌐 **Inclusive Design** | 11 South African languages, accessibility-first |
-| 📈 **Scalable** | From intimate team meetings to 500-participant conferences |
-| 🎨 **Brand Elevation** | Customizable branding for organizations |
-
----
-
-## 🎯 Features
-
-| Feature | Implementation |
-|---|---|
-| 📹 **HD Video & Audio** | WebRTC peer-to-peer with adaptive quality (360p/540p/720p) |
-| 🎤 **Live Transcription** | Real-time speech-to-text via Web Speech API |
-| 🌐 **11 SA Language Translation** | Live translation via MyMemory API (isiZulu, isiXhosa, Afrikaans, Sesotho, Setswana + 6 more) |
-| 🧠 **AI Meeting Pulse** | TF-IDF extractive summarization, runs entirely in-browser |
-| 📝 **Collaborative Notes** | TipTap + Yjs CRDT real-time sync |
-| 📺 **Screen Sharing** | Native `getDisplayMedia` API |
-| 🔴 **Recording** | On-device via MediaRecorder + IndexedDB storage |
-| 💬 **Chat & Reactions** | In-meeting messaging, emoji reactions, hand raise |
-| 🛡️ **Meeting Security** | Passwords, waiting room, meeting lock |
-| 🎬 **Presentation Mode** | Built-in slide deck with annotations + laser pointer |
-| 💳 **Payments** | Peach Payments (Card, EFT, Mobicred, SnapScan) |
-| 📱 **PWA** | Installable on any device, works offline |
-
----
-
-## 🏗️ Architecture
-
-```
-src/
-├── App.tsx                          # Root router
-├── store.ts                         # Central state (composes 9 hooks)
-├── types.ts                         # TypeScript interfaces
-│
-├── lib/
-│   ├── supabase.ts                  # Supabase client
-│   ├── api.ts                       # Self-hosted backend API client
-│   ├── persist.ts                   # IndexedDB persistence layer
-│   └── peach.ts                     # Peach Payments integration
-│
-├── hooks/
-│   ├── useAuth.ts                   # Supabase Auth + offline fallback
-│   ├── useMediaDevices.ts           # getUserMedia + adaptive quality
-│   ├── useSpeechRecognition.ts      # Web Speech API
-│   ├── useRecording.ts              # MediaRecorder + IndexedDB
-│   ├── useTranslation.ts            # 11 SA languages via MyMemory
-│   ├── usePulse.ts                  # In-browser TF-IDF summarization
-│   ├── usePlan.ts                   # Subscription tier management
-│   ├── useMeetingSecurity.ts        | Password, lock, waiting room
-│   ├── usePresentation.ts           | Slide deck + annotations
-│   ├── usePayment.ts                | Peach Payments checkout
-│   └── useInstallPrompt.ts          # PWA install prompt
-│
-└── components/
-    ├── LandingPage.tsx              # Public marketing page
-    ├── AuthPage.tsx                 # Sign in / Sign up
-    ├── OnboardingPage.tsx           # Individual vs Organization choice
-    ├── Dashboard.tsx                # Authenticated home
-    ├── Lobby.tsx                    # Pre-meeting camera/mic test
-    ├── MeetingRoom.tsx              # Main meeting UI
-    ├── VideoGrid.tsx                # Adaptive video tiles
-    ├── MeetingControls.tsx          # Bottom control bar
-    ├── Sidebar.tsx                  # 8-tab in-meeting panel
-    ├── PresentationView.tsx         # Fullscreen slide presentation
-    ├── SlideEditor.tsx              # Slide creation panel
-    ├── CollaborativeEditor.tsx      # TipTap + Yjs editor
-    ├── SecurityPanel.tsx            # Meeting security controls
-    ├── TranslationPanel.tsx         # SA language translation UI
-    ├── PricingPage.tsx              # Plans + Peach Payments
-    ├── ProfileMenu.tsx              # User dropdown
-    ├── InstallBanner.tsx            # PWA install prompt UI
-    └── Logo.tsx                     # Brand logo component
-```
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js ≥ 18
-- npm or pnpm
-- Chrome/Edge (recommended for full feature support)
-
-### Install & Run
+Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/conferly.git
-cd conferly
-npm install
-npm run dev
+npm i supabase --save-dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173).
+When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
 
-### Build for Production
+```
+NODE_OPTIONS=--no-experimental-fetch yarn add supabase
+```
+
+> **Note**
+For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
+
+<details>
+  <summary><b>macOS</b></summary>
+
+  Available via [Homebrew](https://brew.sh). To install:
+
+  ```sh
+  brew install supabase/tap/supabase
+  ```
+
+  To install the beta release channel:
+  
+  ```sh
+  brew install supabase/tap/supabase-beta
+  brew link --overwrite supabase-beta
+  ```
+  
+  To upgrade:
+
+  ```sh
+  brew upgrade supabase
+  ```
+</details>
+
+<details>
+  <summary><b>Windows</b></summary>
+
+  Available via [Scoop](https://scoop.sh). To install:
+
+  ```powershell
+  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
+  scoop install supabase
+  ```
+
+  To upgrade:
+
+  ```powershell
+  scoop update supabase
+  ```
+</details>
+
+<details>
+  <summary><b>Linux</b></summary>
+
+  Available via [Homebrew](https://brew.sh) and Linux packages.
+
+  #### via Homebrew
+
+  To install:
+
+  ```sh
+  brew install supabase/tap/supabase
+  ```
+
+  To upgrade:
+
+  ```sh
+  brew upgrade supabase
+  ```
+
+  #### via Linux packages
+
+  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
+
+  ```sh
+  sudo apk add --allow-untrusted <...>.apk
+  ```
+
+  ```sh
+  sudo dpkg -i <...>.deb
+  ```
+
+  ```sh
+  sudo rpm -i <...>.rpm
+  ```
+
+  ```sh
+  sudo pacman -U <...>.pkg.tar.zst
+  ```
+</details>
+
+<details>
+  <summary><b>Other Platforms</b></summary>
+
+  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
+
+  ```sh
+  go install github.com/supabase/cli@latest
+  ```
+
+  Add a symlink to the binary in `$PATH` for easier access:
+
+  ```sh
+  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
+  ```
+
+  This works on other non-standard Linux distros.
+</details>
+
+<details>
+  <summary><b>Community Maintained Packages</b></summary>
+
+  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
+  To install in your working directory:
+
+  ```bash
+  pkgx install supabase
+  ```
+
+  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
+</details>
+
+### Run the CLI
 
 ```bash
-npm run build
+supabase bootstrap
 ```
 
-Output is a single `dist/index.html` (~1.3 MB) deployable to any static host.
+Or using npx:
 
----
+```bash
+npx supabase bootstrap
+```
 
-## 🌍 Use Cases
+The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
 
-- **Corporate meetings & webinars** — Video calls with recording and AI summaries
-- **Educational workshops** — Live transcription + translation for inclusive classrooms
-- **Community forums** — Multi-language conversations across 11 SA languages
-- **Hybrid conferences** — In-person + virtual with built-in presentation mode
+## Docs
 
----
+Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
 
-## 🔧 Tech Stack
+## Breaking changes
 
-| Layer | Technology |
-|---|---|
-| Framework | React 19 + Vite 7 + TypeScript 5.9 |
-| Styling | Tailwind CSS v4 |
-| Auth | Supabase Auth (JWT + refresh tokens) |
-| Database | Supabase Postgres + Row Level Security |
-| Editor | TipTap v3 + Yjs CRDT |
-| Real-time sync | y-webrtc |
-| Translation | MyMemory API |
-| Payments | Peach Payments (Hosted Checkout) |
-| Recording | MediaRecorder API + IndexedDB |
-| Icons | Lucide React |
+We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
 
----
+However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
 
-## 🌐 Browser Support
+## Developing
 
-| Browser | Video | Translation | Transcription | Recording |
-|---|---|---|---|---|
-| Chrome / Edge | ✅ | ✅ | ✅ | ✅ |
-| Firefox | ✅ | ✅ | ❌ (no Web Speech API) | ✅ |
-| Safari | ✅ | ✅ | ❌ | ⚠️ Partial |
+To run from source:
 
----
-
-## 📄 License
-
-MIT — use it however you want.
-
----
-
-<p align="center"><strong>Conferly — Connecting with Purpose.</strong></p>
-<p align="center">Made with ❤️ in South Africa</p>
+```sh
+# Go >= 1.22
+go run . help
+```

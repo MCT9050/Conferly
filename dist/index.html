@@ -8,26 +8,24 @@
   <meta name="description"
     content="Conferly: A premium video conferencing and collaboration platform rooted in the African philosophy of Ubuntu. Connecting with purpose — secure, inclusive, scalable." />
   
+  <!-- Preconnect to external domains for performance -->
+  <link rel="preconnect" href="https://conferly-zowpgxek.livekit.cloud" />
+  <link rel="preconnect" href="https://*.supabase.co" />
+  
   <!-- SECURITY: Additional Headers (via meta) -->
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
   <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
   
-  <!-- SPA redirect: handle direct path access (/terms, /privacy, /auth, /dashboard, /pricing) -->
+  <!-- SPA redirect -->
   <script>
     (function() {
       var path = window.location.pathname;
       var hash = window.location.hash;
-      // Skip if root path or already has valid hash route
       if (path === '/' || path === '/index.html' || (hash && hash.startsWith('#/'))) return;
-      // Skip assets
       if (path.match(/^\/(assets|icons|images)\//)) return;
-      // Skip API/non-HTML paths
       if (path.match(/\.(js|css|png|jpg|svg|ico|json|woff2?)$/)) return;
-      // Redirect non-root paths to hash route
-      if (path && path !== '/') {
-        window.location.replace('/#' + path);
-      }
+      if (path && path !== '/') { window.location.replace('/#' + path); }
     })();
   </script>
 
@@ -40,7 +38,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
   <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
 
-  <!-- iOS PWA support -->
+  <!-- iOS PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Conferly" />
@@ -51,8 +49,7 @@
 
   <!-- Open Graph -->
   <meta property="og:title" content="Conferly — Connecting with Purpose" />
-  <meta property="og:description"
-    content="Premium conferencing and collaboration rooted in the African philosophy of Ubuntu. Secure, inclusive, scalable." />
+  <meta property="og:description" content="Premium conferencing rooted in Ubuntu." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://www.conferly.site/" />
   <meta property="og:image" content="/icons/icon-512.png" />
@@ -61,21 +58,17 @@
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Conferly — Connecting with Purpose" />
-  <meta name="twitter:description" content="Premium video conferencing rooted in the African philosophy of Ubuntu." />
+  <meta name="twitter:description" content="Premium video conferencing rooted in Ubuntu." />
 
-  <!-- Cloudflare Turnstile - Bot Protection 
-  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script> 
-  -->
-  <script type="module" crossorigin src="/assets/index-BrKJyu3k.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/editor-Cq3dQEFI.js">
-  <link rel="modulepreload" crossorigin href="/assets/supabase-CDXZWRd1.js">
-  <link rel="stylesheet" crossorigin href="/assets/index-C5NHe1nz.css">
+  <script type="module" crossorigin src="/assets/index-Cb6lHaTF.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/editor-CHM82_nR.js">
+  <link rel="modulepreload" crossorigin href="/assets/supabase-JANRf4Rz.js">
+  <link rel="stylesheet" crossorigin href="/assets/index-BpFWUSoX.css">
 </head>
 
 <body class="bg-slate-950 text-white">
   <div id="root"></div>
   <script>
-    // Service worker for PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch(() => { });
