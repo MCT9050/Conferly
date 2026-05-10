@@ -23,10 +23,10 @@ function RouteLoader() {
 
 function getRouteFromURL() {
   try {
-    const path = window?.location?.pathname || '';
     const hash = window?.location?.hash || '';
-    const effectivePath = hash.startsWith('#/') ? hash.substring(1) : path.replace('/', '');
-    return effectivePath;
+    // "#/pricing" -> "pricing"
+    const route = hash.replace('#/', '').replace('#', '');
+    return route;
   } catch (e) { return ''; }
 }
 
