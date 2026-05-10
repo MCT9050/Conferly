@@ -1,11 +1,12 @@
-import { Suspense, lazy, useMemo, useEffect, useState } from 'react';
+import { Suspense, lazy, useMemo } from 'react';
 import { useAppState } from './store';
-import { Loader2 } from 'lucide-react';
 import Logo from './components/Logo';
 import InstallBanner from './components/InstallBanner';
 
 const LandingPage = lazy(() => import('./components/LandingPage').then(m => ({ default: m.LandingPage })));
 const AuthPage = lazy(() => import('./components/AuthPage').then(m => ({ default: m.AuthPage })));
+const Dashboard = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
+const Lobby = lazy(() => import('./components/Lobby').then(m => ({ default: m.Lobby })));
 
 function RouteLoader() {
   return (
@@ -27,11 +28,16 @@ function getRouteFromURL() {
 export default function App() {
   const state = useAppState();
   const route = useMemo(() => getRouteFromURL(), []);
+  const isInMeeting = state.view === 'meeting' && state.roomId;
   
   return (
     <Suspense fallback={<RouteLoader />}>
       {state.isAuthenticated ? (
-        <div className="p-4">Dashboard</div>
+        isInMeeting ? (
+          <Lobby />
+        ) : (
+          <Dashboard />
+        )
       ) : route === 'auth' ? (
         <AuthPage />
       ) : (
