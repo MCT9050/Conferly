@@ -1,4 +1,5 @@
 import { Suspense, lazy, useMemo, useEffect, useState } from 'react';
+import { useAppState } from './store';
 import { Loader2 } from 'lucide-react';
 import Logo from './components/Logo';
 
@@ -10,26 +11,16 @@ function RouteLoader() {
   );
 }
 
-function getRouteFromURL() {
-  try {
-    const path = typeof window !== 'undefined' ? window.location.pathname : '';
-    const hash = typeof window !== 'undefined' ? window.location.hash : '';
-    const effectivePath = hash.startsWith('#/') ? hash.substring(1) : path;
-    return effectivePath.replace('/', '');
-  } catch (e) {}
-  return 'none';
-}
-
 export default function App() {
   const [ready, setReady] = useState(false);
   
-  // Safe mount - defer store usage
+  // Only use store in effect
   useEffect(() => {
     const timer = setTimeout(() => setReady(true), 100);
     return () => clearTimeout(timer);
   }, []);
   
-  const initialRoute = useMemo(() => getRouteFromURL(), []);
+  const state = useAppState();
   
   if (!ready) {
     return <RouteLoader />;
@@ -38,6 +29,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <RouteLoader />
+      <p>Auth: {state.isAuthenticated ? 'yes' : 'no'}</p>
     </div>
   );
 }
