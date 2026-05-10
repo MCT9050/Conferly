@@ -54,8 +54,19 @@ window.onunhandledrejection = function(event) {
 };
 
 // 4. Version tracking for stale bundle detection
-const BUNDLE_VERSION = '1.0.1'; // Update this on each deploy
+const BUNDLE_VERSION = '1.0.2'; // Update this on each deploy
+window.__APP_VERSION__ = BUNDLE_VERSION;
 console.log('🔥 APP VERSION:', BUNDLE_VERSION, '| Timestamp:', Date.now());
+
+// Check if the loaded bundle matches expected hash (dynamic - extract from current script src)
+(() => {
+  const script = document.querySelector('script[type="module"][crossorigin]');
+  const src = script?.getAttribute('src') || '';
+  const match = src.match(/index-([a-zA-Z0-9]+)\.js/);
+  if (match) {
+    console.log('📦 Bundle hash:', match[1]);
+  }
+})();
 
 // ============================================
 // RENDER APP
