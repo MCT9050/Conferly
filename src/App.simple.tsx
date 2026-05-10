@@ -1,10 +1,7 @@
-import { Suspense, lazy, useMemo } from 'react';
+import { Suspense, lazy, useMemo, useState, useEffect } from 'react';
 import { useAppState } from './store';
 import Logo from './components/Logo';
 import InstallBanner from './components/InstallBanner';
-import OnboardingPage from './components/OnboardingPage';
-import TermsPage from './components/TermsPage';
-import PrivacyPage from './components/PrivacyPage';
 
 const LandingPage = lazy(() => import('./components/LandingPage').then(m => ({ default: m.LandingPage })));
 const AuthPage = lazy(() => import('./components/AuthPage').then(m => ({ default: m.AuthPage })));
@@ -21,35 +18,46 @@ function RouteLoader() {
   );
 }
 
-function getRouteFromURL() {
-  try {
-    const hash = window?.location?.hash || '';
-    // "#/pricing" -> "pricing"
-    const route = hash.replace('#/', '').replace('#', '');
-    return route;
-  } catch (e) { return ''; }
-}
-
 export default function App() {
   const state = useAppState();
-  const route = useMemo(() => getRouteFromURL(), []);
+  const [route, setRoute] = useState('');
+  
+  // Get route on mount and on hash change
+  useEffect(() => {
+    const getRoute = () => {
+      const hash = window?.location?.hash || '';
+      const r = hash.replace('#/', '').replace('#', '');
+      setRoute(r);
+    };
+    getRoute();
+    window.addEventListener('hashchange', getRoute);
+    return () => window.removeEventListener('hashchange', getRoute);
+  }, []);
+  
   const isInMeeting = state.view === 'meeting' && state.roomId;
   
-  if (route === 'pricing') return <PricingPage />;
-  if (route === 'terms') return <TermsPage />;
-  if (route === 'privacy') return <PrivacyPage />;
-  if (route === 'onboarding') return <OnboardingPage />;
+  // Lazy load static pages to avoid initial load issues
+  const TermsPage = useMemo(() => {
+    try { return require('./components/TermsPage').default; } catch(e) { return null; }
+  }, []);
+  
+  if (!route && !state.isAuthenticated) {
+    return (
+      <Suspense fallback={<RouteLoader />}>
+        <InstallBanner />
+        <LandingPage />
+      </Suspense>
+    );
+  }
   
   return (
     <Suspense fallback={<RouteLoader />}>
       {state.isAuthenticated ? (
-        isInMeeting ? (
-          <MeetingRoom />
-        ) : (
-          <Lobby />
-        )
+        isInMeeting ? <MeetingRoom /> : <Lobby />
       ) : route === 'auth' ? (
         <AuthPage />
+      ) : route === 'pricing' ? (
+        <PricingPage />
       ) : (
         <>
           <InstallBanner />
