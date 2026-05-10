@@ -13,7 +13,7 @@ interface State {
 }
 
 export class MobileErrorBoundary extends Component<Props, State> {
-  private loadingTimeout: NodeJS.Timeout | null = null;
+  private loadingTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(props: Props) {
     super(props);
@@ -25,6 +25,9 @@ export class MobileErrorBoundary extends Component<Props, State> {
   }
 
   componentDidMount() {
+    // Guard: check if navigator is available
+    if (typeof navigator === 'undefined') return;
+    
     // Detect if we're on mobile
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
@@ -64,18 +67,28 @@ export class MobileErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Mobile Error Boundary caught an error:', error, errorInfo);
+    
+    // Guard: check if navigator is available
+    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown';
+    const memory = typeof performance !== 'undefined' ? {
+      used: (performance as any).memory?.usedJSHeapSize,
+      total: (performance as any).memory?.totalJSHeapSize,
+      limit: (performance as any).memory?.jsHeapSizeLimit
+    } : null;
+    
     console.error('Error details:', {
       message: error.message,
       stack: error.stack,
       componentStack: errorInfo.componentStack,
-      userAgent: navigator.userAgent,
+      userAgent,
       timestamp: new Date().toISOString(),
-      memory: {
-        used: (performance as any).memory?.usedJSHeapSize,
-        total: (performance as any).memory?.totalJSHeapSize,
-        limit: (performance as any).memory?.jsHeapSizeLimit
-      }
+      memory
     });
+    
+    // Report to error tracking service if available
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      // Could add Sentry/trackJS here
+    }
   }
 
   handleRetry = () => {
