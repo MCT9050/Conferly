@@ -66,7 +66,7 @@ function getRouteFromURL() {
 }
 
 export default function App() {
-  // const s = useAppState();
+  const s = useAppState();
   const pwa = useSafeInstallPrompt();
   
   // Route state - initialized synchronously before auth check
