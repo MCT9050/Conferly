@@ -54,7 +54,7 @@ window.onunhandledrejection = function(event) {
 };
 
 // 4. Version tracking for stale bundle detection
-const BUNDLE_VERSION = '1.0.0'; // Update this on each deploy
+const BUNDLE_VERSION = '1.0.1'; // Update this on each deploy
 console.log('🔥 APP VERSION:', BUNDLE_VERSION, '| Timestamp:', Date.now());
 
 // ============================================
