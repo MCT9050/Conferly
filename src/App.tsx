@@ -5,6 +5,23 @@ import { Loader2 } from 'lucide-react';
 import Logo from './components/Logo';
 import InstallBanner from './components/InstallBanner';
 
+// Safe install prompt hook with fallback defaults
+function useSafeInstallPrompt() {
+  try {
+    return useInstallPrompt();
+  } catch (e) {
+    // Return safe defaults if hook fails
+    return {
+      showBanner: false,
+      isInstalled: false,
+      isIOS: false,
+      canInstallNatively: false,
+      install: async () => false,
+      dismiss: () => {},
+    };
+  }
+}
+
 // Lazy load heavy route components
 const AuthPage = lazy(() => import('./components/AuthPage').then(m => ({ default: m.AuthPage })));
 const LandingPage = lazy(() => import('./components/LandingPage').then(m => ({ default: m.LandingPage })));
@@ -50,7 +67,7 @@ function getRouteFromURL() {
 
 export default function App() {
   const s = useAppState();
-  const pwa = useInstallPrompt();
+  const pwa = useSafeInstallPrompt();
   
   // Route state - initialized synchronously before auth check
   const initialRoute = useMemo(() => getRouteFromURL(), []);
