@@ -1,9 +1,9 @@
-import { Suspense, lazy, useState, useEffect, useMemo } from 'react';
+import { Suspense, lazy, useMemo } from 'react';
 import { useAppState } from './store';
 import { Loader2 } from 'lucide-react';
 import Logo from './components/Logo';
+import InstallBanner from './components/InstallBanner';
 
-const AuthPage = lazy(() => import('./components/AuthPage').then(m => ({ default: m.AuthPage })));
 const LandingPage = lazy(() => import('./components/LandingPage').then(m => ({ default: m.LandingPage })));
 
 function RouteLoader() {
@@ -21,7 +21,7 @@ function getRouteFromURL() {
     const effectivePath = hash.startsWith('#/') ? hash.substring(1) : path;
     if (effectivePath === '/terms') return 'terms';
     if (effectivePath === '/privacy') return 'privacy';
-    if (effectivePath === '/auth' || effectivePath === '/auth?mode=signin' || effectivePath === '/auth?mode=signup') return 'auth';
+    if (effectivePath === '/auth' || effectivePath.startsWith('/auth?')) return 'auth';
     if (effectivePath === '/dashboard') return 'dashboard';
     if (effectivePath === '/pricing') return 'pricing';
   } catch (e) {}
@@ -30,26 +30,49 @@ function getRouteFromURL() {
 
 export default function App() {
   const s = useAppState();
-  const loading = s.authLoading;
   
-  // Use useMemo like original
+  // Only compute derived state after initial route is known
   const initialRoute = useMemo(() => getRouteFromURL(), []);
   
   const isAuthPage = initialRoute === 'auth';
+  const isDashboard = initialRoute === 'dashboard';
+  const isPricingPage = initialRoute === 'pricing';
+  const isTermsPage = initialRoute === 'terms';
+  const isPrivacyPage = initialRoute === 'privacy';
+  const isLobby = s.view === 'lobby';
+  const isMeeting = s.view === 'meeting';
+  const isOnboarding = s.view === 'onboarding';
+  const isLanding = !s.isAuthenticated && !isAuthPage && !isTermsPage && !isPrivacyPage && !isDashboard && !isPricingPage && !isLobby && !isMeeting && !isOnboarding;
 
-  if (loading) {
+  if (s.authLoading) {
     return <RouteLoader />;
   }
 
+  if (isTermsPage) {
+    return <Suspense fallback={<RouteLoader />}><div>Terms</div></Suspense>;
+  }
+
+  if (isPrivacyPage) {
+    return <Suspense fallback={<RouteLoader />}><div>Privacy</div></Suspense>;
+  }
+
   if (!s.isAuthenticated) {
-    if (isAuthPage) {
-      return (
-        <Suspense fallback={<RouteLoader />}>
-          {/* AuthPage removed for test */}
-          <div><h1>Auth Test</h1></div>
-        </Suspense>
-      );
+    if (isDashboard) {
+      return <Suspense fallback={<RouteLoader />}><div>Dashboard</div></Suspense>;
     }
+
+    if (isPricingPage) {
+      return <Suspense fallback={<RouteLoader />}><div>Pricing</div></Suspense>;
+    }
+
+    if (isOnboarding) {
+      return <Suspense fallback={<RouteLoader />}><div>Onboarding</div></Suspense>;
+    }
+
+    if (isAuthPage) {
+      return <Suspense fallback={<RouteLoader />}><div>Auth</div></Suspense>;
+    }
+
     return (
       <Suspense fallback={<RouteLoader />}>
         <LandingPage />
@@ -57,5 +80,13 @@ export default function App() {
     );
   }
 
-  return <div>Dashboard</div>;
+  if (isLobby) {
+    return <Suspense fallback={<RouteLoader />}><div>Lobby</div></Suspense>;
+  }
+
+  if (isMeeting) {
+    return <Suspense fallback={<RouteLoader />}><div>Meeting</div></Suspense>;
+  }
+
+  return <Suspense fallback={<RouteLoader />}><div>Dashboard Auth</div></Suspense>;
 }
