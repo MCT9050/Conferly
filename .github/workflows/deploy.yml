@@ -50,8 +50,8 @@ jobs:
       - name: Verify build output
         run: |
           echo "Verifying build integrity..."
-          # Check that all referenced assets exist
-          for asset in $(grep -o "assets/[^/]*" dist/index.html | sort -u); do
+          # Get all asset references (handle both JS and CSS)
+          for asset in $(grep -oE "assets/[^ \"']+" dist/index.html | sort -u); do
             if [ ! -f "dist/$asset" ]; then
               echo "ERROR: Missing asset: $asset"
               exit 1
