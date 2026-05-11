@@ -40,15 +40,15 @@ export default function App() {
   // Track hash changes for modal pages
   const [hash, setHash] = useState(() => typeof window !== 'undefined' ? window.location.hash : '');
   
+  // Get view from hash route FIRST (e.g., #/terms, #/auth, #/pricing)
+  const route = hash.startsWith('#/') ? hash.substring(2) : '';
+  const routeBase = route.split('/')[0];
+  
   useEffect(() => {
     const handleHashChange = () => setHash(window.location.hash);
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
-  
-  // Get view from hash route (e.g., #/terms, #/privacy, #/docs)
-  const route = hash.startsWith('#/') ? hash.substring(2) : '';
-  const routeBase = route.split('/')[0];
   
   const isInMeeting = state.view === 'meeting' && state.roomId;
 
