@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Mail, Lock, User, ArrowRight, Eye, EyeOff,
   AlertCircle, Loader2, CheckCircle
@@ -281,17 +281,9 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
             
             {/* Submit */}
             <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                // Find form and submit
-                const form = (e.target as HTMLButtonElement).closest('form');
-                if (form) {
-                  const event = new Event('submit', { bubbles: true, cancelable: true });
-                  form.dispatchEvent(event);
-                }
-              }}
-              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold flex items-center justify-center gap-2 hover:from-blue-500 hover:to-cyan-400 transition-all shadow-lg glow-blue"
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold flex items-center justify-center gap-2 hover:from-blue-500 hover:to-cyan-400 transition-all shadow-lg glow-blue disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
