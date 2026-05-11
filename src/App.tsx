@@ -77,8 +77,8 @@ export default function App() {
   const routePath = fullHash.split('?')[0].split('#')[0];
   const routeBase = routePath.split('/')[0];
 
-  // Check if this is a main view route (not modal)
-  const isMainViewRoute = routeBase === 'auth' || routeBase === 'dashboard' || routeBase === 'pricing' || routeBase === 'onboarding';
+  // Check if this is a modal route (not main view)
+  const isModalRoute = routeBase === 'terms' || routeBase === 'privacy' || routeBase === 'science' || routeBase === 'technology' || routeBase === 'languages';
   
   useEffect(() => {
     const handleHashChange = () => setHash(window.location.hash);
@@ -86,12 +86,13 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
   
-  // Sync state.view with hash when on main view routes - ensures React re-renders correctly
+  // Sync state.view with hash for main view routes (auth, dashboard, pricing, onboarding)
   useEffect(() => {
-    if (isMainViewRoute && state.view !== routeBase && routeBase) {
+    const mainViewRoutes = ['auth', 'dashboard', 'pricing', 'onboarding'];
+    if (mainViewRoutes.includes(routeBase)) {
       state.setView(routeBase as AppView);
     }
-  }, [isMainViewRoute, routeBase, state.setView]);
+  }, [routeBase, state.setView]);
   
   const isInMeeting = state.view === 'meeting' && state.roomId;
 
@@ -114,15 +115,16 @@ export default function App() {
       {routeBase === 'technology' && <TechLearnPage onClose={closePage} />}
       {routeBase === 'languages' && <LanguagesLearnPage onClose={closePage} />}
       
-      {/* Main app routes - check state.view first, then fall back to effectiveView from hash */}
+      {/* Main app routes - use key to force re-render on state.view change */}
       {state.view === 'auth' ? (
-        <AuthPage />
+        <AuthPage key={state.view} />
       ) : state.view === 'dashboard' ? (
-        <Dashboard />
+        <Dashboard key={state.view} />
       ) : state.view === 'onboarding' ? (
-        <OnboardingPage />
+        <OnboardingPage key={state.view} />
       ) : state.view === 'pricing' ? (
         <PricingPage 
+          key={state.view}
           setView={state.setView} 
           subscription={state.subscription}
           pricing={state.pricing}
@@ -131,9 +133,9 @@ export default function App() {
         />
       ) : /* authenticated check */ state.isAuthenticated ? (
         isInMeeting ? (
-          <MeetingRoom />
+          <MeetingRoom key={state.view} />
         ) : (
-          <Lobby />
+          <Lobby key={state.view} />
         )
       ) : (
         <>
