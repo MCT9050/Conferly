@@ -22,7 +22,6 @@ export default function App() {
   const state = useAppState();
   const [route, setRoute] = useState('');
   
-  // Get route on mount and on hash change
   useEffect(() => {
     const getRoute = () => {
       const hash = window?.location?.hash || '';
@@ -36,20 +35,7 @@ export default function App() {
   
   const isInMeeting = state.view === 'meeting' && state.roomId;
   
-  // Lazy load static pages to avoid initial load issues
-  const TermsPage = useMemo(() => {
-    try { return require('./components/TermsPage').default; } catch(e) { return null; }
-  }, []);
-  
-  if (!route && !state.isAuthenticated) {
-    return (
-      <Suspense fallback={<RouteLoader />}>
-        <InstallBanner />
-        <LandingPage />
-      </Suspense>
-    );
-  }
-  
+  // Simple routing - ONLY lazy components
   return (
     <Suspense fallback={<RouteLoader />}>
       {state.isAuthenticated ? (
