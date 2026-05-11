@@ -11,12 +11,14 @@ const Lobby = lazy(() => import('./components/Lobby'));
 const MeetingRoom = lazy(() => import('./components/MeetingRoom'));
 const PricingPage = lazy(() => import('./components/PricingPage'));
 const OnboardingPage = lazy(() => import('./components/OnboardingPage'));
-const TermsPage = lazy(() => import('./components/TermsPage'));
-const PrivacyPage = lazy(() => import('./components/PrivacyPage'));
-const DocsPage = lazy(() => import('./components/DocsPage'));
-const AboutPage = lazy(() => import('./components/AboutPage'));
-const ContactPage = lazy(() => import('./components/ContactPage'));
-const CareersPage = lazy(() => import('./components/CareersPage'));
+import DocsPage from './components/DocsPage';
+import AboutPage from './components/AboutPage';
+import ContactPage from './components/ContactPage';
+import CareersPage from './components/CareersPage';
+import TermsPage from './components/TermsPage';
+import PrivacyPage from './components/PrivacyPage';
+
+// Debug: loaded pages directly to verify routing works
 
 function RouteLoader() {
   return (
