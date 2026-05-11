@@ -80,28 +80,12 @@ export default function App() {
   // Check if this is a modal route (not main view)
   const isModalRoute = routeBase === 'terms' || routeBase === 'privacy' || routeBase === 'science' || routeBase === 'technology' || routeBase === 'languages';
   
-  // Initialize hash synchronously before paint and sync view from hash
-  useLayoutEffect(() => {
-    const currentHash = window.location.hash;
-    setHash(currentHash);
-    
-    const mainViewRoutes = ['auth', 'dashboard', 'pricing', 'onboarding'];
-    const currentFullHash = currentHash.startsWith('#/') ? currentHash.substring(2) : '';
-    const currentRoutePath = currentFullHash.split('?')[0].split('#')[0];
-    const currentRouteBase = currentRoutePath.split('/')[0];
-    
-    console.log('[App] Initial hash:', currentHash, 'routeBase:', currentRouteBase, 'state.view:', state.view);
-    
-    if (mainViewRoutes.includes(currentRouteBase)) {
-      console.log('[App] Setting view to:', currentRouteBase);
-      state.setView(currentRouteBase as AppView);
-    }
-  }, []);
-  
   // Listen for hash changes
   useEffect(() => {
     const handleHashChange = () => setHash(window.location.hash);
     window.addEventListener('hashchange', handleHashChange);
+    // Load initial hash
+    setHash(window.location.hash);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
   
