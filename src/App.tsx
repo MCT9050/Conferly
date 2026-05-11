@@ -126,19 +126,17 @@ export default function App() {
         DEBUG: route={route} currentRoute={currentRoute} hash={window.location.hash}
       </nav>
       
-      {/* PRICING - OUTSIDE SUSPENSE to prevent lazy loading issues */}
-      {currentRoute === 'pricing' && (
+      {/* PRICING - inline, no external component */}
+      {currentRoute === 'pricing' ? (
         <div style={{ background: 'orange', minHeight: '100vh', padding: '40px' }}>
-          <h1 style={{ color: 'white', fontSize: '40px' }}>DIRECT PRICING RENDER</h1>
-          <PricingPage
-            setView={() => {}}
-            subscription={{ tier: 'trial', status: 'active', currentPeriodEnd: new Date().toISOString() }}
-            pricing={{ trial: { monthly: 0, annual: 0 }, pro: { monthly: 1500, annual: 15000 }, business: { monthly: 3500, annual: 35000 }, enterprise: { monthly: 0, annual: 0 } }}
-            allLimits={{ trial: { maxParticipants: 500, maxDurationMinutes: 40, recording: false, transcription: false, aiPulse: false, waitingRoom: true, meetingPassword: true, meetingLock: false, cloudStorage: 0, customBranding: false, sso: false, analytics: false, adminDashboard: false, prioritySupport: false }, pro: { maxParticipants: 500, maxDurationMinutes: -1, recording: true, transcription: true, aiPulse: true, waitingRoom: true, meetingPassword: true, meetingLock: true, cloudStorage: 5, customBranding: false, sso: false, analytics: false, adminDashboard: false, prioritySupport: true }, business: { maxParticipants: 500, maxDurationMinutes: -1, recording: true, transcription: true, aiPulse: true, waitingRoom: true, meetingPassword: true, meetingLock: true, cloudStorage: 20, customBranding: true, sso: true, analytics: true, adminDashboard: true, prioritySupport: true }, enterprise: { maxParticipants: 500, maxDurationMinutes: -1, recording: true, transcription: true, aiPulse: true, waitingRoom: true, meetingPassword: true, meetingLock: true, cloudStorage: -1, customBranding: true, sso: true, analytics: true, adminDashboard: true, prioritySupport: true } }}
-            onUpgrade={() => {}}
-          />
+          <h1 style={{ color: 'white', fontSize: '50px', fontWeight: 'bold' }}>
+            INLINE PRICING TEST v3
+          </h1>
+          <p style={{ color: 'white', fontSize: '24px' }}>
+            If you see this, it works!
+          </p>
         </div>
-      )}
+      ) : null}
 
       <Suspense fallback={<RouteLoader />}>
         {/* Modals */}
