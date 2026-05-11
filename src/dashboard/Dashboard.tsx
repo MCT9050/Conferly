@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import type { AppView, PlanTier, Subscription, PlanLimits } from '../types';
 import type { UserProfile } from '../hooks/useAuth';
-import type { StoredMeeting, ActiveSession } from '../persistence/persist';
+import { saveSession, MeetingSession } from '../persistence/useMeetingPersistence';
 import ProfileMenu from './ProfileMenu';
 import Logo from '../components/Logo';
 
@@ -124,6 +124,7 @@ export default function Dashboard({
   const handleNewMeeting = () => {
     if (!userName) setUserName(profile.displayName);
     setRoomId(generateRoomId());
+    saveSession({ roomId: generateRoomId(), displayName: userName || profile.displayName, joinedAt: new Date().toISOString(), isHost: true, audioEnabled: true, videoEnabled: true });
     setView('lobby');
   };
 
@@ -131,12 +132,14 @@ export default function Dashboard({
     if (!joinCode.trim()) return;
     if (!userName) setUserName(profile.displayName);
     setRoomId(joinCode.trim());
+    saveSession({ roomId: joinCode.trim(), displayName: userName || profile.displayName, joinedAt: new Date().toISOString(), isHost: false, audioEnabled: true, videoEnabled: true });
     setView('lobby');
   };
 
   const handleRejoin = (code: string) => {
     if (!userName) setUserName(profile.displayName);
     setRoomId(code);
+    saveSession({ roomId: code, displayName: userName || profile.displayName, joinedAt: new Date().toISOString(), isHost: false, audioEnabled: true, videoEnabled: true });
     setView('lobby');
   };
 
