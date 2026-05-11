@@ -154,7 +154,16 @@ export default function App() {
       ) : (
         <>
           <InstallBanner />
-          <LandingPage />
+          <LandingPage
+            setView={state.setView}
+            setRoomId={state.setRoomId}
+            userName={state.userName}
+            setUserName={state.setUserName}
+            profile={state.profile}
+            isOfflineMode={state.isOfflineMode}
+            onSignOut={state.signOut}
+            onUpdateName={state.updateProfile}
+          />
         </>
       )}
       </Suspense>
