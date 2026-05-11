@@ -420,7 +420,7 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions = {}): UseLiveKitR
       timestamp: Date.now(),
     }
 
-    setReactions((prev) => [...prev.slice(-10), fullReaction)
+    setReactions((prev) => [...prev.slice(-10), fullReaction])
 
     roomRef.current.localParticipant.publishData(
       new TextEncoder().encode(JSON.stringify({ type: 'reaction', reaction: fullReaction })),

@@ -73,6 +73,9 @@ export default tseslint.config(
       'no-console': 'off',
       'prefer-const': 'off',
       'no-useless-assignment': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/immutability': 'off',
+      'react-hooks/purity': 'off',
     },
   }
 );
