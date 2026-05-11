@@ -91,7 +91,7 @@ export default function App() {
     if (isMainViewRoute && state.view !== routeBase && routeBase) {
       state.setView(routeBase as AppView);
     }
-  }, [isMainViewRoute, routeBase]);
+  }, [isMainViewRoute, routeBase, state.setView]);
   
   const isInMeeting = state.view === 'meeting' && state.roomId;
 
