@@ -1,8 +1,9 @@
 /**
- * LiveKit Token Hook - Fetches room access tokens from backend
+ * LiveKit Token Hook - Fetches room access tokens from Supabase Edge Function
  * @module useLiveKitToken
  */
 import { useState, useCallback } from 'react';
+import { supabase } from '../lib/supabase';
 
 interface TokenResponse {
   token: string;
@@ -18,7 +19,7 @@ interface UseLiveKitTokenReturn {
 }
 
 /**
- * Fetch LiveKit token from backend API
+ * Fetch LiveKit token via Supabase Edge Function
  */
 export function useLiveKitToken(): UseLiveKitTokenReturn {
   const [token, setToken] = useState<string | null>(null);
@@ -36,18 +37,18 @@ export function useLiveKitToken(): UseLiveKitTokenReturn {
     setError(null);
 
     try {
-      const response = await fetch('/api/rooms/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId, identity, name, isHost }),
+      const { data, error: fnError } = await supabase.functions.invoke('get-livekit-token', {
+        body: { roomId, identity, name, isHost },
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to fetch token');
+      if (fnError || !data) {
+        throw new Error(fnError?.message || 'Failed to invoke function');
       }
 
-      const data: TokenResponse = await response.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
       setToken(data.token);
       setUrl(data.url);
     } catch (err) {
