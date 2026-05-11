@@ -26,12 +26,10 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
 
   // Safe auth handlers - all wrap optional props
   const handleSignUp = useCallback(async (...args: Parameters<NonNullable<AuthPageProps['onSignUp']>>) => {
-    console.log('handleSignUp called', { hasHandler: !!onSignUp });
     return onSignUp ? await onSignUp(...args) : { success: false };
   }, [onSignUp]);
 
   const handleSignIn = useCallback(async (...args: Parameters<NonNullable<AuthPageProps['onSignIn']>>) => {
-    console.log('handleSignIn called', { hasHandler: !!onSignIn });
     return onSignIn ? await onSignIn(...args) : { success: false };
   }, [onSignIn]);
 
@@ -122,22 +120,6 @@ export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onR
       };
     }
   }, [mode]);
-
-  // Add window click listener for debugging
-  useEffect(() => {
-    const logClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      console.log('WINDOW CLICK', { 
-        tag: target.tagName, 
-        id: target.id, 
-        className: target.className?.substring(0, 50),
-        form: target.closest('form')?.tagName,
-        button: target.closest('button')?.tagName
-      });
-    };
-    window.addEventListener('click', logClick, true);
-    return () => window.removeEventListener('click', logClick, true);
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -249,9 +231,9 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
         {/* Card */}
         <div className="glass rounded-2xl p-8 flex flex-col gap-6">
           {/* Tab Toggle */}
-          <div className="flex rounded-xl bg-slate-800/60 p-1" onClick={() => console.log('TABS CLICK')}>
+          <div className="flex rounded-xl bg-slate-800/60 p-1">
             <button
-              onClick={(e) => { e.stopPropagation(); console.log('SIGN IN TAB'); switchMode('signin'); }}
+              onClick={(e) => { e.stopPropagation(); switchMode('signin'); }}
               className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'signin'
                 ? 'bg-blue-600 text-white shadow-lg'
                 : 'text-slate-400 hover:text-white'
