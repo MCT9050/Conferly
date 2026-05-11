@@ -90,7 +90,10 @@ export default function App() {
     const currentRoutePath = currentFullHash.split('?')[0].split('#')[0];
     const currentRouteBase = currentRoutePath.split('/')[0];
     
-    if (mainViewRoutes.includes(currentRouteBase) && state.view === 'welcome') {
+    console.log('[App] Initial hash:', currentHash, 'routeBase:', currentRouteBase, 'state.view:', state.view);
+    
+    if (mainViewRoutes.includes(currentRouteBase)) {
+      console.log('[App] Setting view to:', currentRouteBase);
       state.setView(currentRouteBase as AppView);
     }
   }, []);
