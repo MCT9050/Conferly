@@ -150,7 +150,10 @@ export default function App() {
         
         {currentRoute === 'pricing' && console.log('[ROUTER] RENDERING PRICING PAGE') || null}
         {currentRoute === 'pricing' && (
-          <PricingPage setView={(v: any) => window.location.hash = `/${v}`} subscription={state.subscription} pricing={state.pricing} allLimits={state.allLimits} onUpgrade={state.upgradeSubscription} />
+          <div style={{ background: '#ff0000', minHeight: '100vh', padding: '20px' }}>
+            <h1 style={{ color: 'white' }}>PRICING ROUTE ACTIVE (RED=test wrapper)</h1>
+            <PricingPage setView={(v: any) => window.location.hash = `/${v}`} subscription={state.subscription} pricing={state.pricing} allLimits={state.allLimits} onUpgrade={state.upgradeSubscription} />
+          </div>
         )}
         
         {currentRoute === 'dashboard' && state.isAuthenticated && <Dashboard />}
