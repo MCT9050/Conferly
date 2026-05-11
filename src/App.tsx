@@ -1,53 +1,50 @@
 /**
- * NEW CLEAN App.tsx
- * Uses fresh router + inline placeholder pages
+ * App.tsx with REAL pages restored
  */
 import React from 'react';
 import { useHashRoute } from './router/useHashRoute';
+import AuthPage from './components/AuthPage';
+import PricingPage from './components/PricingPage';
 
-// Simple inline placeholder pages - NO external imports until proven working
+// Basic props for PricingPage
+const defaultProps = {
+  subscription: { tier: 'trial', status: 'active', currentPeriodEnd: new Date().toISOString() },
+  pricing: { trial: { monthly: 0, annual: 0 }, pro: { monthly: 15, annual: 150 }, business: { monthly: 35, annual: 350 }, enterprise: { monthly: 0, annual: 0 } },
+  allLimits: { 
+    trial: { maxParticipants: 500, maxDurationMinutes: 40, features: [] },
+    pro: { maxParticipants: 500, maxDurationMinutes: -1, features: ['recording', 'transcription'] },
+    business: { maxParticipants: 500, maxDurationMinutes: -1, features: ['recording', 'transcription', 'analytics'] },
+    enterprise: { maxParticipants: 500, maxDurationMinutes: -1, features: ['recording', 'transcription', 'analytics', 'sso'] },
+  },
+  setView: () => {},
+  onUpgrade: () => {},
+};
+
 function HomePage() {
-  console.log('[RENDER] HomePage');
+  console.log('[RENDER] LandingPage');
   return (
-    <div style={{ background: 'white', minHeight: '100vh', padding: '40px' }}>
-      <h1 style={{ fontSize: '48px', color: '#333' }}>🏠 HOME PAGE WORKS!</h1>
-    </div>
-  );
-}
-
-function AuthPage() {
-  console.log('[RENDER] AuthPage');
-  return (
-    <div style={{ background: '#22c55e', minHeight: '100vh', padding: '40px' }}>
-      <h1 style={{ fontSize: '48px', color: 'white' }}>🔐 AUTH PAGE WORKS!</h1>
-    </div>
-  );
-}
-
-function PricingPage() {
-  console.log('[RENDER] PricingPage');
-  return (
-    <div style={{ background: '#f97316', minHeight: '100vh', padding: '40px' }}>
-      <h1 style={{ fontSize: '48px', color: 'white' }}>💰 PRICING PAGE WORKS!</h1>
+    <div style={{ minHeight: '100vh', padding: '40px', fontFamily: 'system-ui' }}>
+      <h1>Welcome to Conferly</h1>
+      <nav>
+        <a href="#/auth">Login</a> | <a href="#/pricing">Pricing</a>
+      </nav>
     </div>
   );
 }
 
 export default function App() {
   const route = useHashRoute();
-  console.log('[APP] Current route:', route);
+  console.log('[APP] Route:', route);
   
   return (
     <div style={{ minHeight: '100vh' }}>
-      {/* Debug nav */}
       <nav style={{ background: '#000', color: '#0f0', padding: '8px', fontFamily: 'monospace' }}>
         ROUTE: {route}
       </nav>
       
-      {/* Simple route rendering - no Suspense, no lazy, no chain */}
       {route === 'home' && <HomePage />}
       {route === 'auth' && <AuthPage />}
-      {route === 'pricing' && <PricingPage />}
+      {route === 'pricing' && <PricingPage {...defaultProps} />}
     </div>
   );
 }
