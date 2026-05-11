@@ -23,8 +23,8 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError:
   }
 }
 
-const LandingPage = lazy(() => import('./components/LandingPage'));
-const AuthPage = lazy(() => import('./components/AuthPage'));
+import LandingPage from './components/LandingPage';
+import AuthPage from './components/AuthPage';
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const Lobby = lazy(() => import('./components/Lobby'));
 const MeetingRoom = lazy(() => import('./components/MeetingRoom'));
@@ -95,8 +95,8 @@ export default function App() {
   return (
     <ErrorBoundary>
       <Suspense fallback={<RouteLoader />}>
-      {/* Modal pages - check hash route first */}
-      {routeBase === 'docs' && <DocsPage onClose={closePage} />}
+        {/* Modal pages - check hash route first */}
+        {routeBase === 'docs' && <DocsPage onClose={closePage} />}
       {routeBase === 'terms' && <TermsPage onClose={closePage} />}
       {routeBase === 'privacy' && <PrivacyPage onClose={closePage} />}
       {routeBase === 'about' && <AboutPage onClose={closePage} />}
@@ -137,7 +137,7 @@ export default function App() {
           <LandingPage />
         </>
       )}
-    </Suspense>
+      </Suspense>
     </ErrorBoundary>
   );
 }
