@@ -1,7 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
-
-// Global heartbeat logging
-console.log('[PRICING] Module loaded at', Date.now());
+import React, { useState, useEffect } from 'react';
 
 interface PricingPageProps {
   setView: (v: string) => void;
@@ -18,89 +15,66 @@ export default function PricingPage({
   allLimits,
   onUpgrade,
 }: PricingPageProps) {
-  // Track render count
-  const [renderCount, setRenderCount] = useState(0);
-  const [mountTime] = useState(Date.now());
-  const [heartbeat, setHeartbeat] = useState(Date.now());
-  const [error, setError] = useState<Error | null>(null);
-  
-  // Heartbeat - confirm alive every 2 seconds
-  useEffect(() => {
-    console.log('[PRICING] useEffect running at', Date.now());
-    const interval = setInterval(() => {
-      console.log('[PRICING] heartbeat', Date.now());
-      setHeartbeat(Date.now());
-    }, 2000);
-    return () => {
-      console.log('[PRICING] useEffect cleanup at', Date.now());
-      clearInterval(interval);
-    };
-  }, []);
-  
-  // Increment render count on each render
-  useEffect(() => {
-    setRenderCount(c => c + 1);
-    console.log('[PRICING] render count now:', renderCount + 1);
-  });
-  
-  // Safety: wrap render in try-catch
-  try {
-    return (
-      <div
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+      padding: '40px',
+      color: 'white'
+    }}>
+      <h1 style={{ fontSize: '48px', marginBottom: '30px', fontWeight: 'bold' }}>
+        💰 PRICING
+      </h1>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', maxWidth: '1000px' }}>
+        {/* Trial */}
+        <div style={{ background: 'rgba(255,255,255,0.9)', color: '#333', padding: '30px', borderRadius: '16px' }}>
+          <h2 style={{ fontSize: '24px', marginBottom: '10px' }}>Trial</h2>
+          <p style={{ fontSize: '36px', fontWeight: 'bold' }}>FREE</p>
+          <ul style={{ marginTop: '20px', lineHeight: '2' }}>
+            <li>Up to 500 participants</li>
+            <li>40 min max</li>
+          </ul>
+        </div>
+        
+        {/* Pro */}
+        <div style={{ background: 'white', color: '#333', padding: '30px', borderRadius: '16px' }}>
+          <h2 style={{ fontSize: '24px', marginBottom: '10px' }}>Pro</h2>
+          <p style={{ fontSize: '36px', fontWeight: 'bold' }}>$15<span style={{ fontSize: '18px' }}>/mo</span></p>
+          <ul style={{ marginTop: '20px', lineHeight: '2' }}>
+            <li>Up to 500 participants</li>
+            <li>Unlimited duration</li>
+            <li>Recording + Transcription</li>
+          </ul>
+        </div>
+        
+        {/* Business */}
+        <div style={{ background: 'white', color: '#333', padding: '30px', borderRadius: '16px' }}>
+          <h2 style={{ fontSize: '24px', marginBottom: '10px' }}>Business</h2>
+          <p style={{ fontSize: '36px', fontWeight: 'bold' }}>$35<span style={{ fontSize: '18px' }}>/mo</span></p>
+          <ul style={{ marginTop: '20px', lineHeight: '2' }}>
+            <li>Everything in Pro</li>
+            <li>Analytics</li>
+            <li>Priority Support</li>
+          </ul>
+        </div>
+      </div>
+      
+      <button 
+        onClick={() => setView('home')}
         style={{
-          minHeight: '100vh',
-          background: 'cyan',
-          padding: '40px',
-          color: 'black'
+          marginTop: '40px',
+          padding: '15px 40px',
+          fontSize: '18px',
+          background: 'white',
+          color: '#f97316',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer'
         }}
       >
-        {console.log('[PRICING] JSX rendering at', Date.now()) || null}
-        <h1 style={{ fontSize: '48px', marginBottom: '20px' }}>
-          PRICING PAGE WORKS!
-        </h1>
-        <div style={{ fontSize: '24px', marginBottom: '10px' }}>
-          Mounted at: {new Date(mountTime).toLocaleTimeString()}
-        </div>
-        <div style={{ fontSize: '24px', marginBottom: '10px' }}>
-          Render count: {renderCount}
-        </div>
-        <div style={{ fontSize: '24px', marginBottom: '10px' }}>
-          Heartbeat: {new Date(heartbeat).toLocaleTimeString()}
-        </div>
-        <div style={{ fontSize: '18px', color: 'blue', marginBottom: '10px' }}>
-          Has subscription: {subscription ? 'YES' : 'NO'}
-        </div>
-        <div style={{ fontSize: '18px', color: 'blue', marginBottom: '10px' }}>
-          Has pricing: {pricing ? 'YES' : 'NO'}
-        </div>
-        <div style={{ fontSize: '18px', color: 'blue', marginBottom: '10px' }}>
-          Has allLimits: {allLimits ? 'YES' : 'NO'}
-        </div>
-        <button
-          onClick={() => setView('home')}
-          style={{
-            padding: '15px 30px',
-            fontSize: '20px',
-            background: 'blue',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer'
-          }}
-        >
-          Go Home
-        </button>
-      </div>
-    );
-  } catch (e) {
-    // Safety catch for render errors
-    console.error('[PRICING] RENDER ERROR:', e);
-    setError(e as Error);
-    return (
-      <div style={{ padding: '40px', background: 'red', color: 'white', minHeight: '100vh' }}>
-        <h1>PRICING RENDER ERROR</h1>
-        <p>{(e as Error).message}</p>
-      </div>
-    );
-  }
+        ← Back to Home
+      </button>
+    </div>
+  );
 }

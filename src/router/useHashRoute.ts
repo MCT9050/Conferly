@@ -1,6 +1,6 @@
 /**
  * MINIMAL HASH ROUTER
- * No Suspense, no lazy imports, no forceUpdate
+ * Clean - no console noise
  */
 
 import { useState, useEffect } from 'react';
@@ -14,34 +14,27 @@ const ROUTES: Record<string, Route> = {
   'pricing': 'pricing',
 };
 
-// Get route from hash - straightforward
 function getRouteFromHash(): Route {
   const hash = window.location?.hash || '';
-  const path = hash.replace('#/', '').split('?')[0].split('#')[0];
+  const path = hash.replace('#', '').replace('/', '').split('?')[0].split('#')[0];
   return ROUTES[path] || 'home';
 }
 
 export function useHashRoute() {
   const [route, setRoute] = useState<Route>(() => getRouteFromHash());
   
-  // Simple hashchange listener
   useEffect(() => {
     function onHashChange() {
-      console.log('[ROUTER] hashchange event, hash:', window.location.hash);
-      const newRoute = getRouteFromHash();
-      console.log('[ROUTER] parsed to:', newRoute);
-      setRoute(newRoute);
+      setRoute(getRouteFromHash());
     }
     
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
   
-  console.log('[ROUTER] useHashRoute returning:', route);
   return route;
 }
 
 export function navigate(path: string) {
-  console.log('[ROUTER] navigating to:', path);
   window.location.hash = path;
 }
