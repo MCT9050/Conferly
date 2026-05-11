@@ -6,22 +6,32 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://conferly.site/#/auth</loc>
+    <loc>https://conferly.site/#/docs</loc>
     <lastmod>2026-05-09</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://conferly.site/#/pricing</loc>
+    <loc>https://conferly.site/#/about</loc>
     <lastmod>2026-05-09</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://conferly.site/#/terms</loc>
+    <loc>https://conferly.site/#/contact</loc>
+    <lastmod>2026-05-09</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://conferly.site/#/careers</loc>
+    <lastmod>2026-05-09</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://conferly.site/#/privacy</loc>
     <lastmod>2026-05-09</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://conferly.site/#/privacy</loc>
+    <loc>https://conferly.site/#/terms</loc>
     <lastmod>2026-05-09</lastmod>
     <priority>0.5</priority>
   </url>

@@ -1,5 +1,5 @@
 import { useAppState } from './store';
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect, lazy, Suspense, useState } from 'react';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import Logo from './components/Logo';
 import InstallBanner from './components/InstallBanner';
@@ -30,8 +30,16 @@ export default function App() {
   const state = useAppState();
   const { installBanner, dismissBanner } = useInstallPrompt();
   
+  // Track hash changes for modal pages
+  const [hash, setHash] = useState(() => typeof window !== 'undefined' ? window.location.hash : '');
+  
+  useEffect(() => {
+    const handleHashChange = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+  
   // Get view from hash route (e.g., #/terms, #/privacy, #/docs)
-  const hash = typeof window !== 'undefined' ? window.location.hash : '';
   const route = hash.startsWith('#/') ? hash.substring(2) : '';
   const routeBase = route.split('/')[0];
   
