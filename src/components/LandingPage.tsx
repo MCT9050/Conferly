@@ -322,8 +322,8 @@ export default function LandingPage({ setView, setRoomId, userName, setUserName,
             </div>
             {[
               { title: 'Product', links: [{ label: 'How it works', href: '#how' }, { label: 'Use cases', href: '#scenarios' }, { label: 'Pricing', action: () => window.location.hash = '#/pricing' }] },
-              { title: 'Resources', links: [{ label: 'Documentation' }, { label: 'Privacy' }, { label: 'Terms' }] },
-              { title: 'Company', links: [{ label: 'About' }, { label: 'Contact' }, { label: 'Careers' }] },
+              { title: 'Resources', links: [{ label: 'Documentation', action: () => window.location.hash = '#/docs' }, { label: 'Privacy', action: () => window.location.hash = '#/privacy' }, { label: 'Terms', action: () => window.location.hash = '#/terms' }] },
+              { title: 'Company', links: [{ label: 'About', action: () => window.location.hash = '#/about' }, { label: 'Contact', action: () => window.location.hash = '#/contact' }, { label: 'Careers', action: () => window.location.hash = '#/careers' }] },
             ].map(col => (
               <div key={col.title} className="space-y-4">
                 <h4 className="text-[13px] font-semibold text-slate-300">{col.title}</h4>
@@ -344,8 +344,8 @@ export default function LandingPage({ setView, setRoomId, userName, setUserName,
           <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-[12px] text-slate-600">
             <span>© {new Date().getFullYear()} Conferly. All rights reserved.</span>
             <div className="flex items-center gap-6">
-              <span>Privacy</span>
-              <span>Terms</span>
+              <button onClick={() => window.location.hash = '#/privacy'} className="hover:text-white transition-colors">Privacy</button>
+              <button onClick={() => window.location.hash = '#/terms'} className="hover:text-white transition-colors">Terms</button>
             </div>
           </div>
         </div>
