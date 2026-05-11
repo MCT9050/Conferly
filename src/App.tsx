@@ -138,9 +138,13 @@ export default function App() {
   
   console.log('[ROUTER] FINAL ROUTE USED:', route, 'HASH:', window.location.hash, 'currentRoute:', currentRoute);
   
+  // ALWAYS VISIBLE - even if App crashes
   return (
-    <>
-      {debugInfo}
+    <div style={{ minHeight: '100vh', background: route === 'pricing' ? 'magenta' : route === 'auth' ? 'cyan' : 'green' }}>
+      {/* Navigation debug */}
+      <nav style={{ background: 'rgba(0,0,0,0.7)', color: 'white', padding: '5px 10px', fontSize: '10px' }}>
+        DEBUG: route={route} currentRoute={currentRoute} hash={window.location.hash}
+      </nav>
       <Suspense fallback={<RouteLoader />}>
         {/* Modals */}
         {currentRoute === 'docs' && console.log('[ROUTER] RENDERING DOCS') || null}
@@ -176,6 +180,6 @@ export default function App() {
         {currentRoute === 'home' && console.log('[ROUTER] RENDERING LANDING PAGE') || null}
         {currentRoute === 'home' && (<><InstallBanner /><LandingPage /></>)}
       </Suspense>
-    </>
+    </div>
   );
 }
