@@ -25,10 +25,10 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError:
 
 import LandingPage from './components/LandingPage';
 import AuthPage from './components/AuthPage';
+import PricingPage from './components/PricingPage';
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const Lobby = lazy(() => import('./components/Lobby'));
 const MeetingRoom = lazy(() => import('./components/MeetingRoom'));
-const PricingPage = lazy(() => import('./components/PricingPage'));
 const OnboardingPage = lazy(() => import('./components/OnboardingPage'));
 import DocsPage from './components/DocsPage';
 import AboutPage from './components/AboutPage';
