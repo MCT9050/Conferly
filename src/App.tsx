@@ -72,9 +72,10 @@ export default function App() {
   const [hash, setHash] = useState(() => typeof window !== 'undefined' ? window.location.hash : '');
   
   // Get view from hash route FIRST (e.g., #/terms, #/auth, #/pricing)
-  // Prioritize hash routes but also check state.view
   const route = hash.startsWith('#/') ? hash.substring(2) : '';
   const routeBase = route.split('/')[0];
+
+  console.log('[ROUTING] hash:', hash, 'routeBase:', routeBase, 'state.view:', state.view);
 
   // Check if this is a main view route (not modal)
   const isMainViewRoute = routeBase === 'auth' || routeBase === 'dashboard' || routeBase === 'pricing' || routeBase === 'onboarding';
