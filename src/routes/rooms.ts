@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { RoomService } from '../services/roomService';
 import { validateCreateRoom } from '../middleware/validation';
+import { generateRoomToken, isLiveKitConfigured } from '../services/livekitService';
 
 const router = Router();
 const roomService = new RoomService();
@@ -63,6 +64,40 @@ router.post('/:id/join', async (req: Request, res: Response) => {
     res.json(room);
   } catch (_error) {
     res.status(500).json({ error: 'Failed to join room' });
+  }
+});
+
+// POST /api/rooms/token - Generate LiveKit room access token
+router.post('/token', async (req: Request, res: Response) => {
+  try {
+    const { roomId, identity, name, metadata, isHost } = req.body;
+
+    // Validate required fields
+    if (!roomId || !identity) {
+      return res.status(400).json({ error: 'roomId and identity are required' });
+    }
+
+    // Check if LiveKit is configured
+    if (!isLiveKitConfigured()) {
+      return res.status(503).json({ error: 'LiveKit is not configured' });
+    }
+
+    // Generate token
+    const result = generateRoomToken({
+      roomId,
+      identity,
+      name,
+      metadata,
+      isHost: Boolean(isHost),
+    });
+
+    if (!result) {
+      return res.status(500).json({ error: 'Failed to generate token' });
+    }
+
+    res.json({ token: result.token, url: result.url });
+  } catch (_error) {
+    res.status(500).json({ error: 'Failed to generate token' });
   }
 });
 
