@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Mail, Lock, User, ArrowRight, Eye, EyeOff,
   AlertCircle, Loader2, CheckCircle
@@ -57,70 +57,6 @@ export default function AuthPage({
 
   // Terms acceptance state
   const [termsAccepted, setTermsAccepted] = useState(false);
-  
-  // Turnstile state management - enforce validation, no bypass
-  const TURNSTILE_TIMEOUT_MS = 15000; // 15 seconds to load
-  const [turnstileToken, setTurnstileToken] = useState('');
-  const [turnstileLoaded, setTurnstileLoaded] = useState(false);
-  const [turnstileLoading, setTurnstileLoading] = useState(false); // Start false, only true for signup
-  const [turnstileTimedOut, setTurnstileTimedOut] = useState(false);
-  const [turnstileExpired, setTurnstileExpired] = useState(false);
-
-  // Turnstile callback function
-  const onTurnstileCallback = useCallback((token: string) => {
-    setTurnstileToken(token);
-    setTurnstileLoaded(true);
-    setTurnstileLoading(false);
-    setTurnstileTimedOut(false);
-  }, []);
-
-  // Turnstile expiration handler - tokens expire after ~120 seconds
-  const onTurnstileExpiredCallback = useCallback(() => {
-    setTurnstileExpired(true);
-    setTurnstileToken('');
-  }, []);
-
-  // Make callbacks available globally for Turnstile
-  useEffect(() => {
-    (window as any).onTurnstileCallback = onTurnstileCallback;
-    (window as any).onTurnstileExpiredCallback = onTurnstileExpiredCallback;
-    return () => {
-      delete (window as any).onTurnstileCallback;
-      delete (window as any).onTurnstileExpiredCallback;
-    };
-  }, [onTurnstileCallback, onTurnstileExpiredCallback]);
-
-  // Monitor Turnstile loading with strict timeout - NO bypass allowed
-  useEffect(() => {
-    if (mode === 'signup') {
-      setTurnstileLoading(true);
-      setTurnstileTimedOut(false);
-      setTurnstileExpired(false);
-      
-      const checkTurnstile = setInterval(() => {
-        if ((window as any).turnstile) {
-          setTurnstileLoaded(true);
-          setTurnstileLoading(false);
-          clearInterval(checkTurnstile);
-        }
-      }, 100);
-
-      // Strict timeout - block signup if Turnstile fails to load
-      const timeout = setTimeout(() => {
-        if (!turnstileToken) {
-          setTurnstileTimedOut(true);
-          setTurnstileLoading(false);
-          // Do NOT set turnstileLoaded(true) - this is a security feature
-        }
-        clearInterval(checkTurnstile);
-      }, TURNSTILE_TIMEOUT_MS);
-
-      return () => {
-        clearInterval(checkTurnstile);
-        clearTimeout(timeout);
-      };
-    }
-  }, [mode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,17 +104,6 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
   }
   return { valid: errors.length === 0, errors };
 };
-
-  // Password validation
-  const passwordMeetsPolicy = mode === 'signup'
-    ? validatePassword(password).valid
-    : password.length >= 8;
-
-  const isValid = mode === 'signup'
-    ? email.trim().length > 0 && passwordMeetsPolicy && displayName.trim().length > 0 && termsAccepted
-    : mode === 'forgot'
-      ? email.trim().length > 0
-      : email.trim().length > 0 && password.length >= 8;
 
   // Show confirmation screen if needed
   if (confirmation) {

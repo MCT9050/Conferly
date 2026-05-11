@@ -2,7 +2,7 @@
  * App.tsx - Clean routing with Supabase Auth
  */
 import React, { useState, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import AuthPage from './components/AuthPage';
 import PricingPage from './components/PricingPage';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
