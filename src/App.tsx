@@ -17,6 +17,11 @@ import ContactPage from './components/ContactPage';
 import CareersPage from './components/CareersPage';
 import TermsPage from './components/TermsPage';
 import PrivacyPage from './components/PrivacyPage';
+import LearnPage from './components/LearnPage';
+import MathLearnPage from './components/MathLearnPage';
+import ScienceLearnPage from './components/ScienceLearnPage';
+import TechLearnPage from './components/TechLearnPage';
+import LanguagesLearnPage from './components/LanguagesLearnPage';
 
 // Debug: loaded pages directly to verify routing works
 
@@ -59,6 +64,11 @@ export default function App() {
       {routeBase === 'about' && <AboutPage onClose={closePage} />}
       {routeBase === 'contact' && <ContactPage onClose={closePage} />}
       {routeBase === 'careers' && <CareersPage onClose={closePage} />}
+      {routeBase === 'learn' && <LearnPage onClose={closePage} />}
+      {routeBase === 'mathematics' && <MathLearnPage onClose={closePage} />}
+      {routeBase === 'science' && <ScienceLearnPage onClose={closePage} />}
+      {routeBase === 'technology' && <TechLearnPage onClose={closePage} />}
+      {routeBase === 'languages' && <LanguagesLearnPage onClose={closePage} />}
       
       {/* Main app routes */}
       {state.isAuthenticated ? (

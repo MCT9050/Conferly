@@ -61,6 +61,7 @@ export default function LandingPage({ setView, setRoomId, userName, setUserName,
           <div className="hidden lg:flex items-center gap-8 text-[13px] text-slate-400 font-medium">
             <a href="#how" className="hover:text-white transition-colors duration-200">How it works</a>
             <a href="#scenarios" className="hover:text-white transition-colors duration-200">Use cases</a>
+            <button onClick={() => window.location.hash = '#/learn'} className="hover:text-white transition-colors duration-200">Learn</button>
             <button onClick={() => window.location.hash = '#/pricing'} className="hover:text-white transition-colors duration-200">Pricing</button>
           </div>
           <div className="flex items-center gap-3">
@@ -321,7 +322,7 @@ export default function LandingPage({ setView, setRoomId, userName, setUserName,
               </div>
             </div>
             {[
-              { title: 'Product', links: [{ label: 'How it works', href: '#how' }, { label: 'Use cases', href: '#scenarios' }, { label: 'Pricing', action: () => window.location.hash = '#/pricing' }] },
+              { title: 'Product', links: [{ label: 'How it works', href: '#how' }, { label: 'Use cases', href: '#scenarios' }, { label: 'Pricing', action: () => window.location.hash = '#/pricing' }, { label: 'Learn', action: () => window.location.hash = '#/learn' }] },
               { title: 'Resources', links: [{ label: 'Documentation', action: () => window.location.hash = '#/docs' }, { label: 'Privacy', action: () => window.location.hash = '#/privacy' }, { label: 'Terms', action: () => window.location.hash = '#/terms' }] },
               { title: 'Company', links: [{ label: 'About', action: () => window.location.hash = '#/about' }, { label: 'Contact', action: () => window.location.hash = '#/contact' }, { label: 'Careers', action: () => window.location.hash = '#/careers' }] },
             ].map(col => (
