@@ -93,6 +93,13 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
   
+  // Sync state.view with hash when on main view routes - ensures React re-renders correctly
+  useEffect(() => {
+    if (isMainViewRoute && state.view !== routeBase) {
+      state.setView(routeBase as AppView);
+    }
+  }, [isMainViewRoute, routeBase]);
+  
   const isInMeeting = state.view === 'meeting' && state.roomId;
 
   // Helper to close modal pages
