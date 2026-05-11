@@ -69,7 +69,14 @@ export default function App() {
   const { installBanner, dismissBanner } = useInstallPrompt();
   
   // Track hash changes for modal pages
-  const [hash, setHash] = useState(() => typeof window !== 'undefined' ? window.location.hash : '');
+  // On initial load, capture hash before React renders
+  const [hash, setHash] = useState(() => {
+    // This runs synchronously before first paint
+    if (typeof window !== 'undefined') {
+      return window.location.hash;
+    }
+    return '';
+  });
   
   // Get view from hash route FIRST (e.g., #/terms, #/auth, #/pricing)
   // Only take the path portion (before ? or #)
@@ -80,23 +87,24 @@ export default function App() {
   // Check if this is a modal route (not main view)
   const isModalRoute = routeBase === 'terms' || routeBase === 'privacy' || routeBase === 'science' || routeBase === 'technology' || routeBase === 'languages';
   
-  // Listen for hash changes (for modal pages and initial main view sync)
+  // For main view routes, sync on mount ONLY
+  useEffect(() => {
+    const mainViewRoutes = ['auth', 'dashboard', 'pricing', 'onboarding'];
+    const currentHash = window.location.hash;
+    const currentFullHash = currentHash.startsWith('#/') ? currentHash.substring(2) : '';
+    const currentRoutePath = currentFullHash.split('?')[0].split('#')[0];
+    const currentRouteBase = currentRoutePath.split('/')[0];
+    
+    if (mainViewRoutes.includes(currentRouteBase) && state.view === 'welcome') {
+      state.setView(currentRouteBase as AppView);
+    }
+  }, []);
+  
+  // Listen for hash changes (for modal pages)
   useEffect(() => {
     const handleHashChange = () => setHash(window.location.hash);
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
-  
-  // For main view routes, sync on mount ONLY (not on every hash change to avoid double-setView)
-  useEffect(() => {
-    const mainViewRoutes = ['auth', 'dashboard', 'pricing', 'onboarding'];
-    const fullHash = hash.startsWith('#/') ? hash.substring(2) : '';
-    const routePath = fullHash.split('?')[0].split('#')[0];
-    const routeBase = routePath.split('/')[0];
-    
-    if (mainViewRoutes.includes(routeBase) && state.view === 'welcome') {
-      state.setView(routeBase as AppView);
-    }
   }, []);
   
   const isInMeeting = state.view === 'meeting' && state.roomId;
