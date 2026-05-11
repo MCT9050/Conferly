@@ -89,10 +89,14 @@ export default function App() {
   // Sync state.view with hash for main view routes (auth, dashboard, pricing, onboarding)
   useEffect(() => {
     const mainViewRoutes = ['auth', 'dashboard', 'pricing', 'onboarding'];
+    const fullHash = hash.startsWith('#/') ? hash.substring(2) : '';
+    const routePath = fullHash.split('?')[0].split('#')[0];
+    const routeBase = routePath.split('/')[0];
+    
     if (mainViewRoutes.includes(routeBase)) {
       state.setView(routeBase as AppView);
     }
-  }, [routeBase, state.setView]);
+  }, [hash, state.setView]);
   
   const isInMeeting = state.view === 'meeting' && state.roomId;
 
