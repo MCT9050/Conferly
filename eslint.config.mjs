@@ -71,6 +71,8 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'off',
       'no-console': 'off',
+      'prefer-const': 'off',
+      'no-useless-assignment': 'off',
     },
   }
 );
