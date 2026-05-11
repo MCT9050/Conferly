@@ -20,16 +20,16 @@ export default function ContactPage({ onClose }: { onClose?: () => void }) {
         {!submitted ? (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm text-slate-400 mb-2">Name</label>
-              <input required type="text" className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white focus:outline-none focus:border-amber-500" placeholder="Your name" />
+              <label htmlFor="name" className="block text-sm text-slate-400 mb-2">Name</label>
+              <input id="name" name="name" required type="text" className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white focus:outline-none focus:border-amber-500" placeholder="Your name" />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-2">Email</label>
-              <input required type="email" className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white focus:outline-none focus:border-amber-500" placeholder="you@example.com" />
+              <label htmlFor="email" className="block text-sm text-slate-400 mb-2">Email</label>
+              <input id="email" name="email" required type="email" className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white focus:outline-none focus:border-amber-500" placeholder="you@example.com" />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-2">Message</label>
-              <textarea required rows={5} className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white focus:outline-none focus:border-amber-500" placeholder="How can we help?" />
+              <label htmlFor="message" className="block text-sm text-slate-400 mb-2">Message</label>
+              <textarea id="message" name="message" required rows={5} className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white focus:outline-none focus:border-amber-500" placeholder="How can we help?" />
             </div>
             <button type="submit" className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold">
               Send Message
