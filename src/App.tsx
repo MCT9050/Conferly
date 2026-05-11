@@ -1,5 +1,5 @@
 import { useAppState } from './store';
-import { useEffect, useLayoutEffect, lazy, Suspense, useState, Component } from 'react';
+import { useEffect, lazy, Suspense, useState, Component } from 'react';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import Logo from './components/Logo';
 import InstallBanner from './components/InstallBanner';
@@ -64,89 +64,114 @@ function ErrorFallback({ error }: { error: Error }) {
   );
 }
 
+// === PURE HASH ROUTING SYSTEM ===
+
+// Step 1: Central route resolver - URL hash is the ONLY source of truth
+function getRouteFromHash(): string {
+  const hash = window.location.hash;
+  // Remove #/ prefix and any query params
+  const route = hash.replace('#/', '').split('?')[0].split('#')[0];
+  return route || 'home';
+}
+
+// Step 2: Define valid routes - SINGLE SOURCE OF TRUTH
+const VALID_ROUTES = [
+  'home', 'auth', 'pricing', 'dashboard', 'onboarding',
+  'docs', 'terms', 'privacy', 'about', 'contact', 'careers',
+  'learn', 'mathematics', 'science', 'technology', 'languages'
+];
+
 export default function App() {
   const state = useAppState();
   const { installBanner, dismissBanner } = useInstallPrompt();
   
-  // Track hash changes for modal pages
-  const [hash, setHash] = useState('');
+  // === STEP 3: SINGLE ROUTE STATE (derived from hash only) ===
+  const [route, setRoute] = useState(getRouteFromHash);
   
-  // Get view from hash route FIRST (e.g., #/terms, #/auth, #/pricing)
-  // Only take the path portion (before ? or #)
-  const fullHash = hash.startsWith('#/') ? hash.substring(2) : '';
-  const routePath = fullHash.split('?')[0].split('#')[0];
-  const routeBase = routePath.split('/')[0];
-
-  // Check if this is a modal route (not main view)
-  const isModalRoute = routeBase === 'terms' || routeBase === 'privacy' || routeBase === 'science' || routeBase === 'technology' || routeBase === 'languages';
+  // === DEBUG LOGGING ===
+  console.log('[ROUTER] Hash:', window.location.hash, 'Route:', route);
   
-  // Listen for hash changes
+  // === STEP 4: HASH CHANGE LISTENER ===
   useEffect(() => {
-    const handleHashChange = () => setHash(window.location.hash);
+    // Handler reads current hash directly - no stale closure
+    const handleHashChange = () => {
+      const newRoute = getRouteFromHash();
+      console.log('[ROUTER] Hash changed to:', newRoute);
+      setRoute(newRoute);
+    };
+    
+    // Listen for hash changes
     window.addEventListener('hashchange', handleHashChange);
-    // Load initial hash
-    setHash(window.location.hash);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
+    
+    // Initial load - already captured in useState initializer
+    // Handle case where hash changed between init and effect
+    
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []); // Empty deps - listener is stable
   
-  const isInMeeting = state.view === 'meeting' && state.roomId;
+  // Step 7: Unknown route fallback
+  const currentRoute = VALID_ROUTES.includes(route) ? route : 'home';
+  
+  // Redirect unknown routes
+  if (currentRoute === 'home' && route !== 'home' && route !== '') {
+    window.location.hash = '/home';
+  }
 
   // Helper to close modal pages
-  const closePage = () => { window.location.hash = ''; };
+  const closePage = () => { window.location.hash = '/home'; };
 
+  // === CLEAN DETERMINISTIC RENDERING ===
   return (
     <>
       <Suspense fallback={<RouteLoader />}>
-        {/* Modal pages - check hash route first */}
-        {routeBase === 'docs' && <DocsPage onClose={closePage} />}
-      {routeBase === 'terms' && <TermsPage onClose={closePage} />}
-      {routeBase === 'privacy' && <PrivacyPage onClose={closePage} />}
-      {routeBase === 'about' && <AboutPage onClose={closePage} />}
-      {routeBase === 'contact' && <ContactPage onClose={closePage} />}
-      {routeBase === 'careers' && <CareersPage onClose={closePage} />}
-      {routeBase === 'learn' && <LearnPage onClose={closePage} />}
-      {routeBase === 'mathematics' && <MathLearnPage onClose={closePage} />}
-      {routeBase === 'science' && <ScienceLearnPage onClose={closePage} />}
-      {routeBase === 'technology' && <TechLearnPage onClose={closePage} />}
-      {routeBase === 'languages' && <LanguagesLearnPage onClose={closePage} />}
-      
-      {/* Main app routes - use key to force re-render on state.view change */}
-      {state.view === 'auth' ? (
-        <AuthPage key={state.view} />
-      ) : state.view === 'dashboard' ? (
-        <Dashboard key={state.view} />
-      ) : state.view === 'onboarding' ? (
-        <OnboardingPage key={state.view} />
-      ) : state.view === 'pricing' ? (
-        <PricingPage 
-          key={state.view}
-          setView={state.setView} 
-          subscription={state.subscription}
-          pricing={state.pricing}
-          allLimits={state.allLimits}
-          onUpgrade={state.upgradeSubscription}
-        />
-      ) : /* authenticated check */ state.isAuthenticated ? (
-        isInMeeting ? (
-          <MeetingRoom key={state.view} />
-        ) : (
-          <Lobby key={state.view} />
-        )
-      ) : (
-        <>
-          <InstallBanner />
-          <LandingPage
-            setView={state.setView}
-            setRoomId={state.setRoomId}
-            userName={state.userName}
-            setUserName={state.setUserName}
-            profile={state.profile}
-            isOfflineMode={state.isOfflineMode}
-            onSignOut={state.signOut}
-            onUpdateName={state.updateProfile}
+        {/* Modal/secondary routes - rendered as overlays */}
+        {currentRoute === 'docs' && <DocsPage onClose={closePage} />}
+        {currentRoute === 'terms' && <TermsPage onClose={closePage} />}
+        {currentRoute === 'privacy' && <PrivacyPage onClose={closePage} />}
+        {currentRoute === 'about' && <AboutPage onClose={closePage} />}
+        {currentRoute === 'contact' && <ContactPage onClose={closePage} />}
+        {currentRoute === 'careers' && <CareersPage onClose={closePage} />}
+        {currentRoute === 'learn' && <LearnPage onClose={closePage} />}
+        {currentRoute === 'mathematics' && <MathLearnPage onClose={closePage} />}
+        {currentRoute === 'science' && <ScienceLearnPage onClose={closePage} />}
+        {currentRoute === 'technology' && <TechLearnPage onClose={closePage} />}
+        {currentRoute === 'languages' && <LanguagesLearnPage onClose={closePage} />}
+        
+        {/* Main routes - pure hash routing */}
+        {currentRoute === 'auth' && (
+          <AuthPage />
+        )}
+        {currentRoute === 'pricing' && (
+          <PricingPage 
+            setView={(v: any) => window.location.hash = `/${v}`}
+            subscription={state.subscription}
+            pricing={state.pricing}
+            allLimits={state.allLimits}
+            onUpgrade={state.upgradeSubscription}
           />
-        </>
-      )}
+        )}
+        {currentRoute === 'dashboard' && state.isAuthenticated && (
+          <Dashboard />
+        )}
+        {currentRoute === 'onboarding' && state.isAuthenticated && (
+          <OnboardingPage />
+        )}
+        {currentRoute === 'dashboard' && !state.isAuthenticated && (
+          window.location.hash = '/auth'
+        )}
+        {currentRoute === 'onboarding' && !state.isAuthenticated && (
+          window.location.hash = '/auth'
+        )}
+        
+        {/* Default: Landing page */}
+        {currentRoute === 'home' && (
+          <>
+            <InstallBanner />
+            <LandingPage />
+          </>
+        )}
       </Suspense>
     </>
   );
