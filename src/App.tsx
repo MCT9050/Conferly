@@ -94,7 +94,7 @@ export default function App() {
   const closePage = () => { window.location.hash = ''; };
 
   return (
-    <ErrorBoundary>
+    <>
       <Suspense fallback={<RouteLoader />}>
         {/* Modal pages - check hash route first */}
         {routeBase === 'docs' && <DocsPage onClose={closePage} />}
@@ -117,7 +117,13 @@ export default function App() {
       ) : effectiveView === 'onboarding' ? (
         <OnboardingPage />
       ) : effectiveView === 'pricing' ? (
-        <PricingPage />
+        <PricingPage 
+          setView={state.setView} 
+          subscription={state.subscription}
+          pricing={state.pricing}
+          allLimits={state.allLimits}
+          onUpgrade={state.upgradeSubscription}
+        />
       ) : state.isAuthenticated ? (
         isInMeeting ? (
           <MeetingRoom />
@@ -131,7 +137,13 @@ export default function App() {
       ) : state.view === 'onboarding' ? (
         <OnboardingPage />
       ) : state.view === 'pricing' ? (
-        <PricingPage />
+        <PricingPage 
+          setView={state.setView} 
+          subscription={state.subscription}
+          pricing={state.pricing}
+          allLimits={state.allLimits}
+          onUpgrade={state.upgradeSubscription}
+        />
       ) : (
         <>
           <InstallBanner />
@@ -139,6 +151,6 @@ export default function App() {
         </>
       )}
       </Suspense>
-    </ErrorBoundary>
+    </>
   );
 }
