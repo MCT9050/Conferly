@@ -1,14 +1,10 @@
 import { Suspense, lazy, useMemo, useState, useEffect } from 'react';
-import { useAppState } from './store';
+//import { useAppState } from './store';
 import Logo from './components/Logo';
 import InstallBanner from './components/InstallBanner';
 
 const LandingPage = lazy(() => import('./components/LandingPage').then(m => ({ default: m.LandingPage })));
 const AuthPage = lazy(() => import('./components/AuthPage').then(m => ({ default: m.AuthPage })));
-const Dashboard = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
-const Lobby = lazy(() => import('./components/Lobby').then(m => ({ default: m.Lobby })));
-const MeetingRoom = lazy(() => import('./components/MeetingRoom').then(m => ({ default: m.MeetingRoom })));
-const PricingPage = lazy(() => import('./components/PricingPage').then(m => ({ default: m.PricingPage })));
 
 function RouteLoader() {
   return (
@@ -19,7 +15,7 @@ function RouteLoader() {
 }
 
 export default function App() {
-  const state = useAppState();
+  // NO store - just pure UI
   const [route, setRoute] = useState('');
   
   useEffect(() => {
@@ -33,18 +29,9 @@ export default function App() {
     return () => window.removeEventListener('hashchange', getRoute);
   }, []);
   
-  const isInMeeting = state.view === 'meeting' && state.roomId;
-  
-  // Simple routing - ONLY lazy components
   return (
     <Suspense fallback={<RouteLoader />}>
-      {state.isAuthenticated ? (
-        isInMeeting ? <MeetingRoom /> : <Lobby />
-      ) : route === 'auth' ? (
-        <AuthPage />
-      ) : route === 'pricing' ? (
-        <PricingPage />
-      ) : (
+      {route === 'auth' ? <AuthPage /> : (
         <>
           <InstallBanner />
           <LandingPage />
