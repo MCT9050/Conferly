@@ -128,12 +128,25 @@ export default function App() {
       
       {/* PRICING - inline, no external component */}
       {currentRoute === 'pricing' ? (
-        <div style={{ background: 'orange', minHeight: '100vh', padding: '40px' }}>
-          <h1 style={{ color: 'white', fontSize: '50px', fontWeight: 'bold' }}>
-            INLINE PRICING TEST v3
+        <div style={{ 
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'linear-gradient(135deg, #ff6b6b, #4ecdc4)',
+          zIndex: 9999,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '40px'
+        }}>
+          <h1 style={{ color: 'white', fontSize: '60px', fontWeight: 'bold', textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>
+            💰 INLINE PRICING TEST
           </h1>
-          <p style={{ color: 'white', fontSize: '24px' }}>
-            If you see this, it works!
+          <p style={{ color: 'white', fontSize: '30px', marginTop: '20px' }}>
+            🎉 If you see gradient, route WORKS!
           </p>
         </div>
       ) : null}
