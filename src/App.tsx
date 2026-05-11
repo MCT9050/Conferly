@@ -68,13 +68,14 @@ function ErrorFallback({ error }: { error: Error }) {
 
 // Step 1: Central route resolver - URL hash is the ONLY source of truth
 function getRouteFromHash(): string {
-  const hash = window.location.hash;
-  // Remove #/ prefix and any query params
+  if (typeof window === 'undefined') return 'home';
+  const hash = window.location?.hash;
+  if (!hash || hash === '#') return 'home';
   const route = hash.replace('#/', '').split('?')[0].split('#')[0];
   return route || 'home';
 }
 
-// Step 2: Define valid routes - SINGLE SOURCE OF TRUTH
+// Step 2: Define valid routes
 const VALID_ROUTES = [
   'home', 'auth', 'pricing', 'dashboard', 'onboarding',
   'docs', 'terms', 'privacy', 'about', 'contact', 'careers',
@@ -85,48 +86,36 @@ export default function App() {
   const state = useAppState();
   const { installBanner, dismissBanner } = useInstallPrompt();
   
-  // === STEP 3: SINGLE ROUTE STATE (derived from hash only) ===
-  const [route, setRoute] = useState(getRouteFromHash);
+  // Force update counter to trigger re-renders
+  const [, forceUpdate] = useState(0);
   
-  // === DEBUG LOGGING ===
-  console.log('[ROUTER] Hash:', window.location.hash, 'Route:', route);
+  // Read hash during render - this is the key insight!
+  const route = getRouteFromHash();
   
-  // === STEP 4: HASH CHANGE LISTENER ===
+  // === DEBUG ===
+  console.log('[ROUTER] Route:', route, 'Hash:', window.location.hash);
+  
+  // Listen for hash changes - triggers re-render
   useEffect(() => {
-    // Handler reads current hash directly - no stale closure
-    const handleHashChange = () => {
-      const newRoute = getRouteFromHash();
-      console.log('[ROUTER] Hash changed to:', newRoute);
-      setRoute(newRoute);
-    };
-    
-    // Listen for hash changes
+    const handleHashChange = () => forceUpdate(n => n + 1);
     window.addEventListener('hashchange', handleHashChange);
-    
-    // Initial load - already captured in useState initializer
-    // Handle case where hash changed between init and effect
-    
-    return () => {
-      window.removeEventListener('hashchange', handleHashChange);
-    };
-  }, []); // Empty deps - listener is stable
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
   
-  // Step 7: Unknown route fallback
+  // === Valid route or fallback ===
   const currentRoute = VALID_ROUTES.includes(route) ? route : 'home';
-  
-  // Redirect unknown routes
-  if (currentRoute === 'home' && route !== 'home' && route !== '') {
+  if (currentRoute === 'home' && route && route !== '' && route !== 'home') {
     window.location.hash = '/home';
   }
 
-  // Helper to close modal pages
+  // Helper
   const closePage = () => { window.location.hash = '/home'; };
 
-  // === CLEAN DETERMINISTIC RENDERING ===
+  // === PURE DETERMINISTIC RENDER ===
   return (
     <>
       <Suspense fallback={<RouteLoader />}>
-        {/* Modal/secondary routes - rendered as overlays */}
+        {/* Modals */}
         {currentRoute === 'docs' && <DocsPage onClose={closePage} />}
         {currentRoute === 'terms' && <TermsPage onClose={closePage} />}
         {currentRoute === 'privacy' && <PrivacyPage onClose={closePage} />}
@@ -139,39 +128,16 @@ export default function App() {
         {currentRoute === 'technology' && <TechLearnPage onClose={closePage} />}
         {currentRoute === 'languages' && <LanguagesLearnPage onClose={closePage} />}
         
-        {/* Main routes - pure hash routing */}
-        {currentRoute === 'auth' && (
-          <AuthPage />
-        )}
+        {/* Main routes */}
+        {currentRoute === 'auth' && <AuthPage />}
         {currentRoute === 'pricing' && (
-          <PricingPage 
-            setView={(v: any) => window.location.hash = `/${v}`}
-            subscription={state.subscription}
-            pricing={state.pricing}
-            allLimits={state.allLimits}
-            onUpgrade={state.upgradeSubscription}
-          />
+          <PricingPage setView={(v: any) => window.location.hash = `/${v}`} subscription={state.subscription} pricing={state.pricing} allLimits={state.allLimits} onUpgrade={state.upgradeSubscription} />
         )}
-        {currentRoute === 'dashboard' && state.isAuthenticated && (
-          <Dashboard />
-        )}
-        {currentRoute === 'onboarding' && state.isAuthenticated && (
-          <OnboardingPage />
-        )}
-        {currentRoute === 'dashboard' && !state.isAuthenticated && (
-          window.location.hash = '/auth'
-        )}
-        {currentRoute === 'onboarding' && !state.isAuthenticated && (
-          window.location.hash = '/auth'
-        )}
-        
-        {/* Default: Landing page */}
-        {currentRoute === 'home' && (
-          <>
-            <InstallBanner />
-            <LandingPage />
-          </>
-        )}
+        {currentRoute === 'dashboard' && state.isAuthenticated && <Dashboard />}
+        {currentRoute === 'onboarding' && state.isAuthenticated && <OnboardingPage />}
+        {currentRoute === 'dashboard' && !state.isAuthenticated && (window.location.hash = '/auth', null)}
+        {currentRoute === 'onboarding' && !state.isAuthenticated && (window.location.hash = '/auth', null)}
+        {currentRoute === 'home' && (<><InstallBanner /><LandingPage /></>)}
       </Suspense>
     </>
   );
