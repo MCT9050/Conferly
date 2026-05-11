@@ -143,14 +143,14 @@ export default function App() {
         
         {currentRoute === 'pricing' && console.log('[ROUTER] RENDERING PRICING PAGE') || null}
         {currentRoute === 'pricing' && (
-          <div style={{ background: '#ff0000', minHeight: '100vh', padding: '20px' }}>
-            <h1 style={{ color: 'white' }}>PRICING ROUTE ACTIVE (RED=test wrapper)</h1>
+          <div style={{ background: 'magenta', minHeight: '100vh', padding: '20px' }}>
+            <h1 style={{ color: 'white', fontSize: '30px' }}>PRICING PAGE (MAGENTA WRAPPER)</h1>
             <PricingPage 
-              setView={(v: any) => window.location.hash = `/${v}`} 
-              subscription={state.subscription} 
-              pricing={state.planPricing} 
-              allLimits={state.allPlanLimits} 
-              onUpgrade={state.upgradePlan} 
+              setView={() => {}} 
+              subscription={{ tier: 'trial', status: 'active', currentPeriodEnd: new Date().toISOString() }} 
+              pricing={{ trial: { monthly: 0, annual: 0 }, pro: { monthly: 1500, annual: 15000 }, business: { monthly: 3500, annual: 35000 }, enterprise: { monthly: 0, annual: 0 } }} 
+              allLimits={{ trial: { maxParticipants: 500, maxDurationMinutes: 40, recording: false, transcription: false, aiPulse: false, waitingRoom: true, meetingPassword: true, meetingLock: false, cloudStorage: 0, customBranding: false, sso: false, analytics: false, adminDashboard: false, prioritySupport: false }, pro: { maxParticipants: 500, maxDurationMinutes: -1, recording: true, transcription: true, aiPulse: true, waitingRoom: true, meetingPassword: true, meetingLock: true, cloudStorage: 5, customBranding: false, sso: false, analytics: false, adminDashboard: false, prioritySupport: true }, business: { maxParticipants: 500, maxDurationMinutes: -1, recording: true, transcription: true, aiPulse: true, waitingRoom: true, meetingPassword: true, meetingLock: true, cloudStorage: 20, customBranding: true, sso: true, analytics: true, adminDashboard: true, prioritySupport: true }, enterprise: { maxParticipants: 500, maxDurationMinutes: -1, recording: true, transcription: true, aiPulse: true, waitingRoom: true, meetingPassword: true, meetingLock: true, cloudStorage: -1, customBranding: true, sso: true, analytics: true, adminDashboard: true, prioritySupport: true } }}
+              onUpgrade={() => {}} 
             />
           </div>
         )}
