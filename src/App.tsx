@@ -41,8 +41,14 @@ export default function App() {
   const [hash, setHash] = useState(() => typeof window !== 'undefined' ? window.location.hash : '');
   
   // Get view from hash route FIRST (e.g., #/terms, #/auth, #/pricing)
+  // Prioritize hash routes but also check state.view
   const route = hash.startsWith('#/') ? hash.substring(2) : '';
   const routeBase = route.split('/')[0];
+
+  // Check if this is a main view route (not modal)
+  const isMainViewRoute = routeBase === 'auth' || routeBase === 'dashboard' || routeBase === 'pricing' || routeBase === 'onboarding';
+  // Get effective view: hash route takes priority for main views, otherwise use state.view
+  const effectiveView = isMainViewRoute ? routeBase : state.view;
   
   useEffect(() => {
     const handleHashChange = () => setHash(window.location.hash);
@@ -70,14 +76,14 @@ export default function App() {
       {routeBase === 'technology' && <TechLearnPage onClose={closePage} />}
       {routeBase === 'languages' && <LanguagesLearnPage onClose={closePage} />}
       
-      {/* Main app routes - check hash for main views too */}
-      {routeBase === 'auth' ? (
+      {/* Main app routes - check effective view (hash or state) */}
+      {effectiveView === 'auth' ? (
         <AuthPage />
-      ) : routeBase === 'dashboard' ? (
+      ) : effectiveView === 'dashboard' ? (
         <Dashboard />
-      ) : routeBase === 'onboarding' ? (
+      ) : effectiveView === 'onboarding' ? (
         <OnboardingPage />
-      ) : routeBase === 'pricing' ? (
+      ) : effectiveView === 'pricing' ? (
         <PricingPage />
       ) : state.isAuthenticated ? (
         isInMeeting ? (
