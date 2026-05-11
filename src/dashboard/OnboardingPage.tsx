@@ -3,7 +3,7 @@ import {
   User, Building2, ArrowRight, Users, Briefcase,
   ChevronRight, Loader2
 } from 'lucide-react';
-import Logo from './Logo';
+import Logo from '../components/Logo';
 import type { OnboardingData } from '../hooks/useAuth';
 
 interface OnboardingPageProps {

@@ -1,5 +1,5 @@
 import { ArrowLeft, Printer } from 'lucide-react';
-import Logo from './Logo';
+import Logo from '../components/Logo';
 
 interface PrivacyPageProps {
   onClose?: () => void;

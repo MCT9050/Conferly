@@ -7,9 +7,9 @@ import {
 } from 'lucide-react';
 import type { AppView, PlanTier, Subscription, PlanLimits } from '../types';
 import type { UserProfile } from '../hooks/useAuth';
-import type { StoredMeeting, ActiveSession } from '../lib/persist';
+import type { StoredMeeting, ActiveSession } from '../persistence/persist';
 import ProfileMenu from './ProfileMenu';
-import Logo from './Logo';
+import Logo from '../components/Logo';
 
 // FeatureGate component for disabled features
 function FeatureGate({ allowed, label, planRequired, onUpgrade }: {

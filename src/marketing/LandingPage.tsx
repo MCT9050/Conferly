@@ -7,7 +7,7 @@ import {
 import type { AppView } from '../types';
 import type { UserProfile } from '../hooks/useAuth';
 import ProfileMenu from './ProfileMenu';
-import Logo from './Logo';
+import Logo from '../components/Logo';
 
 interface LandingPageProps {
   

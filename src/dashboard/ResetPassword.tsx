@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import Logo from './Logo';
+import Logo from '../components/Logo';
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();

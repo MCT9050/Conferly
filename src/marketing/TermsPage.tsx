@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowLeft, Printer, ExternalLink } from 'lucide-react';
-import Logo from './Logo';
+import Logo from '../components/Logo';
 
 interface TermsPageProps {
   onClose?: () => void;
