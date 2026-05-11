@@ -145,7 +145,13 @@ export default function App() {
         {currentRoute === 'pricing' && (
           <div style={{ background: '#ff0000', minHeight: '100vh', padding: '20px' }}>
             <h1 style={{ color: 'white' }}>PRICING ROUTE ACTIVE (RED=test wrapper)</h1>
-            <PricingPage setView={(v: any) => window.location.hash = `/${v}`} subscription={state.subscription} pricing={state.pricing} allLimits={state.allLimits} onUpgrade={state.upgradeSubscription} />
+            <PricingPage 
+              setView={(v: any) => window.location.hash = `/${v}`} 
+              subscription={state.subscription} 
+              pricing={state.planPricing} 
+              allLimits={state.allPlanLimits} 
+              onUpgrade={state.upgradePlan} 
+            />
           </div>
         )}
         
