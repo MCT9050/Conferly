@@ -87,7 +87,7 @@ export const tier1 = {
       const flags = dismissed ? JSON.parse(dismissed) : {};
       flags[bannerId] = true;
       localStorage.setItem(LS_KEYS.BANNER_DISMISSED, JSON.stringify(flags));
-    } catch {}
+    } catch { /* Ignore parse errors */ }
   },
   
   // Onboarding state
