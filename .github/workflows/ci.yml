@@ -11,66 +11,42 @@ env:
 
 jobs:
   lint:
-    name: Code Linting & Formatting
+    name: Code Linting
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run ESLint
-        run: npx eslint src --ext .ts,.tsx --max-warnings=999
+      - run: npm ci
+      - run: npx eslint src --ext .ts,.tsx --max-warnings=999
         env:
           CI: true
-
-      # Skip Prettier - causes CI hangs without npm install
-      # - name: Check Prettier formatting
 
   typecheck:
     name: TypeScript Type Check
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build project
-        run: npm run build
+      - run: npm ci
+      - run: npm run build
 
   test:
-    name: Unit & Integration Tests
+    name: Unit Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests with vitest
-        run: npm test
+      - run: npm ci
+      - run: npm test
         env:
           CI: true
 
@@ -82,68 +58,34 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
         with:
           languages: javascript, typescript
-          queries: security-extended
-
-      - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@v2
+      - uses: github/codeql-action/analyze@v3
         with:
           category: "/language:javascript"
-
-      - name: Run dependency audit
-        run: npm audit --audit-level=high
+      - run: npm audit --audit-level=high
 
   build:
     name: Build & Package
     runs-on: ubuntu-latest
     needs: [lint, typecheck, test]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Inject Supabase environment variables
-        run: |
-          echo "VITE_SUPABASE_URL=https://test.supabase.co" >> $GITHUB_ENV
-          echo "VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test" >> $GITHUB_ENV
-
-      - name: Build project
-        run: npm run build
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+      - run: npm ci
+      - run: echo "VITE_SUPABASE_URL=https://test.supabase.co" >> $GITHUB_ENV && echo "VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test" >> $GITHUB_ENV
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
 
-  all-checks-passed:
-    name: All Checks Passed
-    runs-on: ubuntu-latest
-    needs: [lint, typecheck, test, security]
-    if: |
-      needs.lint.result == 'success' &&
-      needs.typecheck.result == 'success' &&
-      needs.test.result == 'success' &&
-      needs.security.result == 'success'
-    steps:
-      - name: Success Notification
-        run: echo "✅ All CI checks passed successfully!"
-
-  deploy-gh-pages:
+  deploy:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
     needs: [build]
@@ -151,30 +93,17 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Inject Supabase environment variables
-        run: |
+      - run: npm ci
+      - run: |
           echo "VITE_SUPABASE_URL=https://neymqmyzmsberwlowlpw.supabase.co" >> $GITHUB_ENV
           echo "VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5leW1xbXl6bXNiZXJ3bG93bHB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2MDY3OTcsImV4cCI6MjA5MzE4Mjc5N30.2tYikfedPC245ycevkGjQLbWdYn_rHrOj8fd2ISL8C4" >> $GITHUB_ENV
-
-      - name: Build project
-        run: npm run build
-
-      - name: Create 404.html for GitHub Pages SPA fallback
-        run: cp dist/index.html dist/404.html
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - run: npm run build
+      - run: cp dist/index.html dist/404.html
+      - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
