@@ -55,6 +55,7 @@ export default function PricingPage({
   onStartCheckout, paymentProcessing, paymentError, paymentResult,
   isPeachConfigured: peachReady, planPricesZAR, clearPaymentError, clearPaymentResult,
 }: PricingPageProps) {
+  console.log('[PRICING] Component executed!');
   const [cycle, setCycle] = useState<'monthly' | 'annual'>('annual');
   const tiers: PlanTier[] = ['pro', 'business', 'enterprise'];
 

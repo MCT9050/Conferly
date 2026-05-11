@@ -16,7 +16,8 @@ interface AuthPageProps {
   loading: boolean;
 }
 
-export default function AuthPage({ onSignUp, onSignIn, onResendConfirmation, onResetPassword, error, clearError, loading }: AuthPageProps) {
+export default function AuthPage({
+  onSignUp, onSignIn, onResendConfirmation, onResetPassword, error, clearError, loading }: AuthPageProps) {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
 
   // Safe clear error handler - handles undefined

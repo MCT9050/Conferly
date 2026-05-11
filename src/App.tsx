@@ -68,10 +68,19 @@ function ErrorFallback({ error }: { error: Error }) {
 
 // Step 1: Central route resolver - URL hash is the ONLY source of truth
 function getRouteFromHash(): string {
+  console.log('[ROUTER] RAW HASH:', window.location.hash);
+  
   if (typeof window === 'undefined') return 'home';
   const hash = window.location?.hash;
-  if (!hash || hash === '#') return 'home';
-  const route = hash.replace('#/', '').split('?')[0].split('#')[0];
+  if (!hash || hash === '#') {
+    console.log('[ROUTER] RETURNING: home (empty hash)');
+    return 'home';
+  }
+  const cleaned = hash.replace('#/', '');
+  console.log('[ROUTER] CLEANED HASH:', cleaned);
+  
+  const route = cleaned.split('?')[0].split('#')[0];
+  console.log('[ROUTER] RETURNING ROUTE:', route || 'home');
   return route || 'home';
 }
 
@@ -115,11 +124,15 @@ export default function App() {
   const closePage = () => { window.location.hash = '/home'; };
 
   // === PURE DETERMINISTIC RENDER ===
+  console.log('[ROUTER] FINAL ROUTE USED:', route, 'currentRoute:', currentRoute);
+  
   return (
     <>
       <Suspense fallback={<RouteLoader />}>
         {/* Modals */}
+        {currentRoute === 'docs' && console.log('[ROUTER] RENDERING DOCS') || null}
         {currentRoute === 'docs' && <DocsPage onClose={closePage} />}
+        
         {currentRoute === 'terms' && <TermsPage onClose={closePage} />}
         {currentRoute === 'privacy' && <PrivacyPage onClose={closePage} />}
         {currentRoute === 'about' && <AboutPage onClose={closePage} />}
@@ -132,14 +145,19 @@ export default function App() {
         {currentRoute === 'languages' && <LanguagesLearnPage onClose={closePage} />}
         
         {/* Main routes */}
+        {currentRoute === 'auth' && console.log('[ROUTER] RENDERING AUTH PAGE') || null}
         {currentRoute === 'auth' && <AuthPage />}
+        
+        {currentRoute === 'pricing' && console.log('[ROUTER] RENDERING PRICING PAGE') || null}
         {currentRoute === 'pricing' && (
           <PricingPage setView={(v: any) => window.location.hash = `/${v}`} subscription={state.subscription} pricing={state.pricing} allLimits={state.allLimits} onUpgrade={state.upgradeSubscription} />
         )}
+        
         {currentRoute === 'dashboard' && state.isAuthenticated && <Dashboard />}
-        {currentRoute === 'onboarding' && state.isAuthenticated && <OnboardingPage />}
-        {currentRoute === 'dashboard' && !state.isAuthenticated && (window.location.hash = '/auth', null)}
+        {currentRoute === 'onboarding' && state.isAuthenticated && <OnboardingPage />}        {currentRoute === 'dashboard' && !state.isAuthenticated && (window.location.hash = '/auth', null)}
         {currentRoute === 'onboarding' && !state.isAuthenticated && (window.location.hash = '/auth', null)}
+        
+        {currentRoute === 'home' && console.log('[ROUTER] RENDERING LANDING PAGE') || null}
         {currentRoute === 'home' && (<><InstallBanner /><LandingPage /></>)}
       </Suspense>
     </>
