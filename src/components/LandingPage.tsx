@@ -62,7 +62,7 @@ export default function LandingPage({ setView, setRoomId, userName, setUserName,
             <a href="#how" className="hover:text-white transition-colors duration-200">How it works</a>
             <a href="#scenarios" className="hover:text-white transition-colors duration-200">Use cases</a>
             <button onClick={() => window.location.hash = '#/learn'} className="hover:text-white transition-colors duration-200">Learn</button>
-            <button onClick={() => window.location.hash = '#/pricing'} className="hover:text-white transition-colors duration-200">Pricing</button>
+            <button onClick={() => setView('pricing')} className="hover:text-white transition-colors duration-200">Pricing</button>
           </div>
           <div className="flex items-center gap-3">
             {isLoggedIn ? (
@@ -70,13 +70,13 @@ export default function LandingPage({ setView, setRoomId, userName, setUserName,
             ) : (
               <>
                 <button 
-                  onClick={() => window.location.hash = '#/auth'} 
+                  onClick={() => setView('auth')} 
                   className="hidden sm:block text-[13px] text-slate-400 hover:text-white font-medium transition-colors"
                 >
                   Sign in
                 </button>
                 <button 
-                  onClick={() => window.location.hash = '#/auth'} 
+                  onClick={() => setView('auth')} 
                   className="px-5 py-2 rounded-full bg-white text-slate-900 text-[13px] font-semibold hover:bg-slate-100 transition-colors shadow-lg shadow-white/10"
                 >
                   Get started
@@ -272,7 +272,7 @@ export default function LandingPage({ setView, setRoomId, userName, setUserName,
                     </div>
                   ))}
                 </div>
-                <button onClick={() => window.location.hash = '#/auth'}
+                <button onClick={() => setView('auth')}
                   className={`w-full py-3 min-h-[44px] rounded-xl bg-gradient-to-r ${plan.gradient} text-white font-semibold text-sm transition-all duration-300 hover:opacity-90 shadow-lg`}>
                   {plan.cta}
                 </button>
@@ -300,7 +300,7 @@ export default function LandingPage({ setView, setRoomId, userName, setUserName,
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   {isLoggedIn ? 'Start conversation' : 'Get started'}
                 </button>
-                <button onClick={() => window.location.hash = '#/pricing'}
+                <button onClick={() => setView('pricing')}
                   className="px-10 py-4 rounded-full border border-white/10 text-slate-300 font-medium text-[15px] hover:bg-white/5 transition-all duration-300 flex items-center gap-2">
                   View plans
                 </button>
@@ -322,7 +322,7 @@ export default function LandingPage({ setView, setRoomId, userName, setUserName,
               </div>
             </div>
             {[
-              { title: 'Product', links: [{ label: 'How it works', href: '#how' }, { label: 'Use cases', href: '#scenarios' }, { label: 'Pricing', action: () => window.location.hash = '#/pricing' }, { label: 'Learn', action: () => window.location.hash = '#/learn' }] },
+              { title: 'Product', links: [{ label: 'How it works', href: '#how' }, { label: 'Use cases', href: '#scenarios' }, { label: 'Pricing', action: () => setView('pricing') }, { label: 'Learn', action: () => window.location.hash = '#/learn' }] },
               { title: 'Resources', links: [{ label: 'Documentation', action: () => window.location.hash = '#/docs' }, { label: 'Privacy', action: () => window.location.hash = '#/privacy' }, { label: 'Terms', action: () => window.location.hash = '#/terms' }] },
               { title: 'Company', links: [{ label: 'About', action: () => window.location.hash = '#/about' }, { label: 'Contact', action: () => window.location.hash = '#/contact' }, { label: 'Careers', action: () => window.location.hash = '#/careers' }] },
             ].map(col => (

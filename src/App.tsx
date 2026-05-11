@@ -81,11 +81,6 @@ export default function App() {
   const isMainViewRoute = routeBase === 'auth' || routeBase === 'dashboard' || routeBase === 'pricing' || routeBase === 'onboarding';
   // Get effective view: hash route takes priority for main views, otherwise use state.view
   const effectiveView = isMainViewRoute ? routeBase : state.view;
-
-  // Debug: log routing decisions
-  useEffect(() => {
-    console.log('ROUTING:', { hash, routeBase, effectiveView, stateView: state.view });
-  }, [routeBase, effectiveView, state.view]);
   
   useEffect(() => {
     const handleHashChange = () => setHash(window.location.hash);
