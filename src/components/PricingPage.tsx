@@ -1,4 +1,5 @@
 import { useState } from 'react';
+console.log('[PRICING] Module loaded');
 import {
   Check, X, ArrowLeft, Users, Clock, Video,
   Mic, Brain, Palette, HardDrive, ShieldCheck,
@@ -55,7 +56,8 @@ export default function PricingPage({
   onStartCheckout, paymentProcessing, paymentError, paymentResult,
   isPeachConfigured: peachReady, planPricesZAR, clearPaymentError, clearPaymentResult,
 }: PricingPageProps) {
-  console.log('[PRICING] Component executed!');
+  console.log('[PRICING] Component executed with props!');
+  console.log('[PRICING] Props:', { subscription, pricing, allLimits, onUpgrade });
   const [cycle, setCycle] = useState<'monthly' | 'annual'>('annual');
   const tiers: PlanTier[] = ['pro', 'business', 'enterprise'];
 

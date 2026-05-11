@@ -141,8 +141,7 @@ export default function App() {
         {currentRoute === 'auth' && console.log('[ROUTER] RENDERING AUTH PAGE') || null}
         {currentRoute === 'auth' && <AuthPage />}
         
-        {currentRoute === 'pricing' && console.log('[ROUTER] RENDERING PRICING PAGE') || null}
-        {currentRoute === 'pricing' && (
+        {currentRoute === 'pricing' && (console.log('[ROUTER] Rendering pricing route'), true) && (
           <div style={{ background: 'magenta', minHeight: '100vh', padding: '20px' }}>
             <h1 style={{ color: 'white', fontSize: '30px' }}>PRICING PAGE (MAGENTA WRAPPER)</h1>
             <PricingPage 
