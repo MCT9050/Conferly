@@ -1,5 +1,5 @@
 import { useAppState } from './store';
-import { useEffect, lazy, Suspense, useState, Component } from 'react';
+import { useEffect, useLayoutEffect, lazy, Suspense, useState, Component } from 'react';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import Logo from './components/Logo';
 import InstallBanner from './components/InstallBanner';
@@ -69,14 +69,7 @@ export default function App() {
   const { installBanner, dismissBanner } = useInstallPrompt();
   
   // Track hash changes for modal pages
-  // On initial load, capture hash before React renders
-  const [hash, setHash] = useState(() => {
-    // This runs synchronously before first paint
-    if (typeof window !== 'undefined') {
-      return window.location.hash;
-    }
-    return '';
-  });
+  const [hash, setHash] = useState('');
   
   // Get view from hash route FIRST (e.g., #/terms, #/auth, #/pricing)
   // Only take the path portion (before ? or #)
@@ -87,10 +80,12 @@ export default function App() {
   // Check if this is a modal route (not main view)
   const isModalRoute = routeBase === 'terms' || routeBase === 'privacy' || routeBase === 'science' || routeBase === 'technology' || routeBase === 'languages';
   
-  // For main view routes, sync on mount ONLY
-  useEffect(() => {
-    const mainViewRoutes = ['auth', 'dashboard', 'pricing', 'onboarding'];
+  // Initialize hash synchronously before paint and sync view from hash
+  useLayoutEffect(() => {
     const currentHash = window.location.hash;
+    setHash(currentHash);
+    
+    const mainViewRoutes = ['auth', 'dashboard', 'pricing', 'onboarding'];
     const currentFullHash = currentHash.startsWith('#/') ? currentHash.substring(2) : '';
     const currentRoutePath = currentFullHash.split('?')[0].split('#')[0];
     const currentRouteBase = currentRoutePath.split('/')[0];
@@ -100,7 +95,7 @@ export default function App() {
     }
   }, []);
   
-  // Listen for hash changes (for modal pages)
+  // Listen for hash changes
   useEffect(() => {
     const handleHashChange = () => setHash(window.location.hash);
     window.addEventListener('hashchange', handleHashChange);
