@@ -1,8 +1,12 @@
 import { useAppState } from './store';
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect, lazy, Suspense, Component } from 'react';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import Logo from './components/Logo';
 import InstallBanner from './components/InstallBanner';
+
+// Debug imports
+import DebugOverlay from './components/DebugOverlay';
+console.log('[APP] DebugOverlay imported');
 
 import LandingPage from './components/LandingPage';
 import AuthPage from './components/AuthPage';
@@ -176,6 +180,9 @@ export default function App() {
         {currentRoute === 'home' && console.log('[ROUTER] RENDERING LANDING PAGE') || null}
         {currentRoute === 'home' && (<><InstallBanner /><LandingPage /></>)}
       </Suspense>
+      
+      {/* Always visible debug overlay */}
+      <DebugOverlay />
     </div>
   );
 }
