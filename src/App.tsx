@@ -93,11 +93,14 @@ export default function App() {
   const route = getRouteFromHash();
   
   // === DEBUG ===
-  console.log('[ROUTER] Route:', route, 'Hash:', window.location.hash);
+  console.log('[ROUTER] Route:', route, 'Hash:', window.location.hash, 'currentRoute:', currentRoute, 'state.view:', state.view);
   
   // Listen for hash changes - triggers re-render
   useEffect(() => {
-    const handleHashChange = () => forceUpdate(n => n + 1);
+    const handleHashChange = () => {
+      console.log('[ROUTER] Hash changed, forcing update');
+      forceUpdate(n => n + 1);
+    };
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
