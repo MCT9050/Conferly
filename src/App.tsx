@@ -2,7 +2,7 @@
  * App.tsx - Clean routing with Supabase Auth
  */
 import React, { useState, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
 import AuthPage from './components/AuthPage';
 import PricingPage from './components/PricingPage';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
@@ -181,6 +181,8 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/auth" element={<AuthForm />} />
         <Route path="/pricing" element={<PricingPage {...defaultProps} />} />
+        {/* Catch-all fallback - redirects unknown routes to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

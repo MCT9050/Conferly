@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
 interface PricingPageProps {
   setView: (v: string) => void;
@@ -15,13 +16,22 @@ export default function PricingPage({
   allLimits,
   onUpgrade,
 }: PricingPageProps) {
+  const navigate = useNavigate();
+  
   return (
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
       padding: '40px',
-      color: 'white'
+      color: 'white',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
+      {/* Navigation */}
+      <nav style={{ marginBottom: '40px', fontSize: '18px' }}>
+        <Link to="/" style={{ color: 'white', marginRight: '20px', textDecoration: 'underline' }}>🏠 Home</Link>
+        <Link to="/auth" style={{ color: 'white', textDecoration: 'underline' }}>🔐 Login</Link>
+      </nav>
+      
       <h1 style={{ fontSize: '48px', marginBottom: '30px', fontWeight: 'bold' }}>
         💰 PRICING
       </h1>
