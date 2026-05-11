@@ -124,10 +124,18 @@ export default function App() {
   const closePage = () => { window.location.hash = '/home'; };
 
   // === PURE DETERMINISTIC RENDER ===
-  console.log('[ROUTER] FINAL ROUTE USED:', route, 'currentRoute:', currentRoute);
+  // VISIBLE DEBUG - always rendered at absolute top
+  const debugInfo = (
+    <div style={{ position: 'fixed', top: 0, left: 0, zIndex: 99999, background: 'yellow', padding: '10px', fontSize: '12px', fontFamily: 'monospace' }}>
+      ROUTE: {route} | CURRENT: {currentRoute} | HASH: {window.location.hash} | AUTH: {String(state.isAuthenticated)}
+    </div>
+  );
+  
+  console.log('[ROUTER] FINAL ROUTE USED:', route, 'HASH:', window.location.hash, 'currentRoute:', currentRoute);
   
   return (
     <>
+      {debugInfo}
       <Suspense fallback={<RouteLoader />}>
         {/* Modals */}
         {currentRoute === 'docs' && console.log('[ROUTER] RENDERING DOCS') || null}
