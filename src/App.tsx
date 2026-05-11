@@ -80,23 +80,24 @@ export default function App() {
   // Check if this is a modal route (not main view)
   const isModalRoute = routeBase === 'terms' || routeBase === 'privacy' || routeBase === 'science' || routeBase === 'technology' || routeBase === 'languages';
   
+  // Listen for hash changes (for modal pages and initial main view sync)
   useEffect(() => {
     const handleHashChange = () => setHash(window.location.hash);
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
   
-  // Sync state.view with hash for main view routes (auth, dashboard, pricing, onboarding)
+  // For main view routes, sync on mount ONLY (not on every hash change to avoid double-setView)
   useEffect(() => {
     const mainViewRoutes = ['auth', 'dashboard', 'pricing', 'onboarding'];
     const fullHash = hash.startsWith('#/') ? hash.substring(2) : '';
     const routePath = fullHash.split('?')[0].split('#')[0];
     const routeBase = routePath.split('/')[0];
     
-    if (mainViewRoutes.includes(routeBase)) {
+    if (mainViewRoutes.includes(routeBase) && state.view === 'welcome') {
       state.setView(routeBase as AppView);
     }
-  }, [hash, state.setView]);
+  }, []);
   
   const isInMeeting = state.view === 'meeting' && state.roomId;
 
