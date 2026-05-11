@@ -1,8 +1,27 @@
 import { useAppState } from './store';
-import { useEffect, lazy, Suspense, useState } from 'react';
+import { useEffect, lazy, Suspense, useState, Component } from 'react';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import Logo from './components/Logo';
 import InstallBanner from './components/InstallBanner';
+
+// Error boundary class to catch Suspense errors
+class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="text-center">
+            <h1 className="text-xl font-bold text-red-600 mb-2">Error Loading Page</h1>
+            <p className="text-gray-600">Something went wrong.</p>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const LandingPage = lazy(() => import('./components/LandingPage'));
 const AuthPage = lazy(() => import('./components/AuthPage'));
@@ -23,12 +42,24 @@ import ScienceLearnPage from './components/ScienceLearnPage';
 import TechLearnPage from './components/TechLearnPage';
 import LanguagesLearnPage from './components/LanguagesLearnPage';
 
-// Debug: loaded pages directly to verify routing works
+// Debug: track errors during lazy loading
 
 function RouteLoader() {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <Logo size="xl" />
+    </div>
+  );
+}
+
+// Error boundary to catch lazy loading errors
+function ErrorFallback({ error }: { error: Error }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="text-center">
+        <h1 className="text-xl font-bold text-red-600 mb-2">Error Loading Page</h1>
+        <p className="text-gray-600">{error.message}</p>
+      </div>
     </div>
   );
 }
@@ -62,7 +93,8 @@ export default function App() {
   const closePage = () => { window.location.hash = ''; };
 
   return (
-    <Suspense fallback={<RouteLoader />}>
+    <ErrorBoundary>
+      <Suspense fallback={<RouteLoader />}>
       {/* Modal pages - check hash route first */}
       {routeBase === 'docs' && <DocsPage onClose={closePage} />}
       {routeBase === 'terms' && <TermsPage onClose={closePage} />}
@@ -106,5 +138,6 @@ export default function App() {
         </>
       )}
     </Suspense>
+    </ErrorBoundary>
   );
 }
