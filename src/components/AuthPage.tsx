@@ -209,13 +209,16 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md space-y-8">
+    <main className="min-h-[100dvh] flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md flex flex-col gap-8">
         {/* Logo */}
-        <div className="text-center space-y-3">
+        <div className="text-center flex flex-col items-center gap-3">
           <div className="flex justify-center">
             <Logo size="xl" />
           </div>
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Conferly
+          </h1>
           <p className="text-sm text-slate-400">
             {mode === 'signin' ? 'Welcome back. Sign in to continue.' :
               mode === 'forgot' ? 'Enter your email to receive a reset link.' :
@@ -244,7 +247,7 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
         )}
 
         {/* Card */}
-        <div className="glass rounded-2xl p-8 space-y-6">
+        <div className="glass rounded-2xl p-8 flex flex-col gap-6">
           {/* Tab Toggle */}
           <div className="flex rounded-xl bg-slate-800/60 p-1" onClick={() => console.log('TABS CLICK')}>
             <button
@@ -267,7 +270,7 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {/* Display Name (signup only) */}
             {mode === 'signup' && (
               <div>
@@ -333,7 +336,7 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
                   </button>
                 </div>
                 {mode === 'signup' && password.length > 0 && (
-                  <div className="mt-2 space-y-1">
+                  <div className="mt-2 flex flex-col gap-1">
                     {validatePassword(password).errors.map((err, i) => (
                       <p key={i} className="text-[10px] text-amber-400">✗ {err}</p>
                     ))}
@@ -428,6 +431,6 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
           <span>Encrypted authentication • Works offline too</span>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
