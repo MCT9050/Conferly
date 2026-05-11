@@ -1,5 +1,5 @@
 import { useAppState } from './store';
-import { useEffect, lazy, Suspense, useState, Component } from 'react';
+import { useEffect, lazy, Suspense, Component } from 'react';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import Logo from './components/Logo';
 import InstallBanner from './components/InstallBanner';
@@ -101,7 +101,7 @@ export default function App() {
   const { installBanner, dismissBanner } = useInstallPrompt();
   
   // Force update counter to trigger re-renders
-  const [, forceUpdate] = useState(0);
+  
   
   // Read hash during render - this is the key insight!
   const route = getRouteFromHash();
@@ -113,7 +113,7 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
       console.log('[ROUTER] Hash changed, forcing update');
-      forceUpdate(n => n + 1);
+      // NO force update
     };
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
