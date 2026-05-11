@@ -79,8 +79,6 @@ export default function App() {
 
   // Check if this is a main view route (not modal)
   const isMainViewRoute = routeBase === 'auth' || routeBase === 'dashboard' || routeBase === 'pricing' || routeBase === 'onboarding';
-  // Get effective view: hash route takes priority for main views, otherwise use state.view
-  const effectiveView = isMainViewRoute ? routeBase : state.view;
   
   useEffect(() => {
     const handleHashChange = () => setHash(window.location.hash);
@@ -90,7 +88,7 @@ export default function App() {
   
   // Sync state.view with hash when on main view routes - ensures React re-renders correctly
   useEffect(() => {
-    if (isMainViewRoute && state.view !== routeBase) {
+    if (isMainViewRoute && state.view !== routeBase && routeBase) {
       state.setView(routeBase as AppView);
     }
   }, [isMainViewRoute, routeBase]);
@@ -116,28 +114,8 @@ export default function App() {
       {routeBase === 'technology' && <TechLearnPage onClose={closePage} />}
       {routeBase === 'languages' && <LanguagesLearnPage onClose={closePage} />}
       
-      {/* Main app routes - check effective view (hash or state) */}
-      {effectiveView === 'auth' ? (
-        <AuthPage />
-      ) : effectiveView === 'dashboard' ? (
-        <Dashboard />
-      ) : effectiveView === 'onboarding' ? (
-        <OnboardingPage />
-      ) : effectiveView === 'pricing' ? (
-        <PricingPage 
-          setView={state.setView} 
-          subscription={state.subscription}
-          pricing={state.pricing}
-          allLimits={state.allLimits}
-          onUpgrade={state.upgradeSubscription}
-        />
-      ) : /* authenticated check */ state.isAuthenticated ? (
-        isInMeeting ? (
-          <MeetingRoom />
-        ) : (
-          <Lobby />
-        )
-      ) : state.view === 'auth' ? (
+      {/* Main app routes - check state.view first, then fall back to effectiveView from hash */}
+      {state.view === 'auth' ? (
         <AuthPage />
       ) : state.view === 'dashboard' ? (
         <Dashboard />
@@ -151,6 +129,12 @@ export default function App() {
           allLimits={state.allLimits}
           onUpgrade={state.upgradeSubscription}
         />
+      ) : /* authenticated check */ state.isAuthenticated ? (
+        isInMeeting ? (
+          <MeetingRoom />
+        ) : (
+          <Lobby />
+        )
       ) : (
         <>
           <InstallBanner />
