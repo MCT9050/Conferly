@@ -69,7 +69,7 @@ export function usePlan() {
             const { data } = await supabase.from('profiles').select('plan_tier, billing_cycle, plan_period_end').eq('id', user.id).single();
             if (data) {
               const s: Subscription = {
-                tier: (data.plan_tier || 'free') as PlanTier,
+                tier: (data.plan_tier || 'trial') as PlanTier,
                 billingCycle: (data.billing_cycle || 'monthly') as 'monthly' | 'annual',
                 currentPeriodEnd: data.plan_period_end, cancelAtPeriodEnd: false,
               };

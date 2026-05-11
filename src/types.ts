@@ -20,9 +20,29 @@ export interface User {
 /**
  * Subscription types - unified across all contexts
  */
+export type PlanTier = 'trial' | 'pro' | 'business' | 'enterprise';
+export type PlanLimits = {
+  maxParticipants: number;
+  maxDurationMinutes: number;
+  maxMeetingsPerMonth: number;
+  recording: boolean;
+  transcription: boolean;
+  aiPulse: boolean;
+  customBranding: boolean;
+  cloudStorage: boolean;
+  storageLimitGb: number;
+  sso: boolean;
+  analytics: boolean;
+  prioritySupport: boolean;
+  adminDashboard: boolean;
+  waitingRoom: boolean;
+  meetingPassword: boolean;
+  meetingLock: boolean;
+};
+
 export interface Subscription {
-  tier: 'free' | 'pro' | 'business';
-  billingCycle: 'monthly' | 'yearly';
+  tier: PlanTier;
+  billingCycle: 'monthly' | 'annual';
   currentPeriodEnd?: string;
   cancelAtPeriodEnd: boolean;
 }
