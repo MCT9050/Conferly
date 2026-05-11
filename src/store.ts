@@ -14,19 +14,11 @@ import { saveMeeting, saveTranscript, saveChatHistory, saveActiveSession, loadAc
 import { trigger as automation } from './lib/automation';
 
 export function useAppState(): AppState {
-  // Get initial view from URL hash if applicable
-  const getInitialView = (): AppView => {
-    if (typeof window === 'undefined') return 'welcome';
-    const hash = window.location.hash;
-    if (hash.startsWith('#/auth')) return 'auth';
-    if (hash.startsWith('#/pricing')) return 'pricing';
-    if (hash.startsWith('#/dashboard')) return 'dashboard';
-    if (hash.startsWith('#/onboarding')) return 'onboarding';
-    return 'welcome';
-  };
-  
-  const [view, setView] = useState<AppView>(getInitialView());
+  const [view, setViewInternal] = useState<AppView>('welcome');
   const [roomId, setRoomId] = useState<string>('');
+  
+  // Stable setter to prevent re-renders
+  const setView = useCallback((v: AppView) => setViewInternal(v), []);
   const [userName, setUserName] = useState<string>('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
