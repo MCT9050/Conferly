@@ -70,8 +70,16 @@ export default function App() {
       {routeBase === 'technology' && <TechLearnPage onClose={closePage} />}
       {routeBase === 'languages' && <LanguagesLearnPage onClose={closePage} />}
       
-      {/* Main app routes */}
-      {state.isAuthenticated ? (
+      {/* Main app routes - check hash for main views too */}
+      {routeBase === 'auth' ? (
+        <AuthPage />
+      ) : routeBase === 'dashboard' ? (
+        <Dashboard />
+      ) : routeBase === 'onboarding' ? (
+        <OnboardingPage />
+      ) : routeBase === 'pricing' ? (
+        <PricingPage />
+      ) : state.isAuthenticated ? (
         isInMeeting ? (
           <MeetingRoom />
         ) : (
