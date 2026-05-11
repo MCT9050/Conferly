@@ -124,7 +124,7 @@ export default function App() {
           allLimits={state.allLimits}
           onUpgrade={state.upgradeSubscription}
         />
-      ) : state.isAuthenticated ? (
+      ) : /* authenticated check */ state.isAuthenticated ? (
         isInMeeting ? (
           <MeetingRoom />
         ) : (
