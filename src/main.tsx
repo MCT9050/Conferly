@@ -1,9 +1,9 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import App from "./App";
+import App, { ErrorBoundary } from "./App";
 
-console.log("🔥 APP VERSION: 1.0.6-FIX-CACHE");
+console.log("🔥 APP VERSION: 1.0.7-FIX-CACHE");
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
@@ -11,4 +11,8 @@ if (!rootElement) {
 }
 
 const root = createRoot(rootElement);
-root.render(<App />);
+root.render(
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+);

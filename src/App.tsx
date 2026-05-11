@@ -4,17 +4,22 @@ import { useInstallPrompt } from './hooks/useInstallPrompt';
 import Logo from './components/Logo';
 import InstallBanner from './components/InstallBanner';
 
-// Error boundary class to catch Suspense errors
-class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean }> {
-  state = { hasError: false };
-  static getDerivedStateFromError() { return { hasError: true }; }
+// Error boundary class to catch suspense and render errors  
+export class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean, error?: Error }> {
+  state = { hasError: false, error: undefined };
+  static getDerivedStateFromError(error: Error) { console.error('[ERROR_BOUNDARY] getDerivedStateFromError:', error); return { hasError: true, error }; }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[ERROR_BOUNDARY] componentDidCatch:', error, 'Info:', info);
+    this.setState({ error });
+  }
   render() {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center p-4">
           <div className="text-center">
-            <h1 className="text-xl font-bold text-red-600 mb-2">Error Loading Page</h1>
+            <h1 className="text-xl font-bold text-red-600 mb-2">Error Boundary Triggered</h1>
             <p className="text-gray-600">Something went wrong.</p>
+            <pre className="text-xs mt-4 text-left bg-gray-100 p-2 max-w-md overflow-auto">{this.state.error?.message || 'Unknown error'}</pre>
           </div>
         </div>
       );
