@@ -11,7 +11,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { Video, VideoOff, Mic, MicOff, Monitor, Users, Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
 import { useLiveKitRoom, type UseLiveKitRoomReturn } from '../hooks/useLiveKitRoom'
 import { useAuth } from '../hooks/useAuth'
-import VideoGrid from './VideoGrid'
+import VideoGrid from '../runtime/VideoGrid'
 
 // ============================================================
 // PROPS

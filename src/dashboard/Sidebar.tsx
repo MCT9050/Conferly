@@ -7,10 +7,10 @@ import {
 import type { Participant, TranscriptEntry, ChatMessage, SidebarTab, MeetingSecurity, PlanLimits, PlanTier } from '../types';
 import type { SALanguage, TranslationResult } from '../hooks/useTranslation';
 import type { Slide } from '../hooks/usePresentation';
-import CollaborativeEditor from './CollaborativeEditor';
-import SecurityPanel from './SecurityPanel';
-import TranslationPanel from './TranslationPanel';
-import SlideEditor from './SlideEditor';
+import CollaborativeEditor from '../runtime/CollaborativeEditor';
+import SecurityPanel from '../components/SecurityPanel';
+import TranslationPanel from '../runtime/TranslationPanel';
+import SlideEditor from '../runtime/SlideEditor';
 
 interface SidebarProps {
   isOpen: boolean;

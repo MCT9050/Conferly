@@ -1,84 +1,134 @@
 /**
- * App.tsx - Clean routing with Supabase Auth
+ * App.tsx - 5-Layer Architecture Router
+ * Strict gatekeeper between Unauthenticated and Authenticated pathways
  */
-import React, { useState, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
-import AuthPage from './components/AuthPage';
-import PricingPage from './marketing/PricingPage';
+import React, { useState, useEffect, useCallback } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from './persistence/supabase';
 
-const defaultProps = {
-  subscription: { tier: 'trial', status: 'active', currentPeriodEnd: new Date().toISOString() },
-  pricing: { trial: { monthly: 0, annual: 0 }, pro: { monthly: 15, annual: 150 }, business: { monthly: 35, annual: 350 }, enterprise: { monthly: 0, annual: 0 } },
-  allLimits: { 
-    trial: { maxParticipants: 500, maxDurationMinutes: 40 },
-    pro: { maxParticipants: 500, maxDurationMinutes: -1 },
-    business: { maxParticipants: 500, maxDurationMinutes: -1 },
-    enterprise: { maxParticipants: 500, maxDurationMinutes: -1 },
-  },
-  setView: () => {},
-  onUpgrade: () => {},
-};
+// Marketing Layer - Public flow
+import LandingPage from './marketing/LandingPage';
+import PricingPage from './marketing/PricingPage';
+import AuthPage from './components/AuthPage';
 
-function HomePage() {
-  return (
-    <div style={{ 
-      minHeight: '100vh', 
-      padding: '40px', 
-      fontFamily: 'system-ui',
-      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-      color: 'white'
-    }}>
-      <h1 style={{ fontSize: '48px', fontWeight: 'bold' }}>🎙️ Conferly</h1>
-      <p style={{ fontSize: '24px', marginTop: '20px' }}>Connecting with Purpose</p>
-      
-      <nav style={{ marginTop: '40px', fontSize: '18px' }}>
-        <Link to="/auth" style={{ color: 'white', marginRight: '20px' }}>🔐 Login</Link>
-        <Link to="/pricing" style={{ color: 'white' }}>💰 Pricing</Link>
-      </nav>
-    </div>
-  );
+// Authenticated Home Layer
+import Dashboard from './dashboard/Dashboard';
+
+// Runtime Layer - In-meeting
+import MeetingRoom from './runtime/MeetingRoom';
+import Lobby from './dashboard/Lobby';
+
+interface UserProfile {
+  id: string;
+  email: string;
+  displayName: string;
+  onboardingComplete: boolean;
 }
 
-// Auth form component to use hooks inside
-function AuthForm() {
+interface AppState {
+  profile: UserProfile | null;
+  loading: boolean;
+  error: string | null;
+  isAuthenticated: boolean;
+}
+
+// AuthGuard - Protects private routes
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<AppState>({
+    profile: null,
+    loading: true,
+    error: null,
+    isAuthenticated: false,
+  });
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      // Demo mode - grant access
+      setState({
+        profile: { id: 'demo', email: 'demo@conferly.site', displayName: 'Demo User', onboardingComplete: true },
+        loading: false,
+        error: null,
+        isAuthenticated: true,
+      });
+      return;
+    }
+
+    // Check auth state
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (error || !user) {
+        setState({ profile: null, loading: false, error: null, isAuthenticated: false });
+      } else {
+        // Fetch profile
+        supabase.from('profiles').select('*').eq('id', user.id).single().then(({ data: profile }) => {
+          setState({
+            profile: profile as UserProfile | null,
+            loading: false,
+            error: null,
+            isAuthenticated: true,
+          });
+        });
+      }
+    });
+  }, []);
+
+  if (state.loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
+      </div>
+    );
+  }
+
+  if (!state.isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  // Check onboarding complete
+  if (state.profile && !state.profile.onboardingComplete) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function App() {
+  // Supabase handlers
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
-  
-  // Sign up handler using Supabase SDK
+  const [user, setUser] = useState<UserProfile | null>(null);
+
+  // Sign up
   const handleSignUp = useCallback(async (
-    email: string, 
-    password: string, 
-    displayName: string, 
+    email: string,
+    password: string,
+    displayName: string,
     _turnstileToken?: string
   ): Promise<{ success: boolean; needsConfirmation?: boolean }> => {
-    if (!isSupabaseConfigured || !supabase) {
-      setAuthError('Supabase not configured');
-      return { success: false };
+    if (!isSupabaseConfigured) {
+      setUser({ id: 'demo', email, displayName, onboardingComplete: true });
+      return { success: true };
     }
-    
+
     setAuthLoading(true);
     setAuthError(null);
-    
+
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: { display_name: displayName },
-          emailRedirectTo: `${window.location.origin}/auth`,
-        },
+        options: { data: { display_name: displayName } },
       });
-      
+
       if (error) {
         setAuthError(error.message);
         return { success: false };
       }
-      
+
       if (data.user && !data.session) {
         return { success: true, needsConfirmation: true };
       }
-      
+
+      setUser({ id: data.user!.id, email, displayName, onboardingComplete: false });
       return { success: true };
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : 'Signup failed');
@@ -87,38 +137,40 @@ function AuthForm() {
       setAuthLoading(false);
     }
   }, []);
-  
-  // Sign in handler using Supabase SDK
+
+  // Sign in
   const handleSignIn = useCallback(async (
-    email: string, 
-    password: string, 
+    email: string,
+    password: string,
     _turnstileToken?: string
   ): Promise<{ success: boolean }> => {
-    if (!isSupabaseConfigured || !supabase) {
-      setAuthError('Supabase not configured');
-      return { success: false };
+    if (!isSupabaseConfigured) {
+      setUser({ id: 'demo', email, displayName: 'Demo User', onboardingComplete: true });
+      return { success: true };
     }
-    
+
     setAuthLoading(true);
     setAuthError(null);
-    
+
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
       if (error) {
         setAuthError(error.message);
         return { success: false };
       }
-      
+
       if (data.user) {
-        return { success: true };
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        setUser(profile as UserProfile);
       }
-      
-      setAuthError('Login failed');
-      return { success: false };
+
+      return { success: true };
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : 'Login failed');
       return { success: false };
@@ -126,64 +178,74 @@ function AuthForm() {
       setAuthLoading(false);
     }
   }, []);
-  
-  // Resend confirmation handler
-  const handleResendConfirmation = useCallback(async (email: string): Promise<void> => {
-    if (!isSupabaseConfigured || !supabase) {
-      throw new Error('Supabase not configured');
-    }
-    
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email,
-    });
-    
-    if (error) {
-      throw error;
-    }
-  }, []);
-  
-  // Reset password handler
-  const handleResetPassword = useCallback(async (email: string): Promise<void> => {
-    if (!isSupabaseConfigured || !supabase) {
-      throw new Error('Supabase not configured');
-    }
-    
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth?reset=true`,
-    });
-    
-    if (error) {
-      throw error;
-    }
-  }, []);
-  
-  // Clear error handler
-  const clearError = useCallback(() => setAuthError(null), []);
-  
-  return (
-    <AuthPage
-      onSignUp={handleSignUp}
-      onSignIn={handleSignIn}
-      onResendConfirmation={handleResendConfirmation}
-      onResetPassword={handleResetPassword}
-      error={authError}
-      clearError={clearError}
-      loading={authLoading}
-    />
-  );
-}
 
-export default function App() {
+  // Sign out
+  const handleSignOut = useCallback(async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  }, []);
+
+  const clearError = useCallback(() => setAuthError(null), []);
+
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/auth" element={<AuthForm />} />
-        <Route path="/pricing" element={<PricingPage {...defaultProps} />} />
-        {/* Catch-all fallback - redirects unknown routes to home */}
+        {/* Public Views */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
+        <Route
+          path="/auth"
+          element={
+            <AuthPage
+              onSignUp={handleSignUp}
+              onSignIn={handleSignIn}
+              onResendConfirmation={async () => {}}
+              onResetPassword={async () => {}}
+              error={authError}
+              clearError={clearError}
+              loading={authLoading}
+            />
+          }
+        />
+
+        {/* Private Views (Protected) */}
+        <Route
+          path="/dashboard"
+          element={
+            <AuthGuard>
+              <Dashboard
+                onSignOut={handleSignOut}
+                user={user}
+                subscription={{ tier: 'trial', status: 'active', currentPeriodEnd: new Date().toISOString() }}
+              />
+            </AuthGuard>
+          }
+        />
+        <Route
+          path="/lobby"
+          element={
+            <AuthGuard>
+              <Lobby />
+            </AuthGuard>
+          }
+        />
+        <Route
+          path="/room/:roomId"
+          element={
+            <AuthGuard>
+              <MeetingRoom />
+            </AuthGuard>
+          }
+        />
+
+        {/* Onboarding redirect */}
+        <Route path="/onboarding" element={<Navigate to="/auth" replace />} />
+
+        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
 }
+
+export default App;

@@ -1,13 +1,13 @@
 import { useEffect } from 'react';
 import { Shield, Zap, Wifi, Users, Lock, ShieldCheck, AlertTriangle, Clock } from 'lucide-react';
-import VideoGrid from './VideoGrid';
-import MeetingControls from './MeetingControls';
-import Sidebar from './Sidebar';
-import PresentationView from './PresentationView';
+import VideoGrid from '../runtime/VideoGrid';
+import MeetingControls from '../runtime/MeetingControls';
+import Sidebar from '../dashboard/Sidebar';
+import PresentationView from '../runtime/PresentationView';
 import type { Participant, TranscriptEntry, ChatMessage, SidebarTab, AppView, Reaction, MeetingSecurity, PlanLimits, PlanTier } from '../types';
 import type { SALanguage, TranslationResult } from '../hooks/useTranslation';
 import type { usePresentation } from '../hooks/usePresentation';
-import Logo from './Logo';
+import Logo from '../components/Logo';
 
 interface MeetingRoomProps {
   roomId: string;
