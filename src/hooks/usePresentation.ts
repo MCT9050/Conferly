@@ -78,7 +78,9 @@ export function usePresentation() {
   const [drawSize, setDrawSize] = useState(3);
   const [laser, setLaser] = useState<LaserPosition>({ x: 0, y: 0, visible: false });
   const [laserEnabled, setLaserEnabled] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
   const currentStrokeRef = useRef<AnnotationPoint[]>([]);
+  const screenShareRef = useRef<MediaStream | null>(null);
 
   const currentSlide = slides[currentIndex];
   const totalSlides = slides.length;
@@ -98,11 +100,46 @@ export function usePresentation() {
     if (fromSlide !== undefined) setCurrentIndex(fromSlide);
   }, []);
 
+  // Screen share functions for screen capture without local preview loop
+  const stopScreenShare = useCallback(async () => {
+    if (screenShareRef.current) {
+      screenShareRef.current.getTracks().forEach(track => track.stop());
+      screenShareRef.current = null;
+    }
+    setIsScreenSharing(false);
+  }, []);
+
+  const startScreenShare = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { cursor: 'always' } as MediaTrackConstraints,
+        audio: false,
+      });
+      // Handle user stopping via browser UI
+      stream.getVideoTracks()[0].onended = () => {
+        setIsScreenSharing(false);
+        screenShareRef.current = null;
+      };
+      screenShareRef.current = stream;
+      setIsScreenSharing(true);
+      return stream;
+    } catch (err) {
+      console.warn('[presentation] Screen share cancelled:', err);
+      return null;
+    }
+  }, []);
+
   const stopPresentation = useCallback(() => {
     setIsPresenting(false);
     setLaserEnabled(false);
     setLaser({ x: 0, y: 0, visible: false });
     setAnnotations([]);
+    // Also stop screen share if active
+    if (screenShareRef.current) {
+      screenShareRef.current.getTracks().forEach(track => track.stop());
+      screenShareRef.current = null;
+    }
+    setIsScreenSharing(false);
   }, []);
 
   // Slide CRUD
@@ -211,8 +248,10 @@ export function usePresentation() {
     isPresenting, showPresenterNotes,
     annotations, isDrawing, drawColor, drawSize,
     laser, laserEnabled,
+    isScreenSharing, screenStream: screenShareRef.current,
     goToSlide, nextSlide, prevSlide,
     startPresentation, stopPresentation,
+    startScreenShare, stopScreenShare,
     setShowPresenterNotes,
     addSlide, updateSlide, deleteSlide, reorderSlide,
     startStroke, continueStroke, endStroke,
