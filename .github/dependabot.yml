@@ -1,0 +1,63 @@
+# Dependabot configuration for Conferly
+# Checks for monthly npm dependency upgrades
+
+version: 2
+updates:
+  # Enable version updates for npm
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: monthly
+      day: sunday
+      time: "06:00"
+      timezone: UTC
+    open-pull-requests-limit: 10
+    # Labels for dependency update PRs
+    labels:
+      - "dependencies"
+      - "npm"
+    # Assign reviewers to PRs
+    reviewers:
+      - "team/conferly-backend"
+    # Reviewers assignment
+    assignees:
+      - "openhands"
+    # Commit message prefix
+    commit-message:
+      prefix: "chore"
+    # Package manager group
+    versioning-strategy: increase
+    # Allow minor and patch updates by default
+    allow:
+      # Dependency type to update
+      - dependency-type: all
+      # Update types
+      - update-type: semver-patch
+      - update-type: semver-minor
+    # Ignore certain dependencies
+    ignore:
+      - dependency-name: "typescript"
+        # TypeScript needs major version coordination
+        reason: "Requires coordination with team for major updates"
+      - dependency-name: "@types/node"
+        reason: "Tied to TypeScript version"
+
+  # Docker dependency updates (if using Dockerfiles)
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: monthly
+    labels:
+      - "dependencies"
+      - "docker"
+
+  # GitHub Actions updates
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
