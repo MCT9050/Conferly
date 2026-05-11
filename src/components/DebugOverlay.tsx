@@ -10,26 +10,12 @@ interface DebugOverlayProps {
 }
 
 export default function DebugOverlay({ visible = true }: DebugOverlayProps) {
-  const [renderCount, setRenderCount] = useState(0);
-  const [lastError, setLastError] = useState<any>(null);
-  const [heartbeat, setHeartbeat] = useState(Date.now());
+  // Static info only - no intervals causing re-renders
+  const [errors] = useState(() => window.__RUNTIME_ERRORS__?.length || 0);
   
-  // Heartbeat to confirm component is alive
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setHeartbeat(Date.now());
-      setRenderCount(c => c + 1);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
-  
-  // Capture latest runtime error
-  useEffect(() => {
-    if (window.__RUNTIME_ERRORS__?.length) {
-      const errors = window.__RUNTIME_ERRORS__;
-      setLastError(errors[errors.length - 1]);
-    }
-  }, [renderCount]);
+  // Get current info at render time only
+  const routeInfo = window.location?.hash || 'N/A';
+  const errorCount = window.__RUNTIME_ERRORS__?.length || 0;
   
   if (!visible) return null;
   
@@ -38,30 +24,23 @@ export default function DebugOverlay({ visible = true }: DebugOverlayProps) {
       position: 'fixed',
       bottom: '10px',
       right: '10px',
-      background: 'rgba(0,0,0,0.85)',
+      background: 'rgba(0,0,0,0.9)',
       color: 'white',
-      padding: '10px',
-      fontSize: '10px',
+      padding: '12px',
+      fontSize: '11px',
       fontFamily: 'monospace',
       zIndex: 99999,
-      maxWidth: '280px',
+      maxWidth: '300px',
       borderRadius: '4px',
-      border: '1px solid #333'
+      border: '2px solid #0f0'
     }}>
-      <div style={{ color: '#0f0', marginBottom: '4px', fontWeight: 'bold' }}>
-        DEBUG OVERLAY
+      <div style={{ color: '#0f0', marginBottom: '6px', fontWeight: 'bold', fontSize: '13px' }}>
+        DEBUG OVERLAY v2
       </div>
-      <div>Hash: {typeof window !== 'undefined' ? window.location?.hash : 'N/A'}</div>
-      <div>Route: {window.__CURRENT_ROUTE__ || 'unknown'}</div>
-      <div>Render: #{renderCount}</div>
-      <div>Heartbeat: {new Date(heartbeat).toLocaleTimeString()}</div>
-      {lastError && (
-        <div style={{ color: '#f00', marginTop: '4px' }}>
-          ERROR: {lastError.message?.slice(0, 80)}
-        </div>
-      )}
-      <div style={{ color: '#888', marginTop: '4px' }}>
-        Errors: {window.__RUNTIME_ERRORS__?.length || 0}
+      <div style={{ marginBottom: '2px' }}>Hash: {routeInfo}</div>
+      <div style={{ marginBottom: '2px' }}>Errors captured: {errorCount}</div>
+      <div style={{ color: '#888', fontSize: '10px' }}>
+        No intervals - static render
       </div>
     </div>
   );
