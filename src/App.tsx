@@ -75,7 +75,7 @@ export default function App() {
   const route = hash.startsWith('#/') ? hash.substring(2) : '';
   const routeBase = route.split('/')[0];
 
-  console.log('[ROUTING] hash:', hash, 'routeBase:', routeBase, 'state.view:', state.view);
+  console.log('[ROUTING] hash:', hash, 'routeBase:', routeBase, 'state.view:', state.view, 'effectiveView:', effectiveView);
 
   // Check if this is a main view route (not modal)
   const isMainViewRoute = routeBase === 'auth' || routeBase === 'dashboard' || routeBase === 'pricing' || routeBase === 'onboarding';
