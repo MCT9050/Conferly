@@ -111,7 +111,7 @@ export default function Dashboard({
   setView, setRoomId, userName, setUserName,
   profile, subscription, planLimits,
   onSignOut, onUpdateName,
-  security, isHost, setMeetingPassword, toggleMeetingLock, toggleWaitingRoom,
+  security, _isHost, setMeetingPassword, toggleMeetingLock, toggleWaitingRoom,
   meetingHistory, pendingReconnect, onReconnect, onDismissReconnect,
   meetingsThisMonth, meetingLimitReached, maxMeetingsPerMonth,
 }: DashboardProps) {
