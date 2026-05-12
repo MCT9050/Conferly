@@ -55,7 +55,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Check auth state
     supabase.auth.getUser().then(({ data: { user }, error }) => {
       if (error || !user) {
         setState({ profile: null, loading: false, error: null, isAuthenticated: false });
@@ -116,7 +115,8 @@ function App() {
     setAuthError(null);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      if (!supabase) return { success: false, error: 'Supabase not configured' };
+    const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: { data: { display_name: displayName } },
@@ -156,7 +156,8 @@ function App() {
     setAuthError(null);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (!supabase) return { success: false, error: 'Supabase not configured' };
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
         setAuthError(error.message);
@@ -184,7 +185,7 @@ function App() {
 
   // Sign out
   const handleSignOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    if (supabase) await supabase.auth.signOut();
     setUser(null);
   }, []);
 
