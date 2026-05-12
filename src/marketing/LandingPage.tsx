@@ -45,7 +45,7 @@ export default function LandingPage({ setRoomId, userName, setUserName }: Partia
     const roomId = generateRoomId();
     setRoomId(roomId);
     if (_userName) setUserName(_userName);
-    window.location.hash = '#/auth';
+    window.history.pushState({}, 'Auth', '/auth'); window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
   const copyLink = () => {
@@ -69,18 +69,18 @@ export default function LandingPage({ setRoomId, userName, setUserName }: Partia
           <div className="hidden lg:flex items-center gap-8 text-[13px] text-slate-400 font-medium">
             <a href="#how" className="hover:text-white transition-colors">How it works</a>
             <a href="#scenarios" className="hover:text-white transition-colors">Use cases</a>
-            <button onClick={() => window.location.hash = '#/learn'} className="hover:text-white transition-colors">Learn</button>
-            <button onClick={() => window.location.hash = '#/pricing'} className="hover:text-white transition-colors">Pricing</button>
+            <button onClick={() => { window.history.pushState({}, 'Learn', '/learn'); window.dispatchEvent(new PopStateEvent('popstate')); }} className="hover:text-white transition-colors">Learn</button>
+            <button onClick={() => { window.history.pushState({}, 'Pricing', '/pricing'); window.dispatchEvent(new PopStateEvent('popstate')); }} className="hover:text-white transition-colors">Pricing</button>
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => window.location.hash = '#/auth'}
+              onClick={() => { window.history.pushState({}, 'Auth', '/auth'); window.dispatchEvent(new PopStateEvent('popstate')); }}
               className="hidden sm:block text-[13px] text-slate-400 hover:text-white font-medium transition-colors"
             >
               Sign in
             </button>
             <button
-              onClick={() => window.location.hash = '#/auth'}
+              onClick={() => { window.history.pushState({}, 'Auth', '/auth'); window.dispatchEvent(new PopStateEvent('popstate')); }}
               className="px-5 py-2 rounded-full bg-white text-slate-900 text-[13px] font-semibold hover:bg-slate-100 transition-colors shadow-lg shadow-white/10"
             >
               Get started
