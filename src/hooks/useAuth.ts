@@ -380,7 +380,7 @@ export function useAuth() {
           setLoading(false);
           return { success: true, needsConfirmation: !data.session };
         }
-      } catch (err: any) { if (!err.message?.includes('fetch') && !err.message?.includes('Failed')) { setError(err.message); setLoading(false); return { success: false }; } }
+      } catch (err: any) { console.error("[useAuth] Auth error:", err); if (!err.message?.includes('fetch') && !err.message?.includes('Failed')) { setError(err.message); setLoading(false); return { success: false }; } }
     }
     if (isBackendConfigured) {
       try {
@@ -392,7 +392,7 @@ export function useAuth() {
         const { user } = await apiSignUp(email, password, displayName, termsAccepted);
         const p = buildProfile({ id: user.id, email: user.email, displayName: user.displayName, avatarUrl: user.avatarUrl, createdAt: user.createdAt });
         setProfile(p); cacheProfile(p); setIsOfflineMode(false); setLoading(false); automation('user.signup', { userId: p.id, email: p.email, displayName: p.displayName, data: { source: 'backend' } }); return { success: true, needsConfirmation: !user.emailVerified };
-      } catch (err: any) { if (!err.message?.includes('fetch') && !err.message?.includes('Failed')) { setError(err.message); setLoading(false); return { success: false }; } }
+      } catch (err: any) { console.error("[useAuth] Auth error:", err); if (!err.message?.includes('fetch') && !err.message?.includes('Failed')) { setError(err.message); setLoading(false); return { success: false }; } }
     }
     // OFFLINE FALLBACK: Only used when no Supabase or backend configured
     // SECURITY: Add warning since offline mode is less secure
