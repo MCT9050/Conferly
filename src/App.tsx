@@ -3,7 +3,7 @@
  * Strict gatekeeper between Unauthenticated and Authenticated pathways
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate,  } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from './persistence/supabase';
 
 // Marketing Layer - Public flow
@@ -104,7 +104,8 @@ function App() {
     email: string,
     password: string,
     displayName: string,
-    _turnstileToken?: string
+    _turnstileToken?: string,
+    _termsAccepted?: boolean
   ): Promise<{ success: boolean; needsConfirmation?: boolean }> => {
     if (!isSupabaseConfigured) {
       setUser({ id: 'demo', email, displayName, onboardingComplete: true });

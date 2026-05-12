@@ -65,7 +65,7 @@ export default function AuthPage({
     handleClearError();
 
     if (mode === 'signup') {
-      const result = await handleSignUp(email.trim(), password, displayName.trim(), '', termsAccepted);
+      const result = await handleSignUp(email.trim(), password, displayName.trim(), '');
       if (result.success && result.needsConfirmation) {
         setConfirmation(true);
       }
