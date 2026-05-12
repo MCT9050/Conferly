@@ -27,11 +27,13 @@ export default function AuthPage({
 
   // Safe auth handlers - all wrap optional props
   const handleSignUp = useCallback(async (...args: Parameters<NonNullable<AuthPageProps['onSignUp']>>) => {
-    return onSignUp ? await onSignUp(...args) : { success: false };
+    if (typeof onSignUp !== 'function') return { success: false };
+    return await onSignUp(...args);
   }, [onSignUp]);
 
   const handleSignIn = useCallback(async (...args: Parameters<NonNullable<AuthPageProps['onSignIn']>>) => {
-    return onSignIn ? await onSignIn(...args) : { success: false };
+    if (typeof onSignIn !== 'function') return { success: false };
+    return await onSignIn(...args);
   }, [onSignIn]);
 
   const handleResend = useCallback(async (...args: Parameters<NonNullable<AuthPageProps['onResendConfirmation']>>) => {
