@@ -156,6 +156,7 @@ function App() {
     setAuthError(null);
 
     try {
+      console.log('[useAuth] handleSignIn called:', { email, turnstileToken: !!turnstileToken });
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
