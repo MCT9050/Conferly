@@ -16,8 +16,19 @@ interface AuthPageProps {
   loading: boolean;
 }
 
+// Default no-op handlers to prevent "is not a function" errors
+const noop = () => {};
+const noopAsync = async () => {};
+
 export default function AuthPage({
-  onSignUp, onSignIn, onResendConfirmation, onResetPassword, error, clearError, loading }: AuthPageProps) {
+  onSignUp = noopAsync,
+  onSignIn = noopAsync,
+  onResendConfirmation = noopAsync,
+  onResetPassword = noopAsync,
+  error = null,
+  clearError = noop,
+  loading = false
+}: Partial<AuthPageProps>) {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
 
   // Safe clear error handler - handles undefined
@@ -27,12 +38,10 @@ export default function AuthPage({
 
   // Safe auth handlers - all wrap optional props
   const handleSignUp = useCallback(async (...args: Parameters<NonNullable<AuthPageProps['onSignUp']>>) => {
-    if (typeof onSignUp !== 'function') return { success: false };
     return await onSignUp(...args);
   }, [onSignUp]);
 
   const handleSignIn = useCallback(async (...args: Parameters<NonNullable<AuthPageProps['onSignIn']>>) => {
-    if (typeof onSignIn !== 'function') return { success: false };
     return await onSignIn(...args);
   }, [onSignIn]);
 
