@@ -51,7 +51,7 @@ const recentSessions = [
 
 export default function LearnPage({ onClose }: { onClose?: () => void }) {
   const handleSubjectClick = (subjectId: string) => {
-    window.location.hash = `#/learn/${subjectId}`;
+    window.history.pushState({}, 'Learn', '/learn/' + subjectId); window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
   return (

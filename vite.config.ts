@@ -16,7 +16,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
     },
   },
-  build: {
+  build: { sourcemap: false,
     chunkSizeWarningLimit: 1000,
     // Use esbuild minification (default, no terser needed)
     minify: 'esbuild',
