@@ -43,20 +43,13 @@ export default function LandingPage({ setRoomId, userName, setUserName }: Partia
 
   const quickStart = () => {
     const roomId = generateRoomId();
-    if (typeof setRoomId === 'function') {
-      setRoomId(roomId);
-    } else {
-    }
-    if (typeof setUserName === 'function' && _userName) {
-      setUserName(_userName);
-    }
+    if (typeof setRoomId === 'function') setRoomId(roomId);
+    if (typeof setUserName === 'function' && _userName) setUserName(_userName);
     window.history.pushState({}, 'Auth', '/auth'); window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
   const copyLink = () => {
-    if (typeof setRoomId === 'function') {
-      setRoomId(generateRoomId());
-    }
+    if (typeof setRoomId === 'function') setRoomId(generateRoomId());
     const url = `${window.location.origin}/#/${generateRoomId()}`;
     navigator.clipboard.writeText(url).catch(() => {});
     setCopied(true);

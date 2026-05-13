@@ -124,10 +124,7 @@ export default function Dashboard({
   const handleNewMeeting = () => {
     const newRoomId = generateRoomId();
     if (typeof setUserName === 'function' && !userName) setUserName(profile.displayName);
-    if (typeof setRoomId === 'function') {
-      setRoomId(newRoomId);
-    } else {
-    }
+    if (typeof setRoomId === 'function') setRoomId(newRoomId);
     saveSession({ roomId: newRoomId, displayName: userName || profile.displayName, joinedAt: new Date().toISOString(), isHost: true, audioEnabled: true, videoEnabled: true });
     if (typeof setView === 'function') setView('lobby');
   };
@@ -136,18 +133,14 @@ export default function Dashboard({
     const code = joinCode.trim();
     if (!code) return;
     if (typeof setUserName === 'function' && !userName) setUserName(profile.displayName);
-    if (typeof setRoomId === 'function') {
-      setRoomId(code);
-    }
+    if (typeof setRoomId === 'function') setRoomId(code);
     saveSession({ roomId: code, displayName: userName || profile.displayName, joinedAt: new Date().toISOString(), isHost: false, audioEnabled: true, videoEnabled: true });
     if (typeof setView === 'function') setView('lobby');
   };
 
   const handleRejoin = (code: string) => {
     if (typeof setUserName === 'function' && !userName) setUserName(profile.displayName);
-    if (typeof setRoomId === 'function') {
-      setRoomId(code);
-    }
+    if (typeof setRoomId === 'function') setRoomId(code);
     saveSession({ roomId: code, displayName: userName || profile.displayName, joinedAt: new Date().toISOString(), isHost: false, audioEnabled: true, videoEnabled: true });
     if (typeof setView === 'function') setView('lobby');
   };
