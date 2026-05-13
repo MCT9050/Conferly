@@ -46,7 +46,6 @@ export default function LandingPage({ setRoomId, userName, setUserName }: Partia
     if (typeof setRoomId === 'function') {
       setRoomId(roomId);
     } else {
-      console.warn('LandingPage: setRoomId not provided');
     }
     if (typeof setUserName === 'function' && _userName) {
       setUserName(_userName);

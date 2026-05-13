@@ -127,7 +127,6 @@ export default function Dashboard({
     if (typeof setRoomId === 'function') {
       setRoomId(newRoomId);
     } else {
-      console.warn('Dashboard: setRoomId not a function');
     }
     saveSession({ roomId: newRoomId, displayName: userName || profile.displayName, joinedAt: new Date().toISOString(), isHost: true, audioEnabled: true, videoEnabled: true });
     if (typeof setView === 'function') setView('lobby');
