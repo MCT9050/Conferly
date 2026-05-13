@@ -122,25 +122,35 @@ export default function Dashboard({
   const initials = profile.displayName.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
   const handleNewMeeting = () => {
-    if (!userName) setUserName(profile.displayName);
-    setRoomId(generateRoomId());
-    saveSession({ roomId: generateRoomId(), displayName: userName || profile.displayName, joinedAt: new Date().toISOString(), isHost: true, audioEnabled: true, videoEnabled: true });
-    setView('lobby');
+    const newRoomId = generateRoomId();
+    if (typeof setUserName === 'function' && !userName) setUserName(profile.displayName);
+    if (typeof setRoomId === 'function') {
+      setRoomId(newRoomId);
+    } else {
+      console.warn('Dashboard: setRoomId not a function');
+    }
+    saveSession({ roomId: newRoomId, displayName: userName || profile.displayName, joinedAt: new Date().toISOString(), isHost: true, audioEnabled: true, videoEnabled: true });
+    if (typeof setView === 'function') setView('lobby');
   };
 
   const handleJoin = () => {
-    if (!joinCode.trim()) return;
-    if (!userName) setUserName(profile.displayName);
-    setRoomId(joinCode.trim());
-    saveSession({ roomId: joinCode.trim(), displayName: userName || profile.displayName, joinedAt: new Date().toISOString(), isHost: false, audioEnabled: true, videoEnabled: true });
-    setView('lobby');
+    const code = joinCode.trim();
+    if (!code) return;
+    if (typeof setUserName === 'function' && !userName) setUserName(profile.displayName);
+    if (typeof setRoomId === 'function') {
+      setRoomId(code);
+    }
+    saveSession({ roomId: code, displayName: userName || profile.displayName, joinedAt: new Date().toISOString(), isHost: false, audioEnabled: true, videoEnabled: true });
+    if (typeof setView === 'function') setView('lobby');
   };
 
   const handleRejoin = (code: string) => {
-    if (!userName) setUserName(profile.displayName);
-    setRoomId(code);
+    if (typeof setUserName === 'function' && !userName) setUserName(profile.displayName);
+    if (typeof setRoomId === 'function') {
+      setRoomId(code);
+    }
     saveSession({ roomId: code, displayName: userName || profile.displayName, joinedAt: new Date().toISOString(), isHost: false, audioEnabled: true, videoEnabled: true });
-    setView('lobby');
+    if (typeof setView === 'function') setView('lobby');
   };
 
   const copyCode = (code: string) => {
