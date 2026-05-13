@@ -74,15 +74,20 @@
   <!-- Cloudflare Turnstile - Bot Protection 
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script> 
   -->
-  <script type="module" crossorigin src="/assets/index-D434FkfP.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/vendor-B5Sj-B0G.js">
-  <link rel="modulepreload" crossorigin href="/assets/react-vendor-S25Z0csp.js">
-  <link rel="modulepreload" crossorigin href="/assets/supabase-CNNnstWt.js">
-  <link rel="stylesheet" crossorigin href="/assets/index-bRFWnP3t.css">
+  <script type="module" crossorigin src="/assets/index-DpZjLIke.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/react-vendor-CRSfaX0H.js">
+  <link rel="modulepreload" crossorigin href="/assets/vendor-CyNnuMLQ.js">
+  <link rel="modulepreload" crossorigin href="/assets/editor-q5xxLKkF.js">
+  <link rel="modulepreload" crossorigin href="/assets/supabase-CDXZWRd1.js">
+  <link rel="stylesheet" crossorigin href="/assets/index-kgLOmdx9.css">
 </head>
 
 <body class="bg-slate-950 text-white">
   <div id="root"></div>
+  
+  <!-- MAIN: Must be module to ensure React hydrates before any interactivity -->
+  
+  <!-- SERVICE WORKER: Load AFTER module to prevent race conditions -->
   <script>
     // Unregister any existing service workers to fix cache issues
     if ('serviceWorker' in navigator) {

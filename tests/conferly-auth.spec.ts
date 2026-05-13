@@ -42,6 +42,15 @@ test('Diagnose Conferly Auth Blocking', async ({ page }) => {
   await page.goto('/#/auth');
   await page.waitForTimeout(2000);
   
+  // If hash routing didn't work (local preview), click Get Started
+  const pageContent = await page.locator('body').innerText();
+  if (pageContent.includes('Conferly') && !pageContent.includes('Welcome back')) {
+    console.log('Hash route not working - clicking Get Started...');
+    const getStarted = page.locator('text=/get started/i').first();
+    await getStarted.click();
+    await page.waitForTimeout(2000);
+  }
+  
   // Get page title/content for debugging
   const title = await page.title();
   console.log('Page title:', title);
