@@ -3,50 +3,41 @@ import { fileURLToPath } from "url";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import { visualizer } from "rollup-plugin-visualizer";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(), 
+    tailwindcss(),
+  ],
   base: "/",
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
     },
   },
-  build: { sourcemap: false,
+  build: { 
+    sourcemap: false,
     chunkSizeWarningLimit: 1000,
-    // Use esbuild minification (default, no terser needed)
     minify: 'esbuild',
     rollupOptions: {
       output: {
-        // Hash for cache busting
         assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'assets/[name]-[hash].js',
         entryFileNames: 'assets/[name]-[hash].js',
-        manualChunks: (id) => {
+        // Group all node_modules together to prevent circular deps
+        manualChunks(id) {
           if (id.includes('node_modules')) {
-            // Split vendor libraries
-            if (id.includes('react-dom') || id.includes('react/jsx')) {
-              return 'react-vendor';
-            }
-            if (id.includes('@supabase') || id.includes('supabase')) {
-              return 'supabase';
-            }
-            if (id.includes('livekit') || id.includes('@livekit')) {
-              return 'livekit';
-            }
-            if (id.includes('@tiptap')) {
-              return 'editor';
-            }
-            if (id.includes('zustand')) {
-              return 'store';
-            }
+            if (id.includes('react')) return 'react';
+            if (id.includes('supabase')) return 'supabase';
+            if (id.includes('livekit')) return 'livekit';
+            if (id.includes('@tiptap')) return 'editor';
             return 'vendor';
           }
-          // App code goes to main chunk
           return 'app';
         }
       }

@@ -11,7 +11,8 @@ import LandingPage from './marketing/LandingPage';
 import PricingPage from './marketing/PricingPage';
 import AuthPage from './components/AuthPage';
 
-// Authenticated Home Layer
+// Authenticated Home Layer - Lazy loaded
+import { lazy, Suspense } from 'react';
 import Dashboard from './dashboard/Dashboard';
 import { useMeetingPersistence, saveSession, clearSession } from './persistence/useMeetingPersistence';
 import ReconnectBanner from './components/ReconnectBanner';
