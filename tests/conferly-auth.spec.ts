@@ -36,7 +36,10 @@ test('Force Capture Assets Directory 404 and Hidden Chunk Failures', async ({ pa
   // 2. Capture low-level link and resource load crashes
   page.on('requestfailed', (request) => {
     const failure = request.failure();
-    if (request.url().includes('/assets/')) {
+    // Check for any API failures
+    if (request.url().includes('api') || request.url().includes('supabase') || request.url().includes('auth')) {
+      runtimeLogs.push(`[API Request Failed]: ${request.url()} | Reason: ${failure?.errorText}`);
+    } else if (request.url().includes('/assets/')) {
       runtimeLogs.push(`[Asset Fetch Failed]: ${request.url()} | Reason: ${failure?.errorText}`);
     }
   });
