@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+
 import {
   Mail, Lock, User, ArrowRight, Eye, EyeOff,
   AlertCircle, Loader2, CheckCircle
@@ -58,6 +59,7 @@ export default function AuthPage({
     setMode(newMode);
     handleClearError();
   }, [handleClearError]);
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -83,7 +85,12 @@ export default function AuthPage({
     } else if (mode === 'forgot') {
       await handleResetPassword(email.trim());
     } else {
-      await handleSignIn(email.trim(), password, '');
+      const result = await handleSignIn(email.trim(), password, '');
+      console.log('Sign In result:', result);
+      if (result.success) {
+        window.history.pushState({}, 'Dashboard', '/dashboard');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }
     }
   };
 
