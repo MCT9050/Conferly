@@ -26,8 +26,9 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages project create conferly --production-branch=main 2>/dev/null || pages deploy conferly --directory=dist --branch=main
+          projectName: conferly
+          directory: dist
