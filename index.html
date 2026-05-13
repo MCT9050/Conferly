@@ -78,7 +78,11 @@
 
 <body class="bg-slate-950 text-white">
   <div id="root"></div>
+  
+  <!-- MAIN: Must be module to ensure React hydrates before any interactivity -->
   <script type="module" src="/src/main.tsx"></script>
+  
+  <!-- SERVICE WORKER: Load AFTER module to prevent race conditions -->
   <script>
     // Unregister any existing service workers to fix cache issues
     if ('serviceWorker' in navigator) {

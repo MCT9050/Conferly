@@ -29,16 +29,19 @@ export default defineConfig({
         assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'assets/[name]-[hash].js',
         entryFileNames: 'assets/[name]-[hash].js',
-        // Group all node_modules together to prevent circular deps
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('react')) return 'react';
-            if (id.includes('supabase')) return 'supabase';
-            if (id.includes('livekit')) return 'livekit';
-            if (id.includes('@tiptap')) return 'editor';
-            return 'vendor';
-          }
-          return 'app';
+        // ENFORCE SYNCHRONOUS VENDOR CHUNKING
+        // Force core dependencies into dedicated chunks to execute synchronously
+        manualChunks: {
+          // React core - must load first
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          // Supabase auth - dedicated chunk
+          'supabase': ['@supabase/supabase-js'],
+          // LiveKit - dedicated chunk
+          'livekit': ['@livekit/components-react', '@livekit/components-styles', 'livekit-client', 'livekit-server-sdk'],
+          // Editor - Tiptap
+          'editor': ['@tiptap/react', '@tiptap/starter-kit', '@tiptap/extension-collaboration', '@tiptap/extension-highlight', '@tiptap/extension-placeholder', '@tiptap/extension-task-item', '@tiptap/extension-task-list', '@tiptap/extension-typography'],
+          // General vendor
+          'vendor': ['yjs', 'y-webrtc', 'uuid', 'clsx', 'tailwind-merge', 'lucide-react']
         }
       }
     }
