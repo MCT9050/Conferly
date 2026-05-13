@@ -78,11 +78,11 @@ export default function AuthPage({
 
     if (mode === 'signup') {
       if (!termsAccepted) {
-        error && error('Please accept the Terms of Service to continue');
+        error?.('Please accept the Terms of Service to continue');
         return;
       }
       if (!displayName.trim()) {
-        error && error('Please enter your display name');
+        error?.('Please enter your display name');
         return;
       }
       const result = await handleSignUp(email.trim(), password, displayName.trim(), '');
