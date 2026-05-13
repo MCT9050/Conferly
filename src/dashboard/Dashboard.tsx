@@ -115,33 +115,38 @@ export default function Dashboard({
   meetingHistory, pendingReconnect, onReconnect, onDismissReconnect,
   meetingsThisMonth, meetingLimitReached, maxMeetingsPerMonth,
 }: DashboardProps) {
+  // DEFENSIVE: Don't render if profile is null/undefined
+  if (!profile) return null;
+  
   const [joinCode, setJoinCode] = useState('');
   const [copiedCode, setCopiedCode] = useState('');
   const [sidebarTab, setSidebarTab] = useState<'home' | 'meetings' | 'settings'>('home');
 
-  const initials = profile.displayName.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  // DEFENSIVE: Handle undefined displayName
+  const displayName = profile?.displayName || '';
+  const initials = displayName.split(' ').filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'U';
 
   const handleNewMeeting = () => {
     const newRoomId = generateRoomId();
-    if (typeof setUserName === 'function' && !userName) setUserName(profile.displayName);
+    if (typeof setUserName === 'function' && !userName) setUserName(displayName);
     if (typeof setRoomId === 'function') setRoomId(newRoomId);
-    saveSession({ roomId: newRoomId, displayName: userName || profile.displayName, joinedAt: new Date().toISOString(), isHost: true, audioEnabled: true, videoEnabled: true });
+    saveSession({ roomId: newRoomId, displayName: userName || displayName, joinedAt: new Date().toISOString(), isHost: true, audioEnabled: true, videoEnabled: true });
     if (typeof setView === 'function') setView('lobby');
   };
 
   const handleJoin = () => {
     const code = joinCode.trim();
     if (!code) return;
-    if (typeof setUserName === 'function' && !userName) setUserName(profile.displayName);
+    if (typeof setUserName === 'function' && !userName) setUserName(displayName);
     if (typeof setRoomId === 'function') setRoomId(code);
-    saveSession({ roomId: code, displayName: userName || profile.displayName, joinedAt: new Date().toISOString(), isHost: false, audioEnabled: true, videoEnabled: true });
+    saveSession({ roomId: code, displayName: userName || displayName, joinedAt: new Date().toISOString(), isHost: false, audioEnabled: true, videoEnabled: true });
     if (typeof setView === 'function') setView('lobby');
   };
 
   const handleRejoin = (code: string) => {
-    if (typeof setUserName === 'function' && !userName) setUserName(profile.displayName);
+    if (typeof setUserName === 'function' && !userName) setUserName(displayName);
     if (typeof setRoomId === 'function') setRoomId(code);
-    saveSession({ roomId: code, displayName: userName || profile.displayName, joinedAt: new Date().toISOString(), isHost: false, audioEnabled: true, videoEnabled: true });
+    saveSession({ roomId: code, displayName: userName || displayName, joinedAt: new Date().toISOString(), isHost: false, audioEnabled: true, videoEnabled: true });
     if (typeof setView === 'function') setView('lobby');
   };
 
@@ -209,8 +214,8 @@ export default function Dashboard({
               {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-white truncate">{profile.displayName}</div>
-              <div className="text-[10px] text-slate-500 truncate">{profile.email}</div>
+              <div className="text-sm font-medium text-white truncate">{displayName}</div>
+              <div className="text-[10px] text-slate-500 truncate">{profile?.email}</div>
             </div>
           </div>
           <button
@@ -366,7 +371,7 @@ export default function Dashboard({
               {/* ─── WELCOME HEADER ─── */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h1 className="text-3xl font-bold">Welcome back, {profile.displayName.split(' ')[0]} 👋</h1>
+                  <h1 className="text-3xl font-bold">Welcome back, {displayName.split(' ')[0]} 👋</h1>
                   <p className="text-slate-400 mt-1">Start a meeting or join one below.</p>
                 </div>
                 <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r ${PLAN_COLORS[subscription.tier]} bg-opacity-10 text-sm font-medium`}

@@ -4,6 +4,17 @@ import { test, expect } from '@playwright/test';
 test('Force Capture Assets Directory 404 and Hidden Chunk Failures', async ({ page }) => {
   const assetErrors: Array<{ url: string; status: number; type: string }> = [];
   const runtimeLogs: string[] = [];
+  const consoleMessages: string[] = [];
+
+
+  // 0. Capture ALL console messages including error
+  page.on('console', (msg) => {
+    const text = msg.text();
+    consoleMessages.push(`[${msg.type().toUpperCase()}] ${text}`);
+    if (msg.type() === 'error') {
+      runtimeLogs.push(`[Console Error]: ${text}`);
+    }
+  });
 
 
   // 1. Intercept all responses specifically filtering for the /assets/ directory
@@ -81,7 +92,11 @@ test('Force Capture Assets Directory 404 and Hidden Chunk Failures', async ({ pa
     console.error(runtimeLogs.join('\n'));
   }
 
+  // Print all captured console messages
+  console.log('\n--- ALL CONSOLE MESSAGES ---');
+  consoleMessages.forEach(msg => console.log(msg));
 
-  // Force an absolute failure assertion if an asset file failed to process
+  // STRICTER: Fail if any errors detected
+  expect(runtimeLogs.length).toBe(0);
   expect(assetErrors.length).toBe(0);
 });

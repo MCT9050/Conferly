@@ -235,7 +235,7 @@ export function useAuth() {
             // TRACING: Profile hydrated
             log('session:profile:hydrated', { userId: u.id });
             
-            const p = buildProfile({ id: u.id, email: u.email || '', displayName: extra.displayName || u.user_metadata?.display_name || u.email?.split('@')[0] || 'User', avatarUrl: u.user_metadata?.avatar_url, createdAt: u.created_at }, extra);
+            const p = buildProfile({ id: u.id, email: u.email || '', displayName: extra?.displayName || u.user_metadata?.display_name || u.email?.split('@')[0] || 'User', avatarUrl: u.user_metadata?.avatar_url, createdAt: u.created_at }, extra);
             setProfile(p); cacheProfile(p); setIsOfflineMode(false);
             rehydrateMeetings(u.id);
             
@@ -304,7 +304,7 @@ export function useAuth() {
           if (sess?.user) {
             const u = sess.user;
             const extra = await fetchSupabaseProfile(u.id);
-            const p = buildProfile({ id: u.id, email: u.email || '', displayName: extra.displayName || u.user_metadata?.display_name || u.email?.split('@')[0] || 'User', avatarUrl: u.user_metadata?.avatar_url, createdAt: u.created_at }, extra);
+            const p = buildProfile({ id: u.id, email: u.email || '', displayName: extra?.displayName || u.user_metadata?.display_name || u.email?.split('@')[0] || 'User', avatarUrl: u.user_metadata?.avatar_url, createdAt: u.created_at }, extra);
             setProfile(p); cacheProfile(p); setIsOfflineMode(false);
           } else { setProfile(null); cacheProfile(null); }
         });
@@ -506,8 +506,14 @@ export function useAuth() {
           const extra = await fetchSupabaseProfile(data.user.id);
           // TRACING: Profile hydrated
           log('profile:hydrated', { userId: data.user.id, hasExtra: !!extra });
-          // SECURITY FIX: Use normalized email in profile
-          const p = buildProfile({ id: data.user.id, email: data.user.email || normalizedEmail, displayName: extra.displayName || data.user.user_metadata?.display_name || normalizedEmail.split('@')[0], avatarUrl: data.user.user_metadata?.avatar_url, createdAt: data.user.created_at }, extra);
+          // SECURITY FIX: Use normalized email in profile - defensive null check
+          const p = buildProfile({ 
+            id: data.user.id, 
+            email: data.user.email || normalizedEmail, 
+            displayName: extra?.displayName || data.user.user_metadata?.display_name || normalizedEmail.split('@')[0], 
+            avatarUrl: data.user.user_metadata?.avatar_url, 
+            createdAt: data.user.created_at 
+          }, extra);
           setProfile(p); cacheProfile(p); setIsOfflineMode(false); rehydrateMeetings(data.user.id);
           // TRACING: Session stored
           session('stored', { userId: p.id, provider: 'supabase' });
