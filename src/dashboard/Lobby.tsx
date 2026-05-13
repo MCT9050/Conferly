@@ -44,9 +44,14 @@ export default function Lobby({
   }, [stream]);
 
   const copyRoomId = () => {
-    navigator.clipboard?.writeText(roomId).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      navigator.clipboard?.writeText(roomId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      setCopied(false);
+      // silently fail - some browsers block clipboard
+    }
   };
 
   return (

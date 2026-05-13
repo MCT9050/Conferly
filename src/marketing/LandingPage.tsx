@@ -40,6 +40,7 @@ const TESTIMONIALS = [
 export default function LandingPage({ setRoomId, userName, setUserName }: Partial<LandingPageProps>) {
   const [_userName, setUserNameLocal] = useState(userName || '');
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   const quickStart = () => {
     const roomId = generateRoomId();
@@ -70,8 +71,8 @@ export default function LandingPage({ setRoomId, userName, setUserName }: Partia
           <div className="hidden lg:flex items-center gap-8 text-[13px] text-slate-400 font-medium">
             <a href="#how" className="hover:text-white transition-colors">How it works</a>
             <a href="#scenarios" className="hover:text-white transition-colors">Use cases</a>
-            <button onClick={() => { window.history.pushState({}, 'Learn', '/learn'); window.dispatchEvent(new PopStateEvent('popstate')); }} className="hover:text-white transition-colors">Learn</button>
-            <button onClick={() => { window.history.pushState({}, 'Pricing', '/pricing'); window.dispatchEvent(new PopStateEvent('popstate')); }} className="hover:text-white transition-colors">Pricing</button>
+            <a href="#/learn" className="hover:text-white transition-colors">Learn</a>
+            <a href="#/pricing" className="hover:text-white transition-colors">Pricing</a>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -114,7 +115,7 @@ export default function LandingPage({ setRoomId, userName, setUserName }: Partia
               onClick={copyLink}
               className="px-8 py-4 rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition-colors"
             >
-              {copied ? 'Link copied!' : 'Copy meeting link'}
+              {copyError ? copyError : copied ? 'Link copied!' : 'Copy meeting link'}
             </button>
           </div>
 
