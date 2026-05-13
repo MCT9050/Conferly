@@ -30,4 +30,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy conferly --directory=dist --branch=main
+          command: pages project create conferly --production-branch=main 2>/dev/null || pages deploy conferly --directory=dist --branch=main
