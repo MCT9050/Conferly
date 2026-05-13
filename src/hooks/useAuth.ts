@@ -353,7 +353,8 @@ export function useAuth() {
           email: normalizedEmail,
           password,
           options: {
-            data: { display_name: displayName }
+            data: { display_name: displayName },
+            redirectTo: 'https://www.conferly.site/#/auth',
           }
         });
         
@@ -485,7 +486,13 @@ export function useAuth() {
         // TRACING: Supabase signIn request
         traceSupabase('signin:request', { method: 'signInWithPassword', email: normalizedEmail.split('@')[0] + '@[masked]' });
         // SECURITY FIX: Use normalized email for authentication
-        const { data, error: err } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+        const { data, error: err } = await supabase.auth.signInWithPassword({ 
+          email: normalizedEmail, 
+          password,
+          options: {
+            redirectTo: 'https://www.conferly.site/#/auth',
+          }
+        });
         // TRACING: Supabase response
         if (err) {
           traceSupabase('signin:error', { error: err.message });
