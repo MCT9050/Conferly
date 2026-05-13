@@ -37,20 +37,18 @@ test('Diagnose Conferly Auth Blocking', async ({ page }) => {
     }
   });
 
-  // Navigate directly to auth page using hash routing (site uses #/auth)
+  // Navigate to auth page using relative path (adapts to staging or production)
   console.log('Navigating to auth page...');
   await page.goto('/#/auth');
-
-  // Wait for page to load
-  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(2000);
   
   // Get page title/content for debugging
   const title = await page.title();
   console.log('Page title:', title);
   
   // Check what's on the page
-  const bodyText = await page.locator('body').innerText().catch(() => 'N/A');
-  console.log('Page content preview:', bodyText.substring(0, 500));
+  const bodyContent = await page.locator('body').innerText().catch(() => 'N/A');
+  console.log('Page content preview:', bodyContent.substring(0, 500));
 
   // 3. Look for Sign In or Sign Up button to verify auth form is loaded
   const signInBtn = page.locator('button:has-text("Sign In")').first();
