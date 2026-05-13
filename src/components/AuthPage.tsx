@@ -77,6 +77,14 @@ export default function AuthPage({
     handleClearError();
 
     if (mode === 'signup') {
+      if (!termsAccepted) {
+        error && error('Please accept the Terms of Service to continue');
+        return;
+      }
+      if (!displayName.trim()) {
+        error && error('Please enter your display name');
+        return;
+      }
       const result = await handleSignUp(email.trim(), password, displayName.trim(), '');
       if (result.success && result.needsConfirmation) {
         setConfirmation(true);
