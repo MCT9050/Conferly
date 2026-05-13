@@ -101,6 +101,7 @@ export interface ApiUser {
   displayName: string;
   avatarUrl: string | null;
   createdAt: string;
+  emailVerified: boolean;
 }
 
 export async function apiSignUp(email: string, password: string, displayName: string, termsAccepted: boolean): Promise<{ token: string; refreshToken: string; user: ApiUser }> {

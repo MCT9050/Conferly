@@ -15,7 +15,7 @@
   "dependencies": {
     "@livekit/components-react": "^2.9.20",
     "@livekit/components-styles": "^1.2.0",
-    "@supabase/supabase-js": "^2.105.1",
+    "@supabase/supabase-js": "^2.105.4",
     "@tiptap/extension-collaboration": "^3.22.5",
     "@tiptap/extension-highlight": "^3.22.5",
     "@tiptap/extension-placeholder": "^3.22.5",

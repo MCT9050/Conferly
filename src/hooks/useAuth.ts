@@ -327,6 +327,9 @@ export function useAuth() {
     
     if (isSupabaseConfigured && supabase) {
       try {
+        // SECURITY FIX: Add normalized email before use
+        const normalizedEmail = normalizeEmail(email);
+
         // SECURITY FIX: Turnstile validation - enabled in production, disabled for local development
         const isProduction = import.meta.env.PROD || import.meta.env.MODE === 'production';
         const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
