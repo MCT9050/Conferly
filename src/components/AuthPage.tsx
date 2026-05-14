@@ -146,7 +146,7 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
         {/* Logo */}
         <div className="text-center flex flex-col items-center gap-3">
           <div className="flex justify-center">
-            <Logo size="lg" />
+            <Logo size="xl" showText={false} />
           </div>
           <p className="text-sm text-slate-400">
             {mode === 'signin' ? 'Welcome back. Sign in to continue.' :
