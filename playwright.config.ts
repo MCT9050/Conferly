@@ -4,9 +4,9 @@ export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
   reporter: 'line',
-  // Use production Cloudflare Pages
+  // Test against production site
   use: {
-    baseURL: 'https://conferly.pages.dev',
+    baseURL: 'https://www.conferly.site',
     trace: 'retain-on-failure',
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
