@@ -146,11 +146,8 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
         {/* Logo */}
         <div className="text-center flex flex-col items-center gap-3">
           <div className="flex justify-center">
-            <Logo size="xl" showText={false} />
+            <Logo size="lg" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-            Conferly
-          </h1>
           <p className="text-sm text-slate-400">
             {mode === 'signin' ? 'Welcome back. Sign in to continue.' :
               mode === 'forgot' ? 'Enter your email to receive a reset link.' :
