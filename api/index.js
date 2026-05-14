@@ -129,24 +129,26 @@ async function handleMeetings(req, res) {
       return res.status(503).json({ error: 'Supabase not configured' });
     }
     
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const { title, language } = body;
+    try {
+      const { data, error } = await supabase
+        .from('meetings')
+        .insert([{
+          title: 'New Meeting',
+          created_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
     
-    const { data, error } = await supabase
-      .from('meetings')
-      .insert([{ 
-        title: title || 'New Meeting',
-        language: language || 'en',
-        created_at: new Date().toISOString()
-      }])
-      .select()
-      .single();
-    
-    if (error) {
-      return res.status(500).json({ error: error.message });
+      if (error) {
+        console.log('Meeting insert error:', error);
+        return res.status(400).json({ error: error.message });
+      }
+      
+      return res.status(201).json({ meeting: data });
+    } catch (err) {
+      console.log('Meeting error:', err);
+      return res.status(500).json({ error: String(err) });
     }
-    
-    return res.status(201).json({ meeting: data });
   }
   
   res.status(404).json({ error: 'Endpoint not found' });
