@@ -31,11 +31,16 @@ export default async function handler(req, res) {
 
   // Health check
   if (path === '/api/health') {
+    // Debug: log available env vars
+    const envKeys = Object.keys(process.env).filter(k => k.includes('SUPABASE') || k.includes('JWT'));
+    console.log('Available env:', envKeys);
+    
     return res.status(200).json({ 
       status: 'ok', 
       timestamp: new Date().toISOString(),
       version: '1.0.0',
-      database: supabase ? 'supabase' : 'not configured'
+      database: supabase ? 'supabase' : 'not configured',
+      debug_env: envKeys
     });
   }
 
