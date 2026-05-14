@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Vercel serverless API handler
-// Routes requests to appropriate Supabase operations
+// https://vercel.com/docs/serverless-functions
 
 const JWT_SECRET = process.env.JWT_SECRET || 'conferly-dev-secret';
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
@@ -11,16 +11,21 @@ const supabase = SUPABASE_URL && SUPABASE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_KEY)
   : null;
 
+export const config = {
+  api: {
+    bodyParser: true,
+  },
+};
+
 export default async function handler(req, res) {
-  const { url, method } = req;
-  const path = url.split('?')[0];
+  const path = req.url.split('?')[0];
   
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
-  if (method === 'OPTIONS') {
+  if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
