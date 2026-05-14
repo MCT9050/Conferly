@@ -21,24 +21,8 @@
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
   <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
   
-  <!-- SPA redirect: handle direct path access (/terms, /privacy, /auth, /dashboard, /pricing) -->
-  <script>
-    (function() {
-      var path = window.location.pathname;
-      var hash = window.location.hash;
-      // Skip if root path or already has valid hash route
-      if (path === '/' || path === '/index.html' || (hash && hash.startsWith('#/'))) return;
-      // Skip assets
-      if (path.match(/^\/(assets|icons|images)\//)) return;
-      // Skip API/non-HTML paths
-      if (path.match(/\.(js|css|png|jpg|svg|ico|json|woff2?)$/)) return;
-      // Redirect non-root paths to hash route
-      if (path && path !== '/') {
-        window.location.replace('/#' + path);
-      }
-    })();
-  </script>
-
+  <!-- SPA: serve index.html for all routes (React Router handles them naturally) -->
+  
   <!-- PWA -->
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#f59e0b" />
@@ -74,12 +58,12 @@
   <!-- Cloudflare Turnstile - Bot Protection 
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script> 
   -->
-  <script type="module" crossorigin src="/assets/index-Y3ywMJNc.js"></script>
+  <script type="module" crossorigin src="/assets/index-ecTod-m0.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/react-vendor-CRSfaX0H.js">
   <link rel="modulepreload" crossorigin href="/assets/vendor-CyNnuMLQ.js">
   <link rel="modulepreload" crossorigin href="/assets/editor-q5xxLKkF.js">
   <link rel="modulepreload" crossorigin href="/assets/supabase-CArkGI0V.js">
-  <link rel="stylesheet" crossorigin href="/assets/index-kgLOmdx9.css">
+  <link rel="stylesheet" crossorigin href="/assets/index-CXw1UIrv.css">
 </head>
 
 <body class="bg-slate-950 text-white">
