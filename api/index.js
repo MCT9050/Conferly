@@ -123,17 +123,31 @@ async function handleMeetings(req, res) {
     return res.status(200).json({ meetings: data || [] });
   }
   
-  // POST /api/meetings - Create meeting
+  // POST /api/meetings - Create meeting (requires auth)
   if (req.method === 'POST') {
     if (!supabase) {
       return res.status(503).json({ error: 'Supabase not configured' });
     }
     
+    // Check for auth token
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    
     try {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      
+      if (authError || !user) {
+        return res.status(401).json({ error: 'Invalid token' });
+      }
+      
       const { data, error } = await supabase
         .from('meetings')
         .insert([{
           title: 'New Meeting',
+          host_id: user.id,
           created_at: new Date().toISOString()
         }])
         .select()

@@ -7,17 +7,15 @@
 -- 1. DISABLE RLS ON EXISTING TABLES
 -- ============================================
 
--- Disable RLS so the API can access tables
 ALTER TABLE meetings DISABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;
 ALTER TABLE payments DISABLE ROW LEVEL SECURITY;
 ALTER TABLE subscriptions DISABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- 2. CREATE ANALYTICS TABLE (if needed)
+-- 2. CREATE ANALYTICS TABLE
 -- ============================================
 
--- Create analytics_events table (may already exist)
 CREATE TABLE IF NOT EXISTS analytics_events (
   id SERIAL PRIMARY KEY,
   event_type TEXT NOT NULL,
@@ -27,14 +25,16 @@ CREATE TABLE IF NOT EXISTS analytics_events (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Allow public access
 ALTER TABLE analytics_events DISABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- 3. ENSURE MEETINGS HAS REQUIRED COLUMNS
+-- 3. MEETINGS TABLE (update to allow null host_id)
 -- ============================================
 
--- Add columns if they don't exist
+-- Make host_id nullable for unauthenticated meeting creation
+ALTER TABLE meetings ALTER COLUMN host_id DROP NOT NULL;
+
+-- Or ensure these columns exist:
 ALTER TABLE meetings ADD COLUMN IF NOT EXISTS title TEXT;
 ALTER TABLE meetings ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'en';
 ALTER TABLE meetings ADD COLUMN IF NOT EXISTS host_id TEXT;
@@ -44,7 +44,7 @@ ALTER TABLE meetings ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW
 ALTER TABLE meetings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- ============================================
--- 4. ENSURE PROFILES HAS REQUIRED COLUMNS
+-- 4. PROFILES TABLE
 -- ============================================
 
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email TEXT;
@@ -56,33 +56,28 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- ============================================
--- 5. FIX POLICIES (alternative to disabling RLS)
+-- 5. SUBSCRIPTIONS TABLE
 -- ============================================
 
--- If you want to keep RLS enabled, create policies:
-/*
--- Allow anyone to read meetings
-CREATE POLICY "Public read meetings" ON meetings
-FOR SELECT USING (true);
-
--- Allow authenticated users to insert meetings  
-CREATE POLICY "Auth insert meetings" ON meetings
-FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-
--- Allow anyone to read profiles
-CREATE POLICY "Public read profiles" ON profiles
-FOR SELECT USING (true);
-
--- Allow users to update their own profile
-CREATE POLICY "User update own profile" ON profiles
-FOR UPDATE USING (auth.uid() = id);
-*/
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS user_id TEXT;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS tier TEXT DEFAULT 'free';
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS current_period_end TIMESTAMPTZ;
 
 -- ============================================
--- 6. VERIFY
+-- 6. PAYMENTS TABLE
 -- ============================================
 
--- Check RLS status
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS user_id TEXT;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS amount INTEGER;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'usd';
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS subscription_id TEXT;
+
+-- ============================================
+-- 7. VERIFY
+-- ============================================
+
 SELECT tablename, rowsecurity 
 FROM pg_tables 
 WHERE schemaname = 'public' 
