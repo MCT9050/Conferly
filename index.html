@@ -21,24 +21,6 @@
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
   <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
   
-  <!-- SPA redirect: handle direct path access (/terms, /privacy, /auth, /dashboard, /pricing) -->
-  <script>
-    (function() {
-      var path = window.location.pathname;
-      var hash = window.location.hash;
-      // Skip if root path or already has valid hash route
-      if (path === '/' || path === '/index.html' || (hash && hash.startsWith('#/'))) return;
-      // Skip assets
-      if (path.match(/^\/(assets|icons|images)\//)) return;
-      // Skip API/non-HTML paths
-      if (path.match(/\.(js|css|png|jpg|svg|ico|json|woff2?)$/)) return;
-      // Redirect non-root paths to hash route
-      if (path && path !== '/') {
-        window.location.replace('/#' + path);
-      }
-    })();
-  </script>
-
   <!-- PWA -->
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#f59e0b" />
