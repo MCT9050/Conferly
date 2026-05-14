@@ -48,7 +48,7 @@ export async function middleware(request: NextRequest) {
   );
 
   // Public routes
-  const publicRoutes = ["/auth", "/landing"];
+  const publicRoutes = ["/", "/auth", "/landing"];
   const isPublicRoute = publicRoutes.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   );

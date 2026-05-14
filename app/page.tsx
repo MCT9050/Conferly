@@ -1,8 +1,5 @@
-"use client";
-
-import { redirect } from "next/navigation";
+import LandingPage from "./landing/page";
 
 export default function HomePage() {
-  // Redirect to auth - this makes the home page show the sign-in/sign-up form
-  redirect("/auth");
+  return <LandingPage />;
 }
