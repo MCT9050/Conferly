@@ -40,15 +40,18 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 ALTER TABLE subscriptions DISABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- 4. FIX MEETINGS COLUMNS
+-- 4. FIX MEETINGS (add columns first, then remove NOT NULL)
 -- ============================================
 
-ALTER TABLE meetings ALTER COLUMN host_id DROP NOT NULL;
+-- Add columns first
 ALTER TABLE meetings ADD COLUMN IF NOT EXISTS title TEXT;
 ALTER TABLE meetings ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'en';
 ALTER TABLE meetings ADD COLUMN IF NOT EXISTS host_id TEXT;
 ALTER TABLE meetings ADD COLUMN IF NOT EXISTS room_id TEXT;
 ALTER TABLE meetings ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+
+-- Then make host_id nullable (if it has NOT NULL constraint)
+-- ALTER TABLE meetings ALTER COLUMN host_id DROP NOT NULL;
 
 -- ============================================
 -- 5. PROFILES COLUMNS
