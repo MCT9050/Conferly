@@ -651,20 +651,6 @@ app.post('/api/subscription/upgrade', authenticate, (req, res) => {
 
 // ─── PAYMENT HISTORY ───
 
-PLACEHOLDER_PAYMENTS
-PLACEHOLDER_PAYMENTS
-PLACEHOLDER_PAYMENTS
-PLACEHOLDER_PAYMENTS
-PLACEHOLDER_PAYMENTS
-PLACEHOLDER_PAYMENTS
-PLACEHOLDER_PAYMENTS
-PLACEHOLDER_PAYMENTS
-PLACEHOLDER_PAYMENTS
-PLACEHOLDER_PAYMENTS
-PLACEHOLDER_PAYMENTS
-PLACEHOLDER_PAYMENTS
-PLACEHOLDER_PAYMENTS
-PLACEHOLDER_PAYMENTS
 
 // ─── MEETING HISTORY ───
 
@@ -803,7 +789,7 @@ app.get('/api/analytics', authenticate, (req, res) => {
   
   // Build query
   let query = 'SELECT event_type, COUNT(*) as count, MAX(created_at) as last_occurred FROM analytics_events WHERE 1=1';
-  const params: any[] = [];
+  const params = [];
   
   if (eventType) {
     query += ' AND event_type = ?';
@@ -988,7 +974,14 @@ async function signPeachRequest(method, path, body) {
   const timestamp = new Date().toISOString();
   const payload = `${method}:${path}:${timestamp}:${JSON.stringify(body)}`;
   const signature = crypto
-});
+    .createHmac('sha256', process.env.PEACH_SECRET || '')
+    .update(payload)
+    .digest('hex');
+  return {
+    'X-Peach-Timestamp': timestamp,
+    'X-Peach-Signature': signature
+  };
+}
 
 // ─── SCHEDULED JOBS ───
 // Subscription expiry reminders and meeting cleanup
@@ -1045,7 +1038,7 @@ function cleanupOldMeetings() {
 }
 
 // Job: Clean up expired refresh tokens
-function cleanupExpiredTokens() {
+function cleanupExpiredTokensJob() {
   const result = db.prepare(`
     DELETE FROM refresh_tokens 
     WHERE expires_at <= datetime('now')
@@ -1060,7 +1053,7 @@ function cleanupExpiredTokens() {
 // Start scheduled jobs
 scheduleDailyJob(sendSubscriptionReminders, 9); // 9am
 scheduleDailyJob(cleanupOldMeetings, 10); // 10am  
-scheduleDailyJob(cleanupExpiredTokens, 11); // 11am
+scheduleDailyJob(cleanupExpiredTokensJob, 11); // 11am
 
 // ─── CONFLICT RESOLUTION FOR OFFLINE SYNC ───
 // Strategy: Last-write-wins with manual merge UI
@@ -1087,9 +1080,7 @@ app.post('/api/sync/resolve', authenticate, (req, res) => {
   
   const resolved = resolveConflict(localData, remoteData);
   return apiSuccess(res, resolved, 'CONFLICT_RESOLVED');
-    'X-Peach-Signature': signature
-  };
-}
+});
 
 // POST /api/payments/peach/create - Create payment with signed request
 app.post('/api/payments/peach/create', authenticate, async (req, res) => {
