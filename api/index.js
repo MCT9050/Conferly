@@ -229,39 +229,15 @@ async function handleAnalytics(req, res) {
     return res.status(503).json({ error: 'Supabase not configured' });
   }
   
-  // GET /api/analytics
+  // GET /api/analytics - use meetings table
   if (req.method === 'GET') {
     const { data, error } = await supabase
-      .from('analytics_events')
-      .select('event_type, count, last_occurred')
-      .order('count', { ascending: false })
+      .from('meetings')
+      .select('title, created_at')
+      .order('created_at', { ascending: false })
       .limit(20);
     
-    if (error) {
-      return res.status(500).json({ error: error.message });
-    }
-    
     return res.status(200).json({ events: data || [] });
-  }
-  
-  // POST /api/analytics - Track event
-  if (req.method === 'POST') {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const { eventType, metadata } = body;
-    
-    const { error } = await supabase
-      .from('analytics_events')
-      .insert([{
-        event_type: eventType,
-        metadata: metadata ? JSON.stringify(metadata) : null,
-        created_at: new Date().toISOString()
-      }]);
-    
-    if (error) {
-      return res.status(500).json({ error: error.message });
-    }
-    
-    return res.status(201).json({ tracked: true });
   }
   
   res.status(404).json({ error: 'Endpoint not found' });
