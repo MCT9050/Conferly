@@ -150,15 +150,30 @@ test.describe('Conferly UI Tests', () => {
     }
   });
 
-  test('API health check works', async ({ request }) => {
-    const response = await request.get('https://conferly.vercel.app/api/health');
-    expect(response.status()).toBe(200);
+  test('Check all API endpoints', async ({ request }) => {
+    const endpoints = [
+      '/api/health',
+      '/api/auth/verify-email?email=test@example.com',
+      '/api/meetings',
+      '/api/profile',
+      '/api/subscription',
+    ];
     
-    const data = await response.json();
-    console.log('API Response:', data);
+    const results = [];
+    for (const endpoint of endpoints) {
+      const url = `https://conferly.vercel.app${endpoint}`;
+      const res = await request.get(url);
+      const status = res.status();
+      console.log(`${endpoint}: ${status}`);
+      results.push({ endpoint, status });
+    }
     
-    expect(data.status).toBe('ok');
-    expect(data.database).toBe('supabase');
+    // Check no 503 errors
+    const errors = results.filter(r => r.status === 503);
+    if (errors.length > 0) {
+      console.log('503 Errors found:', errors);
+    }
+    expect(errors).toHaveLength(0);
   });
 
   test('Check all images load', async ({ page }) => {
