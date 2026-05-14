@@ -4,8 +4,17 @@ import { createClient } from '@supabase/supabase-js';
 // https://vercel.com/docs/serverless-functions
 
 const JWT_SECRET = process.env.JWT_SECRET || 'conferly-dev-secret';
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+
+// Support multiple naming conventions
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL 
+  || process.env.SUPABASE_URL 
+  || process.env.SUPABASE_PROJECT_URL;
+const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY 
+  || process.env.SUPABASE_ANON_KEY 
+  || process.env.SUPABASE_SERVICE_KEY;
+
+console.log('SUPABASE_URL:', SUPABASE_URL ? 'set' : 'not set');
+console.log('SUPABASE_KEY:', SUPABASE_KEY ? 'set' : 'not set');
 
 const supabase = SUPABASE_URL && SUPABASE_KEY 
   ? createClient(SUPABASE_URL, SUPABASE_KEY)
