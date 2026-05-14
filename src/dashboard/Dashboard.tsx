@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Video, Plus, Users, ArrowRight, Clock, Crown,
   Settings, LogOut, Shield, Calendar,
@@ -10,6 +11,7 @@ import type { UserProfile } from '../hooks/useAuth';
 import { saveSession, MeetingSession } from '../persistence/useMeetingPersistence';
 import ProfileMenu from './ProfileMenu';
 import Logo from '../components/Logo';
+import NavButtons from '../components/NavButtons';
 
 // FeatureGate component for disabled features
 function FeatureGate({ allowed, label, planRequired, onUpgrade }: {
@@ -233,6 +235,7 @@ export default function Dashboard({
         {/* Mobile header */}
         <div className="lg:hidden glass sticky top-0 z-40 px-4 py-3 flex items-center justify-between border-b border-slate-800/50">
           <div className="flex items-center gap-2">
+            <NavButtons showBack={false} />
             <Logo size="sm" />
           </div>
           <div className="flex items-center gap-2">

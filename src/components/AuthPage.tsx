@@ -1,10 +1,12 @@
 import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import {
   Mail, Lock, User, ArrowRight, Eye, EyeOff,
   AlertCircle, Loader2, CheckCircle
 } from 'lucide-react';
 import Logo from './Logo';
+import NavButtons from './NavButtons';
 import EmailConfirmation from './EmailConfirmation';
 
 interface AuthPageProps {
@@ -141,8 +143,11 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
   }
 
   return (
-    <main className="min-h-[100dvh] flex items-center justify-center px-4 py-12">
+    <main className="min-h-[100dvh] flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-md flex flex-col gap-8">
+        <div className="absolute top-4 left-4">
+          <NavButtons showBack={false} />
+        </div>
         {/* Logo */}
         <div className="text-center flex flex-col items-center gap-3">
           <div className="flex justify-center">
