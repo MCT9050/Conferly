@@ -1,89 +1,14 @@
-# Dependencies
 node_modules/
-.pnp
-.pnp.js
-
-# Build output
+.next/
 build/
-
-# Environment
+dist/
 .env
 .env.local
 .env.development.local
-.env.test.local
 .env.production.local
-
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# Editor / IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
-
-# TypeScript cache
+.vercel
 *.tsbuildinfo
-
-# Vite
-vite.config.ts.timestamp-*
-
-# Security - NEVER commit these files!
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.env
-secrets/
-*.key
-*.pem
-*.p12
-*.pfx
-
-# Supabase specific
-supabase/
-*.supabase
-
-# API Keys and Tokens
-api-keys.txt
-tokens.txt
-credentials.json
-*.json.keys
-
-# Build artifacts with potential sensitive data
-build/
-*.map
-*.bundle.*
-
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
-# Logs and debugging
-*.log
-logs/
-debug/
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-
-# OS generated files
+next-env.d.ts
 .DS_Store
-Thumbs.db
-desktop.ini
-
-# Backup files
-*.backup
-*.bak
-*~
-test-results/
+coverage/
+*.log
