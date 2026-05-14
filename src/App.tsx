@@ -3,7 +3,7 @@
  * Strict gatekeeper between Unauthenticated and Authenticated pathways
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, Navigate,  } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate,  } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from './persistence/supabase';
 
 // Marketing Layer - Public flow
@@ -193,7 +193,7 @@ function App() {
   const clearError = useCallback(() => setAuthError(null), []);
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         {/* Public Views */}
         <Route path="/" element={<LandingPage />} />
@@ -249,7 +249,7 @@ function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
