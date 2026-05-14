@@ -74,18 +74,18 @@ export default function LandingPage({ setRoomId, userName, setUserName }: Partia
             <a href="#how" className="hover:text-white transition-colors">How it works</a>
             <a href="#scenarios" className="hover:text-white transition-colors">Use cases</a>
             <a href="#/learn" className="hover:text-white transition-colors">Learn</a>
-            <a href="#/pricing" className="hover:text-white transition-colors">Pricing</a>
+            <a href="/pricing" className="hover:text-white transition-colors">Pricing</a>
           </div>
           <div className="flex items-center gap-2">
             <NavButtons />
             <button
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/')}
               className="hidden sm:block text-[13px] text-slate-400 hover:text-white font-medium transition-colors"
             >
               Sign in
             </button>
             <button
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/')}
               className="px-5 py-2 rounded-full bg-white text-slate-900 text-[13px] font-semibold hover:bg-slate-100 transition-colors shadow-lg shadow-white/10"
             >
               Get started

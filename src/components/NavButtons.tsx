@@ -11,9 +11,9 @@ export default function NavButtons({ showBack = true, showHome = true, className
   const navigate = useNavigate();
   const location = useLocation();
   const isHome = location.pathname === '/';
-  const isAuth = location.pathname === '/auth';
+  const isLanding = location.pathname === '/landing';
 
-  if (isHome) return null;
+  if (isHome || isLanding) return null;
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>

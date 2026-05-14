@@ -196,7 +196,18 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* Public Views */}
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={
+          <AuthPage
+            onSignUp={handleSignUp}
+            onSignIn={handleSignIn}
+            onResendConfirmation={async () => {}}
+            onResetPassword={async () => {}}
+            error={authError}
+            clearError={clearError}
+            loading={authLoading}
+          />
+        } />
+        <Route path="/landing" element={<LandingPage />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route
           path="/auth"
