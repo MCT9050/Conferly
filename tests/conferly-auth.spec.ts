@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Conferly Landing Page', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:3000');
+    await page.goto('/');
   });
 
   test('should load landing page successfully', async ({ page }) => {
@@ -56,7 +56,7 @@ test.describe('Conferly Landing Page', () => {
 test.describe('Conferly Mobile Menu', () => {
   test('should display mobile menu on small screens', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('http://localhost:3000');
+    await page.goto('/');
     
     const menuButton = page.locator('button[aria-label="Open menu"]');
     await expect(menuButton).toBeVisible();
@@ -64,7 +64,7 @@ test.describe('Conferly Mobile Menu', () => {
 
   test('should toggle mobile menu', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('http://localhost:3000');
+    await page.goto('/');
     
     const menuButton = page.locator('button[aria-label="Open menu"]');
     await menuButton.click();
@@ -76,7 +76,7 @@ test.describe('Conferly Mobile Menu', () => {
 
 test.describe('Conferly Theme Support', () => {
   test('should apply dark theme CSS variables', async ({ page }) => {
-    await page.goto('http://localhost:3000');
+    await page.goto('/');
     
     const background = await page.locator('body').evaluate(
       (el) => window.getComputedStyle(el).backgroundColor
@@ -85,7 +85,7 @@ test.describe('Conferly Theme Support', () => {
   });
 
   test('should support theme toggle', async ({ page }) => {
-    await page.goto('http://localhost:3000');
+    await page.goto('/');
     
     const themeToggle = page.locator('button[aria-label*="Switch to"]');
     if (await themeToggle.isVisible()) {
