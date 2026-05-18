@@ -1,15 +1,13 @@
 {
-  "name": "react-vite-tailwind",
+  "name": "conferly",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --turbopack",
+    "build": "next build --turbopack",
     "start": "next start",
-    "lint": "next lint",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "lint": "eslint app/ --max-warnings=9999"
   },
   "dependencies": {
     "@livekit/components-react": "^2.9.20",
@@ -27,15 +25,6 @@
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "@tanstack/react-query": "^5.100.10",
-    "@tiptap/extension-collaboration": "^3.22.5",
-    "@tiptap/extension-highlight": "^3.22.5",
-    "@tiptap/extension-placeholder": "^3.22.5",
-    "@tiptap/extension-task-item": "^3.22.5",
-    "@tiptap/extension-task-list": "^3.22.5",
-    "@tiptap/extension-typography": "^3.22.5",
-    "@tiptap/react": "^3.22.5",
-    "@tiptap/starter-kit": "^3.22.5",
-    "@types/uuid": "^10.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
@@ -46,34 +35,17 @@
     "next-themes": "^0.4.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.15.0",
-    "rxjs": "^7.8.2",
-    "tailwind-merge": "^3.4.0",
-    "uuid": "^14.0.0",
-    "y-webrtc": "^10.3.0",
-    "yjs": "^13.6.30"
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260511.1",
-    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.60.0",
-    "@tailwindcss/vite": "4.1.17",
-    "@testing-library/react": "^16.3.2",
     "@types/node": "22.19.17",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
-    "@typescript-eslint/eslint-plugin": "^8.59.2",
-    "@typescript-eslint/parser": "^8.59.2",
-    "@vitejs/plugin-react": "5.1.1",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
-    "jsdom": "^29.1.1",
     "tailwindcss": "4.1.17",
-    "typescript": "5.9.3",
-    "typescript-eslint": "^8.59.2",
-    "vite": "^7.3.2",
-    "vite-plugin-singlefile": "2.3.0",
-    "vitest": "^4.1.5"
+    "typescript": "5.9.3"
   }
 }

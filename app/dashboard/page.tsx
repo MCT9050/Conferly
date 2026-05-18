@@ -16,6 +16,7 @@ function createRoomId() {
 export default function DashboardPage() {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
 
@@ -37,6 +38,7 @@ export default function DashboardPage() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      setUser(session?.user ?? null);
     });
 
     return () => subscription.unsubscribe();
@@ -111,7 +113,7 @@ export default function DashboardPage() {
             { icon: Settings, label: "Settings", href: "#", color: "from-purple-500 to-purple-600" },
           ].map((action, i) => {
               const isStartMeeting = action.label === "Start Meeting";
-              const href = isStartMeeting ? `/room/${createRoomId()}` : action.href;
+              const href = isStartMeeting ? `/room/${createRoomId()}` : (action.href || "#");
               return (
             <motion.div
               key={action.label}

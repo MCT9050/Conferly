@@ -37,8 +37,9 @@
   ],
   "exclude": [
     "node_modules",
-    "dist",
-    "build",
-    ".next"
+    ".next",
+    "public",
+    "supabase",
+    ".github"
   ]
 }

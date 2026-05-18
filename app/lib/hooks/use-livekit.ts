@@ -1,22 +1,12 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import {
-  connect,
   Room,
   RoomEvent,
-  Participant,
-  LocalParticipant,
   RemoteParticipant,
-  LocalVideoTrack,
-  LocalAudioTrack,
-  RemoteTrack,
-  RemoteTrackPublication,
   VideoPresets,
-  AudioPresets,
 } from "livekit-client";
-import { BehaviorSubject } from "rxjs";
 
 // Types for the room state
 export interface RoomState {
@@ -24,8 +14,8 @@ export interface RoomState {
   isConnecting: boolean;
   isConnected: boolean;
   error: string | null;
-  participants: Participant[];
-  localParticipant: LocalParticipant | null;
+  participants: RemoteParticipant[];
+  localParticipant: import("livekit-client").LocalParticipant | null;
 }
 
 export interface UseLiveKitOptions {
@@ -45,7 +35,6 @@ export interface UseLiveKitReturn {
 }
 
 export function useLiveKit({ roomId, participantName }: UseLiveKitOptions): UseLiveKitReturn {
-  const router = useRouter();
   const [state, setState] = useState<RoomState>({
     room: null,
     isConnecting: false,
@@ -56,8 +45,6 @@ export function useLiveKit({ roomId, participantName }: UseLiveKitOptions): UseL
   });
   const [localVideo, setLocalVideo] = useState<MediaStream | null>(null);
   const [localAudio, setLocalAudio] = useState<MediaStream | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const isAudioEnabled = useRef(true);
   const isVideoEnabled = useRef(true);
 
@@ -90,15 +77,8 @@ export function useLiveKit({ roomId, participantName }: UseLiveKitOptions): UseL
         return;
       }
 
-      // Connect to LiveKit
-      const room = new Room({
-        videoCaptureDefaults: {
-          resolution: VideoPresets.hd720,
-        },
-        audioCaptureDefaults: {
-         ...AudioPresets.nspeech,
-        },
-      });
+      // Create Room with default capture settings
+      const room = new Room();
 
       // Handle events
       room
@@ -127,42 +107,37 @@ export function useLiveKit({ roomId, participantName }: UseLiveKitOptions): UseL
         })
         .on(RoomEvent.Reconnected, () => {
           setState((prev) => ({ ...prev, error: null }));
+        })
+        .on(RoomEvent.TrackSubscribed, (_track, _publication, participant) => {
+          // Handle track subscription - could extract media stream here
+          if (participant && participant.identity !== state.localParticipant?.identity) {
+            // Update participants list to include tracks info
+          }
         });
 
+      // Connect to LiveKit
       await room.connect(url, token, {
         autoSubscribe: true,
       });
 
-      // Start local tracks
-      await room.startLocalPreview();
-
-      // Get local tracks
+      // Get local participant and publish default tracks
       const localParticipant = room.localParticipant;
-      const videoTrack = Array.from(localParticipant.videoTracks.values())[0]?.track;
-      const audioTrack = Array.from(localParticipant.audioTracks.values())[0]?.track;
-
-      if (videoTrack) {
-        const stream = new MediaStream();
-        // @ts-expect-error - LiveKit track
-        stream.addTrack(videoTrack.mediaStreamTrack);
-        setLocalVideo(stream);
-      }
-
-      if (audioTrack) {
-        const stream = new MediaStream();
-        // @ts-expect-error - LiveKit track
-        stream.addTrack(audioTrack.mediaStreamTrack);
-        setLocalAudio(stream);
-      }
+      
+      // Publish video with default settings
+      await localParticipant.setCameraEnabled(true);
+      await localParticipant.setMicrophoneEnabled(true);
 
       setState({
         room,
         isConnecting: false,
         isConnected: true,
         error: null,
-        participants: Array.from(room.participants.values()),
+        participants: [], // Will be populated via events
         localParticipant,
       });
+      
+      setLocalVideo(null);
+      setLocalAudio(null);
     } catch (error) {
       console.error("Connection error:", error);
       setState((prev) => ({
@@ -171,7 +146,7 @@ export function useLiveKit({ roomId, participantName }: UseLiveKitOptions): UseL
         error: error instanceof Error ? error.message : "Connection failed",
       }));
     }
-  }, [roomId, participantName, state.isConnected, state.isConnecting]);
+  }, [roomId, participantName, state.isConnected, state.isConnecting, state.localParticipant?.identity]);
 
   const disconnect = useCallback(() => {
     if (state.room) {
@@ -189,24 +164,26 @@ export function useLiveKit({ roomId, participantName }: UseLiveKitOptions): UseL
     }
   }, [state.room]);
 
-  const toggleAudio = useCallback(() => {
+  const toggleAudio = useCallback(async () => {
     if (state.localParticipant) {
-      isAudioEnabled.current = !isAudioEnabled.current;
-      if (isAudioEnabled.current) {
-        state.localParticipant.unmuteMicrophone();
-      } else {
-        state.localParticipant.muteMicrophone();
+      try {
+        const newState = !isAudioEnabled.current;
+        isAudioEnabled.current = newState;
+        await state.localParticipant.setMicrophoneEnabled(newState);
+      } catch (error) {
+        console.error("Failed to toggle audio:", error);
       }
     }
   }, [state.localParticipant]);
 
-  const toggleVideo = useCallback(() => {
+  const toggleVideo = useCallback(async () => {
     if (state.localParticipant) {
-      isVideoEnabled.current = !isVideoEnabled.current;
-      if (isVideoEnabled.current) {
-        state.localParticipant.unmuteCamera();
-      } else {
-        state.localParticipant.muteCamera();
+      try {
+        const newState = !isVideoEnabled.current;
+        isVideoEnabled.current = newState;
+        await state.localParticipant.setCameraEnabled(newState);
+      } catch (error) {
+        console.error("Failed to toggle video:", error);
       }
     }
   }, [state.localParticipant]);
@@ -214,10 +191,9 @@ export function useLiveKit({ roomId, participantName }: UseLiveKitOptions): UseL
   const shareScreen = useCallback(async () => {
     if (state.localParticipant) {
       try {
-        const track = await state.localParticipant.createScreenShareTrack();
-        state.localParticipant.publishTrack(track);
+        await state.localParticipant.setScreenShareEnabled(true);
       } catch (error) {
-        console.error("Screen share error:", error);
+        console.error("Failed to start screen share:", error);
       }
     }
   }, [state.localParticipant]);
