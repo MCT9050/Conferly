@@ -1,9 +1,4 @@
-# Ignore old build artifacts
-dist/
-src/
-src.old/
+# Ignore build artifacts
 .next/
-
-# But include Next.js config
-!next.config.mjs
-!middleware.ts
+dist/
+node_modules/
