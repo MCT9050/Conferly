@@ -34,11 +34,8 @@ export function validateEnv(): void {
   }
   
   if (missing.length > 0) {
-    console.error(`Missing required environment variables: ${missing.join(', ')}`);
-    // Don't throw in development - allow demo mode
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
-    }
+    console.warn(`Missing environment variables: ${missing.join(', ')} - running in demo mode`);
+    // Never throw - allow app to run in demo mode
   }
 }
 
