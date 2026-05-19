@@ -1,0 +1,108 @@
+{
+  "name": "Conferly: Trial Expiry Reminder (Daily)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 9 * * *" }]
+        }
+      },
+      "id": "cron-1",
+      "name": "Daily at 9am SAST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/profiles?plan_tier=eq.trial&select=id,email,display_name,plan_period_end",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "supabase-1",
+      "name": "Get Trial Users",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "id": "split-1",
+      "name": "Split Users",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate days remaining in trial\nconst end = new Date($json.plan_period_end);\nconst now = new Date();\nconst daysRemaining = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));\nreturn { ...item.json, daysRemaining };"
+      },
+      "id": "code-1",
+      "name": "Calculate Days Left",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.daysRemaining }}",
+              "rightValue": 3,
+              "operator": { "type": "number", "operation": "lte" }
+            },
+            {
+              "id": "2",
+              "leftValue": "={{ $json.daysRemaining }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "filter-1",
+      "name": "Trial Ending Soon?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@conferly.site",
+        "toEmail": "={{ $json.email }}",
+        "subject": "⏰ Your Conferly trial ends in {{ $json.daysRemaining }} day(s)",
+        "emailFormat": "html",
+        "html": "<!DOCTYPE html><html><body style=\"font-family:Inter,sans-serif;background:#0f172a;color:#fff;padding:40px;margin:0;\"><div style=\"max-width:560px;margin:0 auto;background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.2);border-radius:24px;padding:48px 32px;text-align:center;\"><h1 style=\"font-size:28px;margin:0 0 16px;\">Your trial ends in {{ $json.daysRemaining }} day(s)</h1><p style=\"color:#cbd5e1;line-height:1.7;\">Hi {{ $json.display_name }}, don't lose access to recording, AI summaries, and unlimited meetings. Upgrade to Pro today.</p><a href=\"https://www.conferly.site\" style=\"display:inline-block;padding:16px 40px;background:linear-gradient(135deg,#f59e0b,#d97706);color:white;text-decoration:none;border-radius:999px;font-weight:600;margin-top:24px;\">Upgrade to Pro — R165/mo</a><p style=\"color:#64748b;font-size:12px;margin-top:32px;\">14-day money-back guarantee. Cancel anytime.</p></div></body></html>",
+        "options": {}
+      },
+      "id": "email-1",
+      "name": "Send Reminder",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1340, 300]
+    }
+  ],
+  "connections": {
+    "Daily at 9am SAST": { "main": [[{ "node": "Get Trial Users", "type": "main", "index": 0 }]] },
+    "Get Trial Users": { "main": [[{ "node": "Split Users", "type": "main", "index": 0 }]] },
+    "Split Users": { "main": [[{ "node": "Calculate Days Left", "type": "main", "index": 0 }]] },
+    "Calculate Days Left": { "main": [[{ "node": "Trial Ending Soon?", "type": "main", "index": 0 }]] },
+    "Trial Ending Soon?": { "main": [[{ "node": "Send Reminder", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "conferly" }, { "name": "trial" }, { "name": "scheduled" }]
+}
