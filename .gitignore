@@ -58,6 +58,7 @@ pnpm-debug.log*
 
 # environment files
 .env*
+*.tsbuildinfo
 
 # deployment outputs
 /.vercel/
