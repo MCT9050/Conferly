@@ -1,11 +1,12 @@
-'use client';
+ 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import AuthPage from '@/components/AuthPage';
 
 export default function AuthPageRoute() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -28,7 +29,8 @@ export default function AuthPageRoute() {
         return { success: false };
       }
 
-      router.replace('/dashboard');
+      const redirectTo = (searchParams?.get('redirect') as string) || '/dashboard';
+      router.replace(redirectTo);
       return { success: true };
     } catch (err) {
       setError('Unable to sign in. Please try again.');

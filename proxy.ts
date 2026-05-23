@@ -8,7 +8,7 @@ import { trackEvent } from './lib/monitoring';
 const PROTECTED_ROUTES = ['/dashboard', '/lobby', '/meeting', '/settings', '/profile'];
 
 // Auth routes that should redirect if already authenticated
-const AUTH_ROUTES = ['/auth/signin', '/auth/signup', '/auth/reset', '/auth'];
+const AUTH_ROUTES = ['/auth/signup', '/auth/reset', '/auth'];
 
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -48,7 +48,8 @@ export default async function proxy(request: NextRequest) {
       route: pathname,
       timestamp: Date.now(),
     });
-    const signInUrl = new URL('/auth/signin', request.url);
+    // Redirect to canonical auth page; preserve requested path as `redirect` param
+    const signInUrl = new URL('/auth', request.url);
     signInUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(signInUrl);
   }

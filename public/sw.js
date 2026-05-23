@@ -9,9 +9,8 @@ const OFFLINE_URL = '/';
 const PRE_CACHE = [
   '/',
   '/manifest.json',
-  '/icons/icon-192.png',
+  // Keep only essential PWA icon pre-cached (larger icons or mockups can be lazy-loaded)
   '/icons/icon-512.png',
-  '/images/app-mockup.png',
 ];
 
 // Runtime cache - dynamically cached resources
