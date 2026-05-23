@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Mail, Lock, User, ArrowRight, Eye, EyeOff,
   AlertCircle, CheckCircle2, Loader2
@@ -16,6 +16,55 @@ interface AuthPageProps {
 }
 
 export default function AuthPage({ onSignUp, onSignIn, error, clearError, loading }: AuthPageProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root || typeof window === 'undefined') return;
+
+    const update = () => {
+      const hiddenAncestor = root.closest('[data-aria-hidden="true"]');
+      if (hiddenAncestor) {
+        try { (root as any).inert = true; } catch (e) {}
+        root.setAttribute('aria-hidden', 'true');
+
+        const focusable = root.querySelectorAll<HTMLElement>('a,button,input,select,textarea,[tabindex]');
+        focusable.forEach(el => {
+          if (el.hasAttribute('data-prev-tabindex')) return;
+          const prev = el.getAttribute('tabindex');
+          el.setAttribute('data-prev-tabindex', prev ?? '');
+          el.setAttribute('tabindex', '-1');
+          if (el.tagName === 'BUTTON') {
+            const btn = el as HTMLButtonElement;
+            if (!btn.disabled) {
+              btn.setAttribute('data-prev-disabled', 'false');
+              btn.disabled = true;
+            }
+          }
+        });
+      } else {
+        try { (root as any).inert = false; } catch (e) {}
+        root.removeAttribute('aria-hidden');
+
+        const restored = root.querySelectorAll<HTMLElement>('[data-prev-tabindex], [data-prev-disabled]');
+        restored.forEach(el => {
+          const prev = el.getAttribute('data-prev-tabindex');
+          if (prev === '') el.removeAttribute('tabindex');
+          else if (prev !== null) el.setAttribute('tabindex', prev);
+          el.removeAttribute('data-prev-tabindex');
+          if (el.hasAttribute('data-prev-disabled')) {
+            el.removeAttribute('data-prev-disabled');
+            try { (el as HTMLButtonElement).disabled = false; } catch (e) {}
+          }
+        });
+      }
+    };
+
+    update();
+    const mo = new MutationObserver(update);
+    mo.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['data-aria-hidden'] });
+    return () => mo.disconnect();
+  }, []);
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -49,7 +98,7 @@ export default function AuthPage({ onSignUp, onSignIn, error, clearError, loadin
     : email.trim().length > 0 && password.length >= 6;
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
+    <div ref={containerRef as any} className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md space-y-8">
         {/* Logo */}
         <div className="text-center space-y-3">
