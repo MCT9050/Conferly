@@ -99,66 +99,68 @@ CREATE POLICY org_members_update_for_org_admin
 -- (Replaces the meetings policies from 002_hardening.sql with org-aware versions)
 DO $$
 BEGIN
-  DROP POLICY IF EXISTS meetings_select_for_participants ON public.meetings;
-  DROP POLICY IF EXISTS meetings_insert_owner_only ON public.meetings;
-  DROP POLICY IF EXISTS meetings_modify_owner_only ON public.meetings;
+  EXECUTE 'DROP POLICY IF EXISTS meetings_select_for_participants ON public.meetings';
+  EXECUTE 'DROP POLICY IF EXISTS meetings_insert_owner_only ON public.meetings';
+  EXECUTE 'DROP POLICY IF EXISTS meetings_modify_owner_only ON public.meetings';
   
-  CREATE POLICY meetings_select_for_org_or_participant
-    ON public.meetings
-    FOR SELECT
-    USING (
-      owner = (select auth.uid())
-      OR (
-        org_id IS NOT NULL AND EXISTS (
-          SELECT 1 FROM public.org_members om
-          WHERE om.org_id = public.meetings.org_id
-            AND om.user_id = (select auth.uid())
+  EXECUTE $pol$
+    CREATE POLICY meetings_select_for_org_or_participant
+      ON public.meetings
+      FOR SELECT
+      USING (
+        owner = (select auth.uid())
+        OR (
+          org_id IS NOT NULL AND EXISTS (
+            SELECT 1 FROM public.org_members om
+            WHERE om.org_id = public.meetings.org_id
+              AND om.user_id = (select auth.uid())
+          )
         )
-      )
-      OR EXISTS (
-        SELECT 1 FROM public.meeting_participants mp
-        WHERE mp.meeting_id = public.meetings.id
-          AND mp.user_id = (select auth.uid())
-      )
-    );
+        OR EXISTS (
+          SELECT 1 FROM public.meeting_participants mp
+          WHERE mp.meeting_id = public.meetings.id
+            AND mp.user_id = (select auth.uid())
+        )
+      );
 
-  CREATE POLICY meetings_insert_owner_or_org_member
-    ON public.meetings
-    FOR INSERT
-    WITH CHECK (
-      owner = (select auth.uid())
-      OR (
-        org_id IS NOT NULL AND EXISTS (
-          SELECT 1 FROM public.org_members om
-          WHERE om.org_id = public.meetings.org_id
-            AND om.user_id = (select auth.uid())
+    CREATE POLICY meetings_insert_owner_or_org_member
+      ON public.meetings
+      FOR INSERT
+      WITH CHECK (
+        owner = (select auth.uid())
+        OR (
+          org_id IS NOT NULL AND EXISTS (
+            SELECT 1 FROM public.org_members om
+            WHERE om.org_id = public.meetings.org_id
+              AND om.user_id = (select auth.uid())
+          )
         )
-      )
-    );
+      );
 
-  CREATE POLICY meetings_modify_owner_or_org_admin
-    ON public.meetings
-    FOR UPDATE, DELETE
-    USING (
-      owner = (select auth.uid())
-      OR (
-        org_id IS NOT NULL AND EXISTS (
-          SELECT 1 FROM public.org_members om
-          WHERE om.org_id = public.meetings.org_id
-            AND om.user_id = (select auth.uid())
-            AND om.role = 'admin'
+    CREATE POLICY meetings_modify_owner_or_org_admin
+      ON public.meetings
+      FOR UPDATE, DELETE
+      USING (
+        owner = (select auth.uid())
+        OR (
+          org_id IS NOT NULL AND EXISTS (
+            SELECT 1 FROM public.org_members om
+            WHERE om.org_id = public.meetings.org_id
+              AND om.user_id = (select auth.uid())
+              AND om.role = 'admin'
+          )
         )
       )
-    )
-    WITH CHECK (
-      owner = (select auth.uid())
-      OR (
-        org_id IS NOT NULL AND EXISTS (
-          SELECT 1 FROM public.org_members om
-          WHERE om.org_id = public.meetings.org_id
-            AND om.user_id = (select auth.uid())
-            AND om.role = 'admin'
+      WITH CHECK (
+        owner = (select auth.uid())
+        OR (
+          org_id IS NOT NULL AND EXISTS (
+            SELECT 1 FROM public.org_members om
+            WHERE om.org_id = public.meetings.org_id
+              AND om.user_id = (select auth.uid())
+              AND om.role = 'admin'
+          )
         )
-      )
-    );
+      );
+  $pol$;
 END$$;
