@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS org_members (
   UNIQUE(org_id, user_id)
 );
 
--- 3. Add org_id to meetings (if meetings should be org-scoped)
+-- 3. Add owner and org_id to meetings (if meetings should be org-scoped)
+ALTER TABLE public.meetings ADD COLUMN IF NOT EXISTS owner uuid REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE public.meetings ADD COLUMN IF NOT EXISTS org_id uuid REFERENCES organizations(id) ON DELETE SET NULL;
 
 -- 4. Create indexes for performance
@@ -95,6 +96,26 @@ CREATE POLICY org_members_update_for_org_admin
     )
   );
 
+CREATE POLICY org_members_delete_for_org_admin
+  ON org_members
+  FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.org_members om
+      WHERE om.org_id = org_members.org_id
+        AND om.user_id = (select auth.uid())
+        AND om.role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.org_members om
+      WHERE om.org_id = org_members.org_id
+        AND om.user_id = (select auth.uid())
+        AND om.role = 'admin'
+    )
+  );
+
 -- 8. Update meetings RLS to support org-based access
 -- (Replaces the meetings policies from 002_hardening.sql with org-aware versions)
 DO $$
@@ -137,9 +158,35 @@ BEGIN
         )
       );
 
-    CREATE POLICY meetings_modify_owner_or_org_admin
+    CREATE POLICY meetings_modify_owner_or_org_admin_update
       ON public.meetings
-      FOR UPDATE, DELETE
+      FOR UPDATE
+      USING (
+        owner = (select auth.uid())
+        OR (
+          org_id IS NOT NULL AND EXISTS (
+            SELECT 1 FROM public.org_members om
+            WHERE om.org_id = public.meetings.org_id
+              AND om.user_id = (select auth.uid())
+              AND om.role = 'admin'
+          )
+        )
+      )
+      WITH CHECK (
+        owner = (select auth.uid())
+        OR (
+          org_id IS NOT NULL AND EXISTS (
+            SELECT 1 FROM public.org_members om
+            WHERE om.org_id = public.meetings.org_id
+              AND om.user_id = (select auth.uid())
+              AND om.role = 'admin'
+          )
+        )
+      );
+
+    CREATE POLICY meetings_modify_owner_or_org_admin_delete
+      ON public.meetings
+      FOR DELETE
       USING (
         owner = (select auth.uid())
         OR (

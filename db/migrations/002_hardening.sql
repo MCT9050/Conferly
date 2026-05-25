@@ -9,6 +9,7 @@ DECLARE
   r record;
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='meetings') THEN
+    EXECUTE 'ALTER TABLE public.meetings ADD COLUMN IF NOT EXISTS owner uuid REFERENCES auth.users(id) ON DELETE SET NULL';
     EXECUTE 'ALTER TABLE public.meetings ENABLE ROW LEVEL SECURITY';
     FOR r IN SELECT polname FROM pg_policies WHERE schemaname='public' AND tablename='meetings' LOOP
       EXECUTE format('DROP POLICY IF EXISTS %I ON public.meetings', r.polname);
@@ -30,9 +31,15 @@ BEGIN
         FOR INSERT
         WITH CHECK (owner = (select auth.uid()));
 
-      CREATE POLICY meetings_modify_owner_only
+      CREATE POLICY meetings_modify_owner_only_update
         ON public.meetings
-        FOR UPDATE, DELETE
+        FOR UPDATE
+        USING (owner = (select auth.uid()))
+        WITH CHECK (owner = (select auth.uid()));
+
+      CREATE POLICY meetings_modify_owner_only_delete
+        ON public.meetings
+        FOR DELETE
         USING (owner = (select auth.uid()))
         WITH CHECK (owner = (select auth.uid()));
     $pol$;
@@ -82,9 +89,15 @@ BEGIN
           )
         );
 
-      CREATE POLICY participants_modify_own
+      CREATE POLICY participants_modify_own_update
         ON public.meeting_participants
-        FOR UPDATE, DELETE
+        FOR UPDATE
+        USING (user_id = (select auth.uid()))
+        WITH CHECK (user_id = (select auth.uid()));
+
+      CREATE POLICY participants_modify_own_delete
+        ON public.meeting_participants
+        FOR DELETE
         USING (user_id = (select auth.uid()))
         WITH CHECK (user_id = (select auth.uid()));
     $pol$;
