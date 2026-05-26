@@ -5,6 +5,10 @@ export type ServerEnv = {
   NODE_ENV: 'development' | 'production' | 'test';
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
+  LIVEKIT_API_KEY?: string;
+  LIVEKIT_API_SECRET?: string;
+  LIVEKIT_URL?: string;
   MONITORING_ENDPOINT?: string;
   MONITORING_KEY?: string;
 };
@@ -28,6 +32,10 @@ export function getServerEnv(): ServerEnv {
     NODE_ENV: (env.NODE_ENV ?? 'development') as ServerEnv['NODE_ENV'],
     SUPABASE_URL: env.SUPABASE_URL!,
     SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY!,
+    SUPABASE_SERVICE_ROLE_KEY: env.SUPABASE_SERVICE_ROLE_KEY,
+    LIVEKIT_API_KEY: env.LIVEKIT_API_KEY,
+    LIVEKIT_API_SECRET: env.LIVEKIT_API_SECRET,
+    LIVEKIT_URL: env.LIVEKIT_URL,
     MONITORING_ENDPOINT: env.MONITORING_ENDPOINT,
     MONITORING_KEY: env.MONITORING_KEY,
   };
