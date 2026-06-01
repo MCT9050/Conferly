@@ -49,6 +49,8 @@ const nextConfig: NextConfig = {
   experimental: {
     // Enable when ready for production CSP
     // cpus: 1, // Limit CPU usage for edge compatibility
+    // Optimize package imports: automatic tree-shaking for specified libraries
+    optimizePackageImports: ['lucide-react'],
   },
 
   // Optimize images

@@ -7,12 +7,21 @@ import { trackEvent } from '../../lib/monitoring';
 import { useMonitoring } from '../../hooks/useMonitoring';
 import { MeetingStateProvider } from './MeetingStateContext';
 import MeetingRuntimeFallback from './MeetingRuntimeFallback';
-import MeetingMediaStage from './MeetingMediaStage';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { MeetingErrorFallback, MediaErrorFallback, PanelErrorFallback } from '../MeetingErrorFallback';
 
-const MeetingSidebarStage = dynamic(() => import('./MeetingSidebarStage'));
-const MeetingControlsWrapper = dynamic(() => import('./MeetingControlsWrapper'));
+const MeetingMediaStage = dynamic(() => import('./MeetingMediaStage'), {
+  ssr: false,
+  loading: () => <MeetingRuntimeFallback />,
+});
+const MeetingSidebarStage = dynamic(() => import('./MeetingSidebarStage'), {
+  ssr: false,
+  loading: () => <MeetingRuntimeFallback />,
+});
+const MeetingControlsWrapper = dynamic(() => import('./MeetingControlsWrapper'), {
+  ssr: false,
+  loading: () => <MeetingRuntimeFallback />,
+});
 
 export default function MeetingRuntimeClient() {
   // Monitoring: track connection state changes and reconnect attempts
