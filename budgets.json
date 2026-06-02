@@ -1,0 +1,21 @@
+{
+  "routes": [
+    {
+      "path": "/*",
+      "budget": [
+        {
+          "resource": "script",
+          "limit": 550,
+          "type": "kb",
+          "severity": "error"
+        },
+        {
+          "resource": "total",
+          "limit": 1000,
+          "type": "kb",
+          "severity": "error"
+        }
+      ]
+    }
+  ]
+}
