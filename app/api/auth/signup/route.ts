@@ -61,5 +61,28 @@ export async function POST(request: Request) {
 
   const needsConfirmation = Boolean(data?.confirmation_sent_at || data?.next_action?.type === 'email_verification');
 
+  // If Supabase returned tokens, set cookies similarly to signin flow.
+  if (data?.access_token) {
+    const cookieOptions = {
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: data.expires_in ?? 60 * 60,
+    };
+
+    const authTokenValue = JSON.stringify({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_in: data.expires_in,
+    });
+
+    const cookieDomain = process.env.COOKIE_DOMAIN ?? '.conferly.vercel.app';
+    const cookieDomainAttr = `; Domain=${cookieDomain}`;
+
+    const responseHeaders = new Headers();
+    responseHeaders.append('Set-Cookie', `sb-access-token=${encodeURIComponent(data.access_token)}; HttpOnly; Path=/` + cookieDomainAttr + `; SameSite=Lax; Max-Age=${cookieOptions.maxAge}${cookieOptions.secure ? '; Secure' : ''}`);
+    responseHeaders.append('Set-Cookie', `supabase-auth-token=${encodeURIComponent(authTokenValue)}; HttpOnly; Path=/` + cookieDomainAttr + `; SameSite=Lax; Max-Age=${cookieOptions.maxAge}${cookieOptions.secure ? '; Secure' : ''}`);
+
+    return new NextResponse(JSON.stringify({ success: true, needsConfirmation }), { status: 200, headers: responseHeaders });
+  }
+
   return NextResponse.json({ success: true, needsConfirmation });
 }

@@ -19,6 +19,7 @@ export default function AuthPageRoute() {
     try {
       const response = await fetch('/api/auth/signin', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
@@ -47,6 +48,7 @@ export default function AuthPageRoute() {
     try {
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, displayName }),
       });

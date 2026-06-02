@@ -39,6 +39,11 @@ const nextConfig: NextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(self), microphone=(self), geolocation=(), interest-cohort=()'
           }
+          ,
+          {
+            key: 'Access-Control-Allow-Credentials',
+            value: 'true'
+          }
         ]
       }
     ];

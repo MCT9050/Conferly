@@ -61,6 +61,9 @@ export async function POST(request: Request) {
     maxAge: data.expires_in ?? 60 * 60,
   };
 
+  const cookieDomain = process.env.COOKIE_DOMAIN ?? '.conferly.vercel.app';
+  const cookieDomainAttr = `; Domain=${cookieDomain}`;
+
   const authTokenValue = JSON.stringify({
     access_token: data.access_token,
     refresh_token: data.refresh_token,
@@ -68,8 +71,8 @@ export async function POST(request: Request) {
   });
 
   const responseHeaders = new Headers();
-  responseHeaders.append('Set-Cookie', `sb-access-token=${encodeURIComponent(data.access_token)}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${cookieOptions.maxAge}${cookieOptions.secure ? '; Secure' : ''}`);
-  responseHeaders.append('Set-Cookie', `supabase-auth-token=${encodeURIComponent(authTokenValue)}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${cookieOptions.maxAge}${cookieOptions.secure ? '; Secure' : ''}`);
+  responseHeaders.append('Set-Cookie', `sb-access-token=${encodeURIComponent(data.access_token)}; HttpOnly; Path=/` + cookieDomainAttr + `; SameSite=Lax; Max-Age=${cookieOptions.maxAge}${cookieOptions.secure ? '; Secure' : ''}`);
+  responseHeaders.append('Set-Cookie', `supabase-auth-token=${encodeURIComponent(authTokenValue)}; HttpOnly; Path=/` + cookieDomainAttr + `; SameSite=Lax; Max-Age=${cookieOptions.maxAge}${cookieOptions.secure ? '; Secure' : ''}`);
 
   return new NextResponse(JSON.stringify({ success: true }), {
     status: 200,
