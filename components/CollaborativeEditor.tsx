@@ -3,12 +3,8 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
-import TaskList from '@tiptap/extension-task-list';
-import TaskItem from '@tiptap/extension-task-item';
-import Highlight from '@tiptap/extension-highlight';
-import Typography from '@tiptap/extension-typography';
 import Collaboration from '@tiptap/extension-collaboration';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Bold, Italic, Strikethrough, List, ListOrdered, CheckSquare,
   Highlighter, Heading1, Heading2, Undo2, Redo2, Users
@@ -21,7 +17,24 @@ interface CollaborativeEditorProps {
 
 export default function CollaborativeEditor({ roomId }: CollaborativeEditorProps) {
   const [connectedPeers, setConnectedPeers] = useState(0);
-  const { doc, provider, isConnected } = useCollaborativeDoc(roomId);
+  const { doc, provider } = useCollaborativeDoc(roomId);
+
+  const [lazyExtensions, setLazyExtensions] = useState<any[] | null>(null);
+
+  const baseExtensions = useMemo(
+    () => [
+      StarterKit.configure({
+        undoRedo: false, // Yjs handles undo/redo via Collaboration extension
+      }),
+      Placeholder.configure({
+        placeholder: 'Start typing collaborative notes…',
+      }),
+      Collaboration.configure({
+        document: doc,
+      }),
+    ],
+    [doc],
+  );
 
   useEffect(() => {
     if (!provider) return;
@@ -35,30 +48,57 @@ export default function CollaborativeEditor({ roomId }: CollaborativeEditorProps
     };
   }, [provider]);
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        undoRedo: false, // Yjs handles undo/redo via Collaboration extension
-      }),
-      Placeholder.configure({
-        placeholder: 'Start typing collaborative notes…',
-      }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      Highlight.configure({ multicolor: true }),
-      Typography,
-      Collaboration.configure({
-        document: doc,
-      }),
-    ],
-    editorProps: {
-      attributes: {
-        class: 'prose prose-invert prose-sm max-w-none focus:outline-none min-h-[200px] px-4 py-3',
-      },
-    },
-  });
+  useEffect(() => {
+    let active = true;
 
-  if (!editor) return null;
+    async function preloadExtensions() {
+      const [HighlightModule, TaskListModule, TaskItemModule, TypographyModule] = await Promise.all([
+        import('@tiptap/extension-highlight'),
+        import('@tiptap/extension-task-list'),
+        import('@tiptap/extension-task-item'),
+        import('@tiptap/extension-typography'),
+      ]);
+
+      if (!active) return;
+
+      setLazyExtensions([
+        HighlightModule.default.configure({ multicolor: true }),
+        TaskListModule.default,
+        TaskItemModule.default.configure({ nested: true }),
+        TypographyModule.default,
+      ]);
+    }
+
+    preloadExtensions().catch(() => {
+      // Keep the editor usable even if lazy loading fails.
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const editor = useEditor(
+    lazyExtensions
+      ? {
+          extensions: [...baseExtensions, ...lazyExtensions],
+          editorProps: {
+            attributes: {
+              class: 'prose prose-invert prose-sm max-w-none focus:outline-none min-h-[200px] px-4 py-3',
+            },
+          },
+        }
+      : { immediatelyRender: false },
+    [lazyExtensions, doc],
+  );
+
+  if (!editor) {
+    return (
+      <div className="flex items-center justify-center h-full p-6 text-slate-400 text-sm">
+        Loading collaborative editor…
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">

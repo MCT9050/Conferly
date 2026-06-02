@@ -2,8 +2,9 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Room, Track } from 'livekit-client';
+import type { Room, Track as TrackType } from 'livekit-client';
 import type { Participant } from '../../../types';
+import { getLiveKitModule } from '../../../lib/livekit-client';
 import { useMeetingMedia } from './mediaStore';
 import { trackEvent } from '../../../lib/monitoring';
 
@@ -25,7 +26,14 @@ function getParticipantAvatar(name: string) {
     .toUpperCase();
 }
 
-function getRemoteParticipantStream(participant: any): MediaStream | null {
+/**
+ * Helper: Extract media stream from a remote participant.
+ * Track type is passed in to avoid static import.
+ */
+async function getRemoteParticipantStream(
+  participant: any,
+  Track: typeof TrackType
+): Promise<MediaStream | null> {
   const publications = [
     participant.getTrackPublication(Track.Source.Camera),
     participant.getTrackPublication(Track.Source.Microphone),
@@ -49,7 +57,14 @@ function getRemoteParticipantStream(participant: any): MediaStream | null {
   return new MediaStream(streamTracks);
 }
 
-function mapRemoteParticipant(remoteParticipant: any): Participant {
+/**
+ * Helper: Map a remote participant to our Participant type.
+ * Track type is passed in to avoid static import.
+ */
+async function mapRemoteParticipant(
+  remoteParticipant: any,
+  Track: typeof TrackType
+): Promise<Participant> {
   const cameraPublication = remoteParticipant.getTrackPublication(Track.Source.Camera);
   const microphonePublication = remoteParticipant.getTrackPublication(Track.Source.Microphone);
 
@@ -57,10 +72,10 @@ function mapRemoteParticipant(remoteParticipant: any): Participant {
     id: remoteParticipant.identity ?? remoteParticipant.sid,
     name: remoteParticipant.name ?? remoteParticipant.identity ?? 'Guest',
     avatar: getParticipantAvatar(remoteParticipant.name ?? remoteParticipant.identity ?? 'Guest'),
-    stream: getRemoteParticipantStream(remoteParticipant),
+    stream: await getRemoteParticipantStream(remoteParticipant, Track),
     isSpeaking: Boolean(remoteParticipant.isSpeaking),
     isVideoOn: Boolean(cameraPublication?.isSubscribed),
-    isMuted: microphonePublication?.isMuted ?? false,
+    isMuted: microphonePublication?.muted ?? false,
     audioLevel: 0.02,
   };
 }
@@ -69,15 +84,28 @@ export function MeetingParticipantProvider({ children }: { children: ReactNode }
   const media = useMeetingMedia();
   const [remoteParticipants, setRemoteParticipants] = useState<Participant[]>([]);
   const roomRef = useRef<Room | null>(null);
+  const trackRef = useRef<typeof TrackType | null>(null);
   const mountedRef = useRef(true);
 
-  const updateRemoteParticipantList = () => {
+  /**
+   * Update the list of remote participants.
+   * Async because mapRemoteParticipant is now async.
+   */
+  const updateRemoteParticipantList = async () => {
     const room = roomRef.current;
-    if (!room || !mountedRef.current) {
+    const Track = trackRef.current;
+    
+    if (!room || !Track || !mountedRef.current) {
       return;
     }
 
-    setRemoteParticipants(Array.from(room.remoteParticipants.values()).map(mapRemoteParticipant));
+    const participants = await Promise.all(
+      Array.from(room.remoteParticipants.values()).map((p) => mapRemoteParticipant(p, Track))
+    );
+    
+    if (mountedRef.current) {
+      setRemoteParticipants(participants);
+    }
   };
 
   useEffect(() => {
@@ -88,76 +116,100 @@ export function MeetingParticipantProvider({ children }: { children: ReactNode }
     };
   }, []);
 
+  /**
+   * Main effect: Initialize LiveKit room and publish local tracks.
+   * This is where we lazy-load the LiveKit module on demand.
+   */
   useEffect(() => {
     if (!media.stream) {
       return;
     }
 
-    const room = new Room();
-    roomRef.current = room;
+    let mounted = true;
 
-    const handleParticipantUpdate = () => updateRemoteParticipantList();
-    const handleTrackUpdate = () => updateRemoteParticipantList();
-
-    room.on('participantConnected', handleParticipantUpdate);
-    room.on('participantDisconnected', handleParticipantUpdate);
-    room.on('trackSubscribed', handleTrackUpdate);
-    room.on('trackUnsubscribed', handleTrackUpdate);
-    room.on('activeSpeakersChanged', handleParticipantUpdate);
-
-    const publishTracks = async () => {
-      if (!room || !media.stream) {
-        return;
-      }
-
+    (async () => {
       try {
-        const response = await fetch('/api/lk-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ roomId: ROOM_ID, role: 'participant' }),
-        });
+        // Lazy-load LiveKit module here - deferred until room is needed
+        const { Room, Track } = await getLiveKitModule();
+        
+        if (!mounted) return;
 
-        if (!response.ok) {
-          throw new Error(`Unable to mint LiveKit token (${response.status})`);
-        }
+        trackRef.current = Track;
+        const room = new Room();
+        roomRef.current = room;
 
-        const { token, url } = await response.json();
-        await room.connect(url, token, { autoSubscribe: true });
-        updateRemoteParticipantList();
+        const handleParticipantUpdate = () => updateRemoteParticipantList();
+        const handleTrackUpdate = () => updateRemoteParticipantList();
 
-        const audioTrack = media.stream.getAudioTracks()[0];
-        const videoTrack = media.stream.getVideoTracks()[0];
+        room.on('participantConnected', handleParticipantUpdate);
+        room.on('participantDisconnected', handleParticipantUpdate);
+        room.on('trackSubscribed', handleTrackUpdate);
+        room.on('trackUnsubscribed', handleTrackUpdate);
+        room.on('activeSpeakersChanged', handleParticipantUpdate);
 
-        if (audioTrack) {
-          await room.localParticipant.publishTrack(audioTrack, {
-            source: Track.Source.Microphone,
-            name: 'microphone',
-          });
-        }
+        const publishTracks = async () => {
+          if (!room || !media.stream) {
+            return;
+          }
 
-        if (videoTrack) {
-          await room.localParticipant.publishTrack(videoTrack, {
-            source: Track.Source.Camera,
-            name: 'camera',
-          });
-        }
+          try {
+            const response = await fetch('/api/lk-token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ roomId: ROOM_ID, role: 'participant' }),
+            });
+
+            if (!response.ok) {
+              throw new Error(`Unable to mint LiveKit token (${response.status})`);
+            }
+
+            const { token, url } = await response.json();
+            await room.connect(url, token, { autoSubscribe: true });
+            await updateRemoteParticipantList();
+
+            const audioTrack = media.stream.getAudioTracks()[0];
+            const videoTrack = media.stream.getVideoTracks()[0];
+
+            if (audioTrack) {
+              await room.localParticipant.publishTrack(audioTrack, {
+                source: Track.Source.Microphone,
+                name: 'microphone',
+              });
+            }
+
+            if (videoTrack) {
+              await room.localParticipant.publishTrack(videoTrack, {
+                source: Track.Source.Camera,
+                name: 'camera',
+              });
+            }
+          } catch (error) {
+            console.error('LiveKit connection failed', error);
+          }
+        };
+
+        await publishTracks();
       } catch (error) {
-        console.error('LiveKit connection failed', error);
+        console.error('Failed to initialize LiveKit', error);
       }
-    };
-
-    publishTracks();
+    })();
 
     return () => {
-      room.disconnect().catch(() => undefined);
+      mounted = false;
+      roomRef.current?.disconnect().catch(() => undefined);
       roomRef.current = null;
     };
   }, [media.stream]);
 
+  /**
+   * Effect: Publish screen share when available.
+   */
   useEffect(() => {
     const room = roomRef.current;
-    if (!room || !media.screenStream) {
+    const Track = trackRef.current;
+    
+    if (!room || !Track || !media.screenStream) {
       return;
     }
 
