@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import ServiceWorkerRegistration from "../components/ServiceWorkerRegistration";
 
 export const metadata: Metadata = {
@@ -45,6 +46,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-slate-950 text-white">
         {children}
         <ServiceWorkerRegistration />
+        <SpeedInsights />
       </body>
     </html>
   );
