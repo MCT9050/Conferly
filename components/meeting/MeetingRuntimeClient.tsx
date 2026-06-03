@@ -24,37 +24,34 @@ const MeetingControlsWrapper = dynamic(() => import('./MeetingControlsWrapper'),
 });
 
 export default function MeetingRuntimeClient() {
-  // Monitoring: track connection state changes and reconnect attempts
-  const {
-    connectionState,
-    isReconnecting,
-    reconnectProgress,
-    attemptReconnect,
-  } = useConnectionRecovery();
+  // Initialize connection recovery (disabled tracking for now to fix infinite loop)
+  const connectionRecovery = useConnectionRecovery();
 
-  useMonitoring(event => {
-    // Could be extended for custom dashboard
-  });
+  // Disable monitoring hook temporarily to isolate issue
+  // useMonitoring(event => {
+  //   // Could be extended for custom dashboard
+  // });
 
-  useEffect(() => {
-    trackEvent({
-      type: 'connection',
-      state: connectionState,
-      timestamp: Date.now(),
-    });
-  }, [connectionState]);
+  // Temporarily disable tracking effects that may cause infinite loops
+  // useEffect(() => {
+  //   trackEvent({
+  //     type: 'connection',
+  //     state: connectionState,
+  //     timestamp: Date.now(),
+  //   });
+  // }, [connectionState]);
 
-  useEffect(() => {
-    if (isReconnecting) {
-      trackEvent({
-        type: 'reconnect_attempt',
-        attempt: reconnectProgress,
-        success: false,
-        latency: 0,
-        timestamp: Date.now(),
-      });
-    }
-  }, [isReconnecting, reconnectProgress]);
+  // useEffect(() => {
+  //   if (isReconnecting) {
+  //     trackEvent({
+  //       type: 'reconnect_attempt',
+  //       attempt: reconnectProgress,
+  //       success: false,
+  //       latency: 0,
+  //       timestamp: Date.now(),
+  //     });
+  //   }
+  // }, [isReconnecting, reconnectProgress]);
 
   return (
     <ErrorBoundary name="MeetingRuntime" fallback={(error, reset) => <MeetingErrorFallback error={error} resetError={reset} />}>
