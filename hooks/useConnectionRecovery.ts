@@ -46,7 +46,7 @@ export function useConnectionRecovery(options: UseConnectionRecoveryOptions = {}
       unsubscribe();
       connectionManagerRef.current?.cleanup();
     };
-  }, [options]);
+  }, []);
 
   const recordMeetingState = useCallback((state: any) => {
     if (meetingStateRecoveryRef.current) {
