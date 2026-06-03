@@ -55,29 +55,30 @@ export default function MeetingRuntimeClient() {
 
   return (
     <ErrorBoundary name="MeetingRuntime" fallback={(error, reset) => <MeetingErrorFallback error={error} resetError={reset} />}>
-      <MeetingStateProvider>
+      {/* Temporarily disable MeetingStateProvider to isolate infinite loop */}
+      {/* <MeetingStateProvider> */}
         <div className="max-w-7xl mx-auto px-5 sm:px-8 py-10 space-y-6">
           <div className="grid gap-6 xl:grid-cols-[1.55fr,0.95fr]">
             <ErrorBoundary name="MediaStage" fallback={(error, reset) => <MediaErrorFallback error={error} resetError={reset} />}>
               <Suspense fallback={<MeetingRuntimeFallback />}>
-                <MeetingMediaStage />
+                <MeetingRuntimeFallback />
               </Suspense>
             </ErrorBoundary>
             
             <ErrorBoundary name="SidebarStage" fallback={(error, reset) => <PanelErrorFallback error={error} resetError={reset} />}>
               <Suspense fallback={<MeetingRuntimeFallback />}>
-                <MeetingSidebarStage />
+                <MeetingRuntimeFallback />
               </Suspense>
             </ErrorBoundary>
           </div>
 
           <ErrorBoundary name="ControlsWrapper" fallback={(error, reset) => <PanelErrorFallback error={error} resetError={reset} />}>
             <Suspense fallback={<MeetingRuntimeFallback />}>
-              <MeetingControlsWrapper />
+              <MeetingRuntimeFallback />
             </Suspense>
           </ErrorBoundary>
         </div>
-      </MeetingStateProvider>
+      {/* </MeetingStateProvider> */}
     </ErrorBoundary>
   );
 }
