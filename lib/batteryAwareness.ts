@@ -85,7 +85,7 @@ export class BatteryAwareness {
       this.updateStatus();
     } catch (error) {
       // Battery API not supported or permission denied
-      // eslint-disable-next-line no-console
+       
       console.warn('Battery API not available:', error);
     }
   }
@@ -135,7 +135,7 @@ export class BatteryAwareness {
       try {
         listener(this.currentStatus);
       } catch (error) {
-        // eslint-disable-next-line no-console
+         
         console.error('BatteryAwareness listener error:', error);
       }
     }
@@ -158,7 +158,7 @@ export class BatteryAwareness {
     try {
       listener(this.currentStatus);
     } catch (error) {
-      // eslint-disable-next-line no-console
+       
       console.error('BatteryAwareness listener error:', error);
     }
 

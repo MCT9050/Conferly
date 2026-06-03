@@ -97,7 +97,7 @@ export function trackEvent(event: MonitoringEvent) {
 
 addMonitoringHandler((event) => {
   if (process.env.NODE_ENV === 'development') {
-    // eslint-disable-next-line no-console
+     
     console.log('[MONITOR]', event);
   }
 });

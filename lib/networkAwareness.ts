@@ -129,7 +129,7 @@ export class NetworkAwareness {
       try {
         listener(this.currentStatus);
       } catch (error) {
-        // eslint-disable-next-line no-console
+         
         console.error('NetworkAwareness listener error:', error);
       }
     }
@@ -152,7 +152,7 @@ export class NetworkAwareness {
     try {
       listener(this.currentStatus);
     } catch (error) {
-      // eslint-disable-next-line no-console
+       
       console.error('NetworkAwareness listener error:', error);
     }
     

@@ -21,7 +21,7 @@ export function MeetingRecordingProvider({ children }: { children: ReactNode }) 
       data: { isRecording: recording?.isRecording },
       timestamp: Date.now(),
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [recording?.isRecording]);
 
   const value = useMemo(() => recording, [recording]);

@@ -83,20 +83,20 @@ class Logger {
     switch (entry.level) {
       case LogLevel.DEBUG:
         if (process.env.NODE_ENV === 'development') {
-          // eslint-disable-next-line no-console
+           
           console.debug(formatted);
         }
         break;
       case LogLevel.INFO:
-        // eslint-disable-next-line no-console
+         
         console.info(formatted);
         break;
       case LogLevel.WARN:
-        // eslint-disable-next-line no-console
+         
         console.warn(formatted);
         break;
       case LogLevel.ERROR:
-        // eslint-disable-next-line no-console
+         
         console.error(formatted);
         break;
     }

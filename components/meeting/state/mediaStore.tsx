@@ -22,7 +22,7 @@ export function MeetingMediaProvider({ children }: { children: ReactNode }) {
         timestamp: Date.now(),
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [media?.mediaError]); // Only depend on mediaError string, not the entire media object
 
   useEffect(() => {
