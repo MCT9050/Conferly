@@ -7,10 +7,24 @@ import { rateLimitMiddleware, RATE_LIMITS } from '../../../../lib/rateLimit';
 function buildCookieOptions(request: Request, maxAge: number) {
   const host = request.headers.get('host') ?? '';
   const normalizedHost = host.replace(/:\d+$/, '');
-  const envDomain = process.env.COOKIE_DOMAIN ?? normalizedHost;
-  const domain = envDomain && !envDomain.includes('localhost')
-    ? envDomain.startsWith('.') ? envDomain : `.${envDomain}`
-    : undefined;
+  let domain: string | undefined;
+
+  if (process.env.COOKIE_DOMAIN) {
+    domain = process.env.COOKIE_DOMAIN.startsWith('.') ? process.env.COOKIE_DOMAIN : `.${process.env.COOKIE_DOMAIN}`;
+  } else if (!normalizedHost.includes('localhost')) {
+    // For www.conferly.site, extract base domain (conferly.site) to allow all subdomains
+    const parts = normalizedHost.split('.');
+    if (parts.length > 2 && parts[0] === 'www') {
+      // www.conferly.site -> .conferly.site
+      domain = `.${parts.slice(1).join('.')}`;
+    } else if (parts.length > 2) {
+      // sub.conferly.site -> .conferly.site (assume last 2 parts are base domain)
+      domain = `.${parts.slice(-2).join('.')}`;
+    } else {
+      // conferly.site or single-part host
+      domain = `.${normalizedHost}`;
+    }
+  }
 
   return {
     httpOnly: true,
