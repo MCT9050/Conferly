@@ -24,61 +24,34 @@ const MeetingControlsWrapper = dynamic(() => import('./MeetingControlsWrapper'),
 });
 
 export default function MeetingRuntimeClient() {
-  // Initialize connection recovery (disabled tracking for now to fix infinite loop)
+  // Initialize connection recovery (issue fixed - dependency removed from useEffect)
   const connectionRecovery = useConnectionRecovery();
-
-  // Disable monitoring hook temporarily to isolate issue
-  // useMonitoring(event => {
-  //   // Could be extended for custom dashboard
-  // });
-
-  // Temporarily disable tracking effects that may cause infinite loops
-  // useEffect(() => {
-  //   trackEvent({
-  //     type: 'connection',
-  //     state: connectionState,
-  //     timestamp: Date.now(),
-  //   });
-  // }, [connectionState]);
-
-  // useEffect(() => {
-  //   if (isReconnecting) {
-  //     trackEvent({
-  //       type: 'reconnect_attempt',
-  //       attempt: reconnectProgress,
-  //       success: false,
-  //       latency: 0,
-  //       timestamp: Date.now(),
-  //     });
-  //   }
-  // }, [isReconnecting, reconnectProgress]);
 
   return (
     <ErrorBoundary name="MeetingRuntime" fallback={(error, reset) => <MeetingErrorFallback error={error} resetError={reset} />}>
-      {/* Temporarily disable MeetingStateProvider to isolate infinite loop */}
-      {/* <MeetingStateProvider> */}
+      <MeetingStateProvider>
         <div className="max-w-7xl mx-auto px-5 sm:px-8 py-10 space-y-6">
           <div className="grid gap-6 xl:grid-cols-[1.55fr,0.95fr]">
             <ErrorBoundary name="MediaStage" fallback={(error, reset) => <MediaErrorFallback error={error} resetError={reset} />}>
               <Suspense fallback={<MeetingRuntimeFallback />}>
-                <MeetingRuntimeFallback />
+                <MeetingMediaStage />
               </Suspense>
             </ErrorBoundary>
             
             <ErrorBoundary name="SidebarStage" fallback={(error, reset) => <PanelErrorFallback error={error} resetError={reset} />}>
               <Suspense fallback={<MeetingRuntimeFallback />}>
-                <MeetingRuntimeFallback />
+                <MeetingSidebarStage />
               </Suspense>
             </ErrorBoundary>
           </div>
 
           <ErrorBoundary name="ControlsWrapper" fallback={(error, reset) => <PanelErrorFallback error={error} resetError={reset} />}>
             <Suspense fallback={<MeetingRuntimeFallback />}>
-              <MeetingRuntimeFallback />
+              <MeetingControlsWrapper />
             </Suspense>
           </ErrorBoundary>
         </div>
-      {/* </MeetingStateProvider> */}
+      </MeetingStateProvider>
     </ErrorBoundary>
   );
 }
