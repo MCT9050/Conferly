@@ -13,15 +13,16 @@ export function MeetingRecordingProvider({ children }: { children: ReactNode }) 
   const media = useMeetingMedia();
   const recording = useMeetingRecording(media.stream);
 
-  // Monitoring: track recording state changes
+  // Monitoring: track recording state changes (stabilized - only depend on isRecording, not entire object)
   useEffect(() => {
     trackEvent({
       type: 'custom',
       name: 'recording_state',
-      data: { isRecording: recording.isRecording },
+      data: { isRecording: recording?.isRecording },
       timestamp: Date.now(),
     });
-  }, [recording.isRecording]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recording?.isRecording]);
 
   const value = useMemo(() => recording, [recording]);
 

@@ -12,9 +12,9 @@ export function MeetingMediaProvider({ children }: { children: ReactNode }) {
   const [isClient, setIsClient] = useState(false);
   const media = useBrowserMedia();
 
-  // Monitoring: track media errors
+  // Monitoring: track media errors (stabilized - only tracks when error string changes)
   useEffect(() => {
-    if (media.mediaError) {
+    if (media?.mediaError) {
       trackEvent({
         type: 'media_failure',
         device: 'unknown',
@@ -22,7 +22,8 @@ export function MeetingMediaProvider({ children }: { children: ReactNode }) {
         timestamp: Date.now(),
       });
     }
-  }, [media.mediaError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [media?.mediaError]); // Only depend on mediaError string, not the entire media object
 
   useEffect(() => {
     setIsClient(true);
