@@ -1,20 +1,40 @@
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { trackEvent } from '@/lib/monitoring';
-import { getSupabaseApiKey, getSupabaseAuthTokenUrl, requireSupabaseConfig } from '@/lib/supabase';
-import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimit';
+import { trackEvent } from '../../../../lib/monitoring';
+import { getSupabaseApiKey, getSupabaseAuthTokenUrl, requireSupabaseConfig } from '../../../../lib/supabase';
+import { rateLimitMiddleware, RATE_LIMITS } from '../../../../lib/rateLimit';
+
+function buildCookieOptions(request: Request, maxAge: number) {
+  const host = request.headers.get('host') ?? '';
+  const normalizedHost = host.replace(/:\d+$/, '');
+  const envDomain = process.env.COOKIE_DOMAIN ?? normalizedHost;
+  const domain = envDomain && !envDomain.includes('localhost')
+    ? envDomain.startsWith('.') ? envDomain : `.${envDomain}`
+    : undefined;
+
+  return {
+    httpOnly: true,
+    path: '/',
+    domain,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    maxAge,
+  };
+}
 
 export async function POST(request: Request) {
-  // Rate limiting check
-  const rateLimitResult = await rateLimitMiddleware(request, RATE_LIMITS.auth);
-  if (!rateLimitResult.allowed) {
-    trackEvent({
-      type: 'auth_failure',
-      stage: 'signin',
-      reason: 'rate_limited',
-      timestamp: Date.now(),
-    });
-    return NextResponse.json({ error: rateLimitResult.error }, { status: 429 });
-  }
+  try {
+    // Rate limiting check
+    const rateLimitResult = await rateLimitMiddleware(request, RATE_LIMITS.auth);
+    if (!rateLimitResult.allowed) {
+      trackEvent({
+        type: 'auth_failure',
+        stage: 'signin',
+        reason: 'rate_limited',
+        timestamp: Date.now(),
+      });
+      return NextResponse.json({ error: rateLimitResult.error }, { status: 429 });
+    }
 
   requireSupabaseConfig();
   const body = await request.json();
@@ -30,7 +50,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 });
   }
 
-  const response = await fetch(`${getSupabaseAuthTokenUrl()}?grant_type=password`, {
+  const tokenUrl = `${getSupabaseAuthTokenUrl()}?grant_type=password`;
+  const response = await fetch(tokenUrl, {
     method: 'POST',
     headers: {
       apikey: getSupabaseApiKey(),
@@ -40,7 +61,49 @@ export async function POST(request: Request) {
     body: JSON.stringify({ email, password }),
   });
 
-  const data = await response.json();
+  const contentType = response.headers.get('content-type');
+  const rawText = await response.text();
+  const debugInfo = {
+    stage: 'signin',
+    url: tokenUrl,
+    status: response.status,
+    statusText: response.statusText,
+    contentType,
+    bodyPreview: rawText.slice(0, 2000),
+  };
+  if (!response.ok || !contentType?.includes('application/json')) {
+    console.error('Supabase Upstream Failure:', debugInfo);
+    trackEvent({
+      type: 'auth_failure',
+      stage: 'signin',
+      reason: 'upstream_error',
+      timestamp: Date.now(),
+    });
+    return NextResponse.json(
+      { error: 'Authentication gateway timeout. Please try again shortly.' },
+      { status: 502 }
+    );
+  }
+
+  let data: any;
+  try {
+    data = JSON.parse(rawText);
+  } catch (parseError) {
+    console.error('Supabase Upstream Failure:', {
+      ...debugInfo,
+      parseError: parseError instanceof Error ? parseError.message : String(parseError),
+    });
+    trackEvent({
+      type: 'auth_failure',
+      stage: 'signin',
+      reason: 'upstream_error',
+      timestamp: Date.now(),
+    });
+    return NextResponse.json(
+      { error: 'Authentication gateway timeout. Please try again shortly.' },
+      { status: 502 }
+    );
+  }
   if (!response.ok || !data?.access_token) {
     trackEvent({
       type: 'auth_failure',
@@ -53,29 +116,25 @@ export async function POST(request: Request) {
 
   trackEvent({ type: 'auth_success', stage: 'signin', timestamp: Date.now() });
 
-  const cookieOptions = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
-    path: '/',
-    maxAge: data.expires_in ?? 60 * 60,
-  };
-
-  const cookieDomain = process.env.COOKIE_DOMAIN ?? '.conferly.vercel.app';
-  const cookieDomainAttr = `; Domain=${cookieDomain}`;
-
+  const cookieStore = await cookies();
+  const cookieOptions = buildCookieOptions(request, data.expires_in ?? 60 * 60);
   const authTokenValue = JSON.stringify({
     access_token: data.access_token,
     refresh_token: data.refresh_token,
     expires_in: data.expires_in,
   });
 
-  const responseHeaders = new Headers();
-  responseHeaders.append('Set-Cookie', `sb-access-token=${encodeURIComponent(data.access_token)}; HttpOnly; Path=/` + cookieDomainAttr + `; SameSite=Lax; Max-Age=${cookieOptions.maxAge}${cookieOptions.secure ? '; Secure' : ''}`);
-  responseHeaders.append('Set-Cookie', `supabase-auth-token=${encodeURIComponent(authTokenValue)}; HttpOnly; Path=/` + cookieDomainAttr + `; SameSite=Lax; Max-Age=${cookieOptions.maxAge}${cookieOptions.secure ? '; Secure' : ''}`);
+  cookieStore.set('sb-access-token', data.access_token, cookieOptions);
+  cookieStore.set('supabase-auth-token', authTokenValue, cookieOptions);
 
-  return new NextResponse(JSON.stringify({ success: true }), {
-    status: 200,
-    headers: responseHeaders,
-  });
+  return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error: unknown) {
+    console.error('AUTH_SERVER_ERROR_LOG:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      cause: error instanceof Error ? (error as any).cause : undefined,
+    });
+    return NextResponse.json({ error: 'Internal processing error' }, { status: 500 });
+  }
 }
+

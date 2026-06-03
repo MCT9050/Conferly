@@ -19,8 +19,9 @@ CREATE TABLE IF NOT EXISTS profiles (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
--- Enable RLS and policies for profiles
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS profiles_owner_full_access ON profiles;
 CREATE POLICY profiles_owner_full_access
   ON profiles
   FOR ALL
@@ -43,7 +44,44 @@ CREATE TABLE IF NOT EXISTS meetings (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-ALTER TABLE meetings ADD COLUMN IF NOT EXISTS owner uuid REFERENCES auth.users ON DELETE SET NULL;
+ALTER TABLE meetings
+  ADD COLUMN IF NOT EXISTS owner uuid REFERENCES auth.users ON DELETE SET NULL;
+
+ALTER TABLE meetings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS meetings_select_for_participants ON meetings;
+CREATE POLICY meetings_select_for_participants
+  ON meetings
+  FOR SELECT
+  USING (
+    owner = auth.uid()
+    OR EXISTS (
+      SELECT 1
+      FROM meeting_participants mp
+      WHERE mp.meeting_id = meetings.id
+        AND mp.user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS meetings_insert_owner_only ON meetings;
+CREATE POLICY meetings_insert_owner_only
+  ON meetings
+  FOR INSERT
+  WITH CHECK (owner = auth.uid());
+
+DROP POLICY IF EXISTS meetings_modify_owner_only_update ON meetings;
+CREATE POLICY meetings_modify_owner_only_update
+  ON meetings
+  FOR UPDATE
+  USING (owner = auth.uid())
+  WITH CHECK (owner = auth.uid());
+
+-- NOTE: no WITH CHECK allowed for FOR DELETE
+DROP POLICY IF EXISTS meetings_modify_owner_only_delete ON meetings;
+CREATE POLICY meetings_modify_owner_only_delete
+  ON meetings
+  FOR DELETE
+  USING (owner = auth.uid());
 
 -- -----------------------------------------------------------------------------
 -- Meeting participants - membership and role assignment
@@ -60,7 +98,7 @@ CREATE TABLE IF NOT EXISTS meeting_participants (
 
 ALTER TABLE meeting_participants ENABLE ROW LEVEL SECURITY;
 
--- Participants can insert a row for themselves, or an invited_by user can insert
+DROP POLICY IF EXISTS participants_insert_self_or_inviter ON meeting_participants;
 CREATE POLICY participants_insert_self_or_inviter
   ON meeting_participants
   FOR INSERT
@@ -68,62 +106,33 @@ CREATE POLICY participants_insert_self_or_inviter
     user_id = auth.uid() OR invited_by = auth.uid()
   );
 
--- Participants can select if they belong to the meeting, or meeting owner
+DROP POLICY IF EXISTS participants_select_for_member_or_owner ON meeting_participants;
 CREATE POLICY participants_select_for_member_or_owner
   ON meeting_participants
   FOR SELECT
   USING (
     user_id = auth.uid()
     OR EXISTS (
-      SELECT 1 FROM meetings m WHERE m.id = meeting_participants.meeting_id AND m.owner = auth.uid()
+      SELECT 1
+      FROM meetings m
+      WHERE m.id = meeting_participants.meeting_id
+        AND m.owner = auth.uid()
     )
   );
 
--- Participants can update only their own membership row
+DROP POLICY IF EXISTS participants_modify_own_update ON meeting_participants;
 CREATE POLICY participants_modify_own_update
   ON meeting_participants
   FOR UPDATE
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
+-- NOTE: no WITH CHECK allowed for FOR DELETE
+DROP POLICY IF EXISTS participants_modify_own_delete ON meeting_participants;
 CREATE POLICY participants_modify_own_delete
   ON meeting_participants
   FOR DELETE
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
-
-ALTER TABLE meetings ENABLE ROW LEVEL SECURITY;
-
--- Allow owners and participants to SELECT
-CREATE POLICY meetings_select_for_participants
-  ON meetings
-  FOR SELECT
-  USING (
-    owner = auth.uid()
-    OR EXISTS (
-      SELECT 1 FROM meeting_participants mp WHERE mp.meeting_id = meetings.id AND mp.user_id = auth.uid()
-    )
-  );
-
--- Allow owners to INSERT (application should set owner = auth.uid())
-CREATE POLICY meetings_insert_owner_only
-  ON meetings
-  FOR INSERT
-  WITH CHECK (owner = auth.uid());
-
--- Allow owners to UPDATE only
-CREATE POLICY meetings_modify_owner_only_update
-  ON meetings
-  FOR UPDATE
-  USING (owner = auth.uid())
-  WITH CHECK (owner = auth.uid());
-
--- Allow owners to DELETE only
-CREATE POLICY meetings_modify_owner_only_delete
-  ON meetings
-  FOR DELETE
-  USING (owner = auth.uid())
-  WITH CHECK (owner = auth.uid());
+  USING (user_id = auth.uid());
 
 -- -----------------------------------------------------------------------------
 -- Presentations and slides
@@ -150,59 +159,88 @@ CREATE TABLE IF NOT EXISTS slides (
 ALTER TABLE presentations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE slides ENABLE ROW LEVEL SECURITY;
 
--- Presentations: allow members (owner or participant) to select
+DROP POLICY IF EXISTS presentations_select_for_members ON presentations;
 CREATE POLICY presentations_select_for_members
   ON presentations
   FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM meetings m WHERE m.id = presentations.meeting_id
+      SELECT 1
+      FROM meetings m
+      WHERE m.id = presentations.meeting_id
         AND (
           m.owner = auth.uid()
-          OR EXISTS (SELECT 1 FROM meeting_participants mp WHERE mp.meeting_id = m.id AND mp.user_id = auth.uid())
+          OR EXISTS (
+            SELECT 1
+            FROM meeting_participants mp
+            WHERE mp.meeting_id = m.id
+              AND mp.user_id = auth.uid()
+          )
         )
     )
   );
 
--- Allow creating a presentation only if the creator is a meeting member
+DROP POLICY IF EXISTS presentations_insert_for_member ON presentations;
 CREATE POLICY presentations_insert_for_member
   ON presentations
   FOR INSERT
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM meetings m WHERE m.id = presentations.meeting_id
+      SELECT 1
+      FROM meetings m
+      WHERE m.id = presentations.meeting_id
         AND (
           m.owner = auth.uid()
-          OR EXISTS (SELECT 1 FROM meeting_participants mp WHERE mp.meeting_id = m.id AND mp.user_id = auth.uid())
+          OR EXISTS (
+            SELECT 1
+            FROM meeting_participants mp
+            WHERE mp.meeting_id = m.id
+              AND mp.user_id = auth.uid()
+          )
         )
     )
   );
 
--- Slides: member access via presentation membership
+DROP POLICY IF EXISTS slides_select_for_members ON slides;
 CREATE POLICY slides_select_for_members
   ON slides
   FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM presentations p JOIN meetings m ON p.meeting_id = m.id
+      SELECT 1
+      FROM presentations p
+      JOIN meetings m ON p.meeting_id = m.id
       WHERE p.id = slides.presentation_id
         AND (
           m.owner = auth.uid()
-          OR EXISTS (SELECT 1 FROM meeting_participants mp WHERE mp.meeting_id = m.id AND mp.user_id = auth.uid())
+          OR EXISTS (
+            SELECT 1
+            FROM meeting_participants mp
+            WHERE mp.meeting_id = m.id
+              AND mp.user_id = auth.uid()
+          )
         )
     )
   );
 
+DROP POLICY IF EXISTS slides_insert_for_members ON slides;
 CREATE POLICY slides_insert_for_members
   ON slides
   FOR INSERT
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM presentations p JOIN meetings m ON p.meeting_id = m.id
+      SELECT 1
+      FROM presentations p
+      JOIN meetings m ON p.meeting_id = m.id
       WHERE p.id = slides.presentation_id
         AND (
           m.owner = auth.uid()
-          OR EXISTS (SELECT 1 FROM meeting_participants mp WHERE mp.meeting_id = m.id AND mp.user_id = auth.uid())
+          OR EXISTS (
+            SELECT 1
+            FROM meeting_participants mp
+            WHERE mp.meeting_id = m.id
+              AND mp.user_id = auth.uid()
+          )
         )
     )
   );
@@ -231,39 +269,55 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 ALTER TABLE recordings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Recordings: members can insert and select for their meeting
+DROP POLICY IF EXISTS recordings_select_for_members ON recordings;
 CREATE POLICY recordings_select_for_members
   ON recordings
   FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM meetings m WHERE m.id = recordings.meeting_id
+      SELECT 1
+      FROM meetings m
+      WHERE m.id = recordings.meeting_id
         AND (
           m.owner = auth.uid()
-          OR EXISTS (SELECT 1 FROM meeting_participants mp WHERE mp.meeting_id = m.id AND mp.user_id = auth.uid())
+          OR EXISTS (
+            SELECT 1
+            FROM meeting_participants mp
+            WHERE mp.meeting_id = m.id
+              AND mp.user_id = auth.uid()
+          )
         )
     )
   );
 
+DROP POLICY IF EXISTS recordings_insert_for_members ON recordings;
 CREATE POLICY recordings_insert_for_members
   ON recordings
   FOR INSERT
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM meetings m WHERE m.id = recordings.meeting_id
+      SELECT 1
+      FROM meetings m
+      WHERE m.id = recordings.meeting_id
         AND (
           m.owner = auth.uid()
-          OR EXISTS (SELECT 1 FROM meeting_participants mp WHERE mp.meeting_id = m.id AND mp.user_id = auth.uid())
+          OR EXISTS (
+            SELECT 1
+            FROM meeting_participants mp
+            WHERE mp.meeting_id = m.id
+              AND mp.user_id = auth.uid()
+          )
         )
     )
   );
 
--- Audit logs: allow inserts where actor = auth.uid(); SELECT only by server role
+DROP POLICY IF EXISTS audit_logs_insert_by_actor ON audit_logs;
 CREATE POLICY audit_logs_insert_by_actor
   ON audit_logs
   FOR INSERT
   WITH CHECK (actor = auth.uid());
 
+DROP POLICY IF EXISTS audit_logs_select_none ON audit_logs;
 CREATE POLICY audit_logs_select_none
   ON audit_logs
   FOR SELECT
@@ -276,5 +330,3 @@ CREATE INDEX IF NOT EXISTS idx_meetings_owner ON meetings(owner);
 CREATE INDEX IF NOT EXISTS idx_participants_meeting_user ON meeting_participants(meeting_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_presentations_meeting ON presentations(meeting_id);
 CREATE INDEX IF NOT EXISTS idx_slides_presentation_pos ON slides(presentation_id, position);
-
--- End of migration
