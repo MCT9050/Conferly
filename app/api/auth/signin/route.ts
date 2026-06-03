@@ -71,8 +71,9 @@ export async function POST(request: Request) {
     contentType,
     bodyPreview: rawText.slice(0, 2000),
   };
-  if (!response.ok || !contentType?.includes('application/json')) {
-    console.error('Supabase Upstream Failure:', debugInfo);
+
+  if (!contentType?.includes('application/json')) {
+    console.error('Supabase Upstream Failure (non-JSON):', debugInfo);
     trackEvent({
       type: 'auth_failure',
       stage: 'signin',
@@ -104,7 +105,20 @@ export async function POST(request: Request) {
       { status: 502 }
     );
   }
-  if (!response.ok || !data?.access_token) {
+
+  if (!response.ok) {
+    console.error('Supabase Upstream Failure:', { ...debugInfo, parsed: data });
+    trackEvent({
+      type: 'auth_failure',
+      stage: 'signin',
+      reason: 'invalid_credentials',
+      timestamp: Date.now(),
+    });
+    const statusToReturn = response.status >= 400 && response.status < 500 ? response.status : 502;
+    return NextResponse.json({ error: data?.error_description || data?.error || 'Invalid credentials.' }, { status: statusToReturn });
+  }
+
+  if (!data?.access_token) {
     trackEvent({
       type: 'auth_failure',
       stage: 'signin',

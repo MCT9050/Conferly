@@ -78,8 +78,8 @@ export async function POST(request: Request) {
     bodyPreview: rawText.slice(0, 2000),
   };
 
-  if (!response.ok || !contentType?.includes('application/json')) {
-    console.error('Supabase Upstream Failure:', debugInfo);
+  if (!contentType?.includes('application/json')) {
+    console.error('Supabase Upstream Failure (non-JSON):', debugInfo);
     trackEvent({
       type: 'auth_failure',
       stage: 'signup',
@@ -112,14 +112,15 @@ export async function POST(request: Request) {
     );
   }
   if (!response.ok) {
-    console.error('Supabase Upstream Failure:', debugInfo);
+    console.error('Supabase Upstream Failure:', { ...debugInfo, parsed: data });
     trackEvent({
       type: 'auth_failure',
       stage: 'signup',
       reason: 'signup_failed',
       timestamp: Date.now(),
     });
-    return NextResponse.json({ error: data?.error_description || data?.error || 'Unable to sign up.' }, { status: 400 });
+    const statusToReturn = response.status >= 400 && response.status < 500 ? response.status : 502;
+    return NextResponse.json({ error: data?.error_description || data?.error || 'Unable to sign up.' }, { status: statusToReturn });
   }
 
   trackEvent({ type: 'auth_success', stage: 'signup', timestamp: Date.now() });
