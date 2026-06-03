@@ -11,11 +11,14 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     headless: true,
   },
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-  },
+  // webServer is disabled when testing against production (set BASE_URL)
+  ...(process.env.BASE_URL ? {} : {
+    webServer: {
+      command: 'npm run dev',
+      url: 'http://localhost:3000',
+      reuseExistingServer: !process.env.CI,
+    },
+  }),
   projects: [
     {
       name: 'chromium',
