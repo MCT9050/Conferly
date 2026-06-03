@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Node.js scripts (require() is expected in plain JS scripts)
+    "scripts/**",
   ]),
   {
     rules: {

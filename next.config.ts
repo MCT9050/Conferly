@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 // Bundle analyzer integration: enable by setting ANALYZE=true in the environment
 // when running the build (e.g. `ANALYZE=true npm run build`).
 // Uses @next/bundle-analyzer to emit a client bundle report.
-// Require is used to keep this file compatible with the existing TS setup.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const withBundleAnalyzer = require('@next/bundle-analyzer')({ enabled: process.env.ANALYZE === 'true' });
 
 const nextConfig: NextConfig = {
