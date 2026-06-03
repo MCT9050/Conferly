@@ -120,7 +120,10 @@ export async function POST(request: Request) {
       timestamp: Date.now(),
     });
     const statusToReturn = response.status >= 400 && response.status < 500 ? response.status : 502;
-    return NextResponse.json({ error: data?.error_description || data?.error || 'Unable to sign up.' }, { status: statusToReturn });
+    return NextResponse.json({
+      error:
+        data?.error_description || data?.error || data?.msg || 'Unable to sign up.',
+    }, { status: statusToReturn });
   }
 
   trackEvent({ type: 'auth_success', stage: 'signup', timestamp: Date.now() });

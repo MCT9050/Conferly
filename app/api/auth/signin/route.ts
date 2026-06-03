@@ -115,7 +115,9 @@ export async function POST(request: Request) {
       timestamp: Date.now(),
     });
     const statusToReturn = response.status >= 400 && response.status < 500 ? response.status : 502;
-    return NextResponse.json({ error: data?.error_description || data?.error || 'Invalid credentials.' }, { status: statusToReturn });
+    return NextResponse.json({
+      error: data?.error_description || data?.error || data?.msg || 'Invalid credentials.',
+    }, { status: statusToReturn });
   }
 
   if (!data?.access_token) {
