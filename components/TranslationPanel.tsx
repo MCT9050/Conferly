@@ -76,7 +76,7 @@ export default function TranslationPanel({
         <div className="flex items-center gap-2 text-xs">
           <Globe className="w-3.5 h-3.5 text-cyan-400" />
           <span className="text-cyan-400 font-medium">Remote AI Translation</span>
-          <span className="text-slate-600">•</span>
+          <span className="text-slate-500">•</span>
           <span className="text-slate-500">MyMemory API</span>
         </div>
 
@@ -188,9 +188,9 @@ export default function TranslationPanel({
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {translations.length === 0 && (
           <div className="text-center py-12 space-y-3">
-            <Languages className="w-10 h-10 text-slate-600 mx-auto" />
+            <Languages className="w-10 h-10 text-slate-500 mx-auto" />
             <div className="text-sm text-slate-500">No translations yet</div>
-            <p className="text-xs text-slate-600 max-w-xs mx-auto">
+            <p className="text-xs text-slate-500 max-w-xs mx-auto">
               Type text below or translate the live transcript. Supports all 11 SA official languages.
             </p>
           </div>
@@ -211,7 +211,7 @@ export default function TranslationPanel({
               </div>
               <button
                 onClick={() => speakText(t.originalText, t.sourceLang.apiCode)}
-                className="p-1 text-slate-600 hover:text-slate-300 transition-colors shrink-0"
+                className="p-1 text-slate-500 hover:text-slate-300 transition-colors shrink-0"
               >
                 <Volume2 className="w-3 h-3" />
               </button>
@@ -231,13 +231,13 @@ export default function TranslationPanel({
               <p className="flex-1 text-sm text-white font-medium">{t.translatedText}</p>
               <button
                 onClick={() => speakText(t.translatedText, t.targetLang.apiCode)}
-                className="p-1 text-slate-600 hover:text-cyan-300 transition-colors shrink-0"
+                className="p-1 text-slate-500 hover:text-cyan-300 transition-colors shrink-0"
               >
                 <Volume2 className="w-3 h-3" />
               </button>
             </div>
 
-            <div className="text-[9px] text-slate-600 text-right">
+            <div className="text-[9px] text-slate-400 text-right">
               {t.timestamp ? new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''}
             </div>
           </div>

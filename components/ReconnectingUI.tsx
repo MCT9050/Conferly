@@ -137,7 +137,7 @@ export function ReconnectingUI({
         {/* Debug Info */}
         {process.env.NODE_ENV === 'development' && (
           <div className="mt-4 pt-4 border-t border-slate-700">
-            <p className="text-xs text-slate-600 font-mono">
+            <p className="text-xs text-slate-500 font-mono">
               Attempt: {attempt}/{maxAttempts} | Progress: {Math.round(progress)}%
             </p>
           </div>

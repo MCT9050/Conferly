@@ -200,8 +200,8 @@ export default function PricingPage({
                       const enabled = typeof val === 'boolean' ? val : (val as number) > 0 || (val as number) === -1;
                       return (
                         <div key={row.key} className="flex items-center gap-2.5 text-sm">
-                          {enabled ? <Check className="w-4 h-4 text-green-400 shrink-0" /> : <X className="w-4 h-4 text-slate-600 shrink-0" />}
-                          <span className={enabled ? 'text-slate-300' : 'text-slate-600'}>
+                          {enabled ? <Check className="w-4 h-4 text-green-400 shrink-0" /> : <X className="w-4 h-4 text-slate-500 shrink-0" />}
+                          <span className={enabled ? 'text-slate-300' : 'text-slate-500'}>
                             {row.format && typeof val === 'number' ? row.format(val) : row.label}
                           </span>
                         </div>

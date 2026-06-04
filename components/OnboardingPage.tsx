@@ -211,7 +211,7 @@ export default function OnboardingPage({ displayName, onComplete }: OnboardingPa
           </div>
         )}
 
-        <p className="text-center text-[11px] text-slate-600">You can change this anytime in Settings.</p>
+        <p className="text-center text-[11px] text-slate-500">You can change this anytime in Settings.</p>
       </div>
     </div>
   );

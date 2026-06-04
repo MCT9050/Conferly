@@ -320,9 +320,9 @@ export default function Dashboard({
             </div>
             {meetingHistory.length === 0 ? (
               <div className="glass rounded-xl p-8 text-center space-y-2">
-                <Video className="w-8 h-8 text-slate-600 mx-auto" />
+                <Video className="w-8 h-8 text-slate-500 mx-auto" />
                 <p className="text-sm text-slate-500">No meetings yet</p>
-                <p className="text-xs text-slate-600">Create your first meeting to get started.</p>
+                <p className="text-xs text-slate-500">Create your first meeting to get started.</p>
               </div>
             ) : (
               <div className="space-y-3">

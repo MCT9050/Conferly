@@ -62,7 +62,7 @@ export default function SlideEditor({
               <div key={slide.id}
                 onClick={() => onGoTo(i)}
                 className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${i === currentIndex ? 'bg-blue-500/15 text-blue-400' : 'text-slate-400 hover:bg-slate-800/40'}`}>
-                <span className="text-[10px] font-mono text-slate-600 w-4 text-right">{i + 1}</span>
+                <span className="text-[10px] font-mono text-slate-500 w-4 text-right">{i + 1}</span>
                 <div className={`w-12 h-7 rounded bg-gradient-to-br ${slide.bgColor} border border-white/10 flex items-center justify-center shrink-0`}>
                   <Icon className="w-3 h-3 text-white/60" />
                 </div>
@@ -71,8 +71,8 @@ export default function SlideEditor({
                 </div>
                 {slides.length > 1 && (
                   <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 shrink-0">
-                    {i > 0 && <button onClick={e => { e.stopPropagation(); onReorder(i, i - 1); }} className="p-0.5 text-slate-600 hover:text-white"><ChevronUp className="w-3 h-3" /></button>}
-                    {i < slides.length - 1 && <button onClick={e => { e.stopPropagation(); onReorder(i, i + 1); }} className="p-0.5 text-slate-600 hover:text-white"><ChevronDown className="w-3 h-3" /></button>}
+                    {i > 0 && <button onClick={e => { e.stopPropagation(); onReorder(i, i - 1); }} className="p-0.5 text-slate-500 hover:text-white"><ChevronUp className="w-3 h-3" /></button>}
+                    {i < slides.length - 1 && <button onClick={e => { e.stopPropagation(); onReorder(i, i + 1); }} className="p-0.5 text-slate-500 hover:text-white"><ChevronDown className="w-3 h-3" /></button>}
                   </div>
                 )}
               </div>
@@ -131,7 +131,7 @@ export default function SlideEditor({
           <div>
             <label className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1.5">Title</label>
             <input type="text" value={current.title} onChange={e => onUpdate(current.id, { title: e.target.value })}
-              placeholder="Slide title" className="w-full px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700/30 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/30" />
+              placeholder="Slide title" className="w-full px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700/30 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/30" />
           </div>
 
           {/* Body */}
@@ -139,7 +139,7 @@ export default function SlideEditor({
             <label className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1.5">Content</label>
             <textarea value={current.body} onChange={e => onUpdate(current.id, { body: e.target.value })}
               placeholder="Slide content..." rows={5}
-              className="w-full px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700/30 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/30 resize-none font-mono" />
+              className="w-full px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700/30 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/30 resize-none font-mono" />
           </div>
 
           {/* Speaker notes */}
@@ -149,7 +149,7 @@ export default function SlideEditor({
             </label>
             <textarea value={current.notes} onChange={e => onUpdate(current.id, { notes: e.target.value })}
               placeholder="Only you can see these during presentation..." rows={3}
-              className="w-full px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700/30 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/30 resize-none" />
+              className="w-full px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700/30 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/30 resize-none" />
           </div>
 
           {/* Background */}
@@ -166,8 +166,8 @@ export default function SlideEditor({
 
           {/* Keyboard shortcuts */}
           <div className="pt-3 border-t border-slate-800/30 space-y-1.5">
-            <div className="text-[10px] text-slate-600 uppercase tracking-wider">Presentation shortcuts</div>
-            <div className="grid grid-cols-2 gap-1 text-[10px] text-slate-500">
+            <div className="text-[10px] text-slate-500 uppercase tracking-wider">Presentation shortcuts</div>
+            <div className="grid grid-cols-2 gap-1 text-[10px] text-slate-400">
               {[
                 ['→ / Space', 'Next slide'], ['← / Backspace', 'Previous'], ['D', 'Draw mode'],
                 ['L', 'Laser pointer'], ['N', 'Speaker notes'], ['Esc', 'Exit'],

@@ -67,7 +67,7 @@ export default function InstallBanner({ show, isIOS, canInstallNatively, onInsta
           </div>
         )}
 
-        <div className="flex items-center justify-center gap-4 text-[10px] text-slate-600">
+        <div className="flex items-center justify-center gap-4 text-[10px] text-slate-500">
           <span>No app store required</span>
           <span>•</span>
           <span>Under 1 MB</span>

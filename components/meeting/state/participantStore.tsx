@@ -15,7 +15,7 @@ type MeetingParticipantContextValue = {
 
 const MeetingParticipantContext = createContext<MeetingParticipantContextValue | null>(null);
 
-const ROOM_ID = 'CONFER123';
+const DEFAULT_ROOM_ID = '—';
 
 function getParticipantAvatar(name: string) {
   return name
@@ -155,7 +155,7 @@ export function MeetingParticipantProvider({ children }: { children: ReactNode }
               method: "POST",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
-              body: JSON.stringify({ roomId: ROOM_ID, role: "participant" }),
+              body: JSON.stringify({ roomId: DEFAULT_ROOM_ID, role: "participant" }),
             });
 
             if (!response.ok) {

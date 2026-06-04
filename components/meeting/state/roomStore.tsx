@@ -3,19 +3,21 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext, useMemo } from 'react';
 
-const MeetingRoomContext = createContext<{
+type MeetingRoomValue = {
   roomId: string;
   participantCap: string;
   latencyTarget: string;
-} | null>(null);
+};
 
-export function MeetingRoomProvider({ children }: { children: ReactNode }) {
+const MeetingRoomContext = createContext<MeetingRoomValue | null>(null);
+
+export function MeetingRoomProvider({ children, roomId = '—', participantCap = '16 people' }: { children: ReactNode; roomId?: string; participantCap?: string }) {
   const value = useMemo(
     () => ({
-      roomId: 'CONFER123',
-      participantCap: '16 people',
+      roomId,
+      participantCap,
       latencyTarget: '<100ms',
-    }), []
+    }), [roomId, participantCap]
   );
 
   return <MeetingRoomContext.Provider value={value}>{children}</MeetingRoomContext.Provider>;

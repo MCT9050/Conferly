@@ -296,14 +296,14 @@ export default function LandingPageClient() {
       {/* ═══ LOGOS ═══ */}
       <section className="px-8 py-10 border-y border-white/5">
         <div className="max-w-5xl mx-auto">
-          <p className="text-center text-[11px] text-slate-600 uppercase tracking-[0.2em] mb-6">
+          <p className="text-center text-[11px] text-slate-500 uppercase tracking-[0.2em] mb-6">
             Trusted by forward-thinking teams
           </p>
           <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4">
             {['StartupHub SA', 'EduConnect', 'AfriFinance', 'HealthBridge', 'GovConnect', 'TechLaunch'].map(name => (
               <span
                 key={name}
-                className="text-slate-600 font-semibold text-sm tracking-wide hover:text-slate-400 transition-colors cursor-default"
+                className="text-slate-500 font-semibold text-sm tracking-wide hover:text-slate-400 transition-colors cursor-default"
               >
                 {name}
               </span>
@@ -326,7 +326,7 @@ export default function LandingPageClient() {
                 <Counter target={s.value} suffix={s.suffix} />
               </div>
               <div className="text-sm font-semibold text-slate-300 mt-2">{s.label}</div>
-              <div className="text-[11px] text-slate-600 mt-0.5">{s.sub}</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">{s.sub}</div>
             </div>
           ))}
         </div>
@@ -417,7 +417,7 @@ export default function LandingPageClient() {
                       <div className="flex items-center gap-2 mb-2">
                         <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-500/15 text-cyan-400">ZU</span>
                         <span className="text-[12px] text-blue-400 font-medium">Thandi</span>
-                        <span className="text-[10px] text-slate-600 ml-auto">09:14:32</span>
+                        <span className="text-[10px] text-slate-400 ml-auto">09:14:32</span>
                       </div>
                       <p className="text-sm text-slate-400">Sawubona, ngicela ukubona umhlangano wethu wanamuhla</p>
                     </div>
@@ -433,7 +433,7 @@ export default function LandingPageClient() {
                       <p className="text-sm text-white font-medium">Hello, please may I see our meeting for today</p>
                     </div>
                   </div>
-                  <p className="text-[10px] text-slate-600 text-center pt-1">
+                    <p className="text-[10px] text-slate-500 text-center pt-1">
                     Remote AI translation • Zero local processing
                   </p>
                 </div>
@@ -658,7 +658,7 @@ export default function LandingPageClient() {
               <p className="text-[13px] text-slate-500 leading-relaxed max-w-xs">
                 Lightning-fast video conferencing built for Africa. Open source. Privacy first. Made with purpose.
               </p>
-              <div className="flex items-center gap-1.5 text-[12px] text-slate-600">
+              <div className="flex items-center gap-1.5 text-[12px] text-slate-500">
                 Made with <Heart className="w-3 h-3 text-red-400/60 mx-1" /> in South Africa
               </div>
             </div>
@@ -714,7 +714,7 @@ export default function LandingPageClient() {
                         </button>
                       )
                     ) : (
-                      <span key={link.label} className="block text-[13px] text-slate-600 cursor-default">
+                      <span key={link.label} className="block text-[13px] text-slate-500 cursor-default">
                         {link.label}
                       </span>
                     ),
@@ -723,7 +723,7 @@ export default function LandingPageClient() {
               </div>
             ))}
           </div>
-          <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-[12px] text-slate-600">
+          <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-[12px] text-slate-500">
             <span>© {new Date().getFullYear()} Conferly. All rights reserved.</span>
             <div className="flex items-center gap-6">
               <span>Privacy</span>

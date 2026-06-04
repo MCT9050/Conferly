@@ -129,7 +129,7 @@ const ChatPanel = memo(function ChatPanel({ messages, sendMessage }: { messages:
             }`}>
               <div className="text-xs text-slate-400 mb-1 font-medium">{msg.sender}</div>
               <div className="text-sm text-slate-200">{msg.message}</div>
-              <div className="text-[10px] text-slate-600 mt-1 text-right">
+              <div className="text-[10px] text-slate-500 mt-1 text-right">
                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
             </div>
@@ -217,7 +217,7 @@ const TranscriptPanel = memo(function TranscriptPanel({
           <div key={entry.id} className="group">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-semibold text-blue-400">{entry.speaker}</span>
-              <span className="text-[10px] text-slate-600">
+              <span className="text-[10px] text-slate-400">
                 {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
             </div>
@@ -230,7 +230,7 @@ const TranscriptPanel = memo(function TranscriptPanel({
           <div className="group opacity-60">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-semibold text-blue-400">You</span>
-              <span className="text-[10px] text-slate-600">speaking…</span>
+              <span className="text-[10px] text-slate-400">speaking…</span>
             </div>
             <p className="text-sm text-slate-400 leading-relaxed italic">{interimText}</p>
           </div>
@@ -278,7 +278,7 @@ const PulsePanel = memo(function PulsePanel({
           )}
         </button>
         {transcriptCount === 0 && (
-          <p className="text-[10px] text-slate-600 text-center">
+          <p className="text-[10px] text-slate-500 text-center">
             Start transcription and speak to generate a summary.
           </p>
         )}

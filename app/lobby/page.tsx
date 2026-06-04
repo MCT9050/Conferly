@@ -1,7 +1,14 @@
 import Link from "next/link";
 import Logo from "../../components/Logo";
 
-export default function LobbyPage() {
+interface LobbyPageProps {
+  searchParams?: Promise<{ room?: string }>;
+}
+
+export default async function LobbyPage({ searchParams }: LobbyPageProps) {
+  const params = await searchParams;
+  const roomId = params?.room || '—';
+
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-5xl mx-auto px-5 sm:px-8 py-12">
@@ -28,10 +35,10 @@ export default function LobbyPage() {
           </div>
 
           <div className="mt-10 flex items-center justify-between gap-4">
-            <Link href="/meeting" className="rounded-full bg-amber-400 px-7 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-300">
+            <Link href={`/meeting?room=${encodeURIComponent(roomId)}`} className="rounded-full bg-amber-400 px-7 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-300">
               Enter meeting room
             </Link>
-            <span className="text-sm text-slate-500">Room code: <strong className="text-white">CONFER123</strong></span>
+            <span className="text-sm text-slate-500">Room code: <strong className="text-white font-mono">{roomId}</strong></span>
           </div>
         </section>
       </div>

@@ -133,7 +133,7 @@ export default function ProfileMenu({ profile, isOfflineMode, onSignOut, onUpdat
 
           {/* Footer */}
           <div className="px-5 py-3 border-t border-slate-800/50">
-            <p className="text-[10px] text-slate-600">
+            <p className="text-[10px] text-slate-500">
               Member since {new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
             </p>
           </div>

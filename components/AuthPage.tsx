@@ -256,7 +256,7 @@ export default function AuthPage({ onSignUp, onSignIn, error, clearError, loadin
         </div>
 
         {/* Bottom info */}
-        <div className="flex items-center justify-center gap-2 text-xs text-slate-600">
+        <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
           <Lock className="w-3 h-3" />
           <span>Encrypted authentication • Works offline too</span>
         </div>

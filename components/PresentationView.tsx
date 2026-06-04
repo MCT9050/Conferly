@@ -96,7 +96,7 @@ function renderSlideContent(slide: Slide) {
     return (
       <div className="flex flex-col items-center justify-center h-full px-12 py-16">
         <div className="w-full max-w-3xl aspect-video rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6">
-          <span className="text-slate-600 text-sm">Image placeholder</span>
+          <span className="text-slate-500 text-sm">Image placeholder</span>
         </div>
         {slide.title && <h3 className="text-2xl font-bold mb-2">{slide.title}</h3>}
         {slide.body && <p className="text-lg text-white/60">{slide.body}</p>}
@@ -105,7 +105,7 @@ function renderSlideContent(slide: Slide) {
   }
 
   // blank
-  return <div className="flex items-center justify-center h-full text-slate-600 text-lg">Empty slide</div>;
+  return <div className="flex items-center justify-center h-full text-slate-500 text-lg">Empty slide</div>;
 }
 
 export default function PresentationView({
