@@ -166,6 +166,9 @@ export function MeetingParticipantProvider({ children }: { children: ReactNode }
             await room.connect(url, token, { autoSubscribe: true });
             await updateRemoteParticipantList();
 
+            if (!media.stream) {
+              return;
+            }
             const audioTrack = media.stream.getAudioTracks()[0];
             const videoTrack = media.stream.getVideoTracks()[0];
 
