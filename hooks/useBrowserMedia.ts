@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export function useBrowserMedia() {
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -11,16 +11,26 @@ export function useBrowserMedia() {
   const [isSupported, setIsSupported] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
 
+  // Refs hold latest values so callbacks stay stable (empty deps) and avoid
+  // cascading re-renders that cause React error #310 (infinite update loop).
+  const streamRef = useRef(stream);
+  streamRef.current = stream;
+  const screenStreamRef = useRef(screenStream);
+  screenStreamRef.current = screenStream;
+  const isScreenSharingRef = useRef(isScreenSharing);
+  isScreenSharingRef.current = isScreenSharing;
+
   useEffect(() => {
     setIsSupported(typeof window !== 'undefined' && !!navigator?.mediaDevices?.getUserMedia);
   }, []);
 
   const stopMedia = useCallback(() => {
-    stream?.getTracks().forEach(track => track.stop());
+    const s = streamRef.current;
+    s?.getTracks().forEach(track => track.stop());
     setStream(null);
     setIsMuted(true);
     setIsVideoOn(false);
-  }, [stream]);
+  }, []);
 
   const startMedia = useCallback(async () => {
     if (typeof window === 'undefined' || !navigator?.mediaDevices?.getUserMedia) {
@@ -35,7 +45,7 @@ export function useBrowserMedia() {
       setIsVideoOn(true);
       setMediaError(null);
       return nextStream;
-    } catch (error) {
+    } catch {
       setMediaError('Unable to access camera or microphone.');
       return null;
     }
@@ -44,27 +54,28 @@ export function useBrowserMedia() {
   const toggleMute = useCallback(() => {
     setIsMuted(current => {
       const next = !current;
-      stream?.getAudioTracks().forEach(track => { track.enabled = !next; });
+      streamRef.current?.getAudioTracks().forEach(track => { track.enabled = !next; });
       return next;
     });
-  }, [stream]);
+  }, []);
 
   const toggleVideo = useCallback(() => {
     setIsVideoOn(current => {
       const next = !current;
-      stream?.getVideoTracks().forEach(track => { track.enabled = next; });
+      streamRef.current?.getVideoTracks().forEach(track => { track.enabled = next; });
       return next;
     });
-  }, [stream]);
+  }, []);
 
   const stopScreenShare = useCallback(() => {
-    screenStream?.getTracks().forEach(track => track.stop());
+    const ss = screenStreamRef.current;
+    ss?.getTracks().forEach(track => track.stop());
     setIsScreenSharing(false);
     setScreenStream(null);
-  }, [screenStream]);
+  }, []);
 
   const toggleScreenShare = useCallback(async () => {
-    if (isScreenSharing) {
+    if (isScreenSharingRef.current) {
       stopScreenShare();
       return;
     }
@@ -86,7 +97,7 @@ export function useBrowserMedia() {
     } catch {
       setMediaError('Could not start screen sharing.');
     }
-  }, [isScreenSharing, stopScreenShare]);
+  }, [stopScreenShare]);
 
   const value = useMemo(
     () => ({
