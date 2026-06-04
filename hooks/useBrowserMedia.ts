@@ -11,14 +11,21 @@ export function useBrowserMedia() {
   const [isSupported, setIsSupported] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
 
-  // Refs hold latest values so callbacks stay stable (empty deps) and avoid
-  // cascading re-renders that cause React error #310 (infinite update loop).
-  const streamRef = useRef(stream);
-  streamRef.current = stream;
-  const screenStreamRef = useRef(screenStream);
-  screenStreamRef.current = screenStream;
-  const isScreenSharingRef = useRef(isScreenSharing);
-  isScreenSharingRef.current = isScreenSharing;
+  // Refs are initialized to defaults here (no render-body mutation).
+  // They are synced to current state values inside a single useEffect below.
+  const streamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const isScreenSharingRef = useRef(false);
+
+  // SINGLE useEffect to sync all refs to their latest state values.
+  // Doing this in a useEffect (not in the render body) ensures refs update
+  // after the commit phase, preventing the "Rendered more hooks than during
+  // the previous render" error (#310) that was caused by render-body mutation.
+  useEffect(() => {
+    streamRef.current = stream;
+    screenStreamRef.current = screenStream;
+    isScreenSharingRef.current = isScreenSharing;
+  }, [stream, screenStream, isScreenSharing]);
 
   useEffect(() => {
     setIsSupported(typeof window !== 'undefined' && !!navigator?.mediaDevices?.getUserMedia);
