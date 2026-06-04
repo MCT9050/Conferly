@@ -121,9 +121,6 @@ export function MeetingParticipantProvider({ children }: { children: ReactNode }
    * This is where we lazy-load the LiveKit module on demand.
    */
   useEffect(() => {
-    if (!media.stream) {
-      return;
-    }
 
     let mounted = true;
 
@@ -134,6 +131,11 @@ export function MeetingParticipantProvider({ children }: { children: ReactNode }
         
         if (!mounted) return;
 
+        if (!media.stream) {
+          // Only proceed with LiveKit initialization if media stream is available
+          return;
+        }
+
         trackRef.current = Track;
         const room = new Room();
         roomRef.current = room;
@@ -141,23 +143,19 @@ export function MeetingParticipantProvider({ children }: { children: ReactNode }
         const handleParticipantUpdate = () => updateRemoteParticipantList();
         const handleTrackUpdate = () => updateRemoteParticipantList();
 
-        room.on('participantConnected', handleParticipantUpdate);
-        room.on('participantDisconnected', handleParticipantUpdate);
-        room.on('trackSubscribed', handleTrackUpdate);
-        room.on('trackUnsubscribed', handleTrackUpdate);
-        room.on('activeSpeakersChanged', handleParticipantUpdate);
+        room.on("participantConnected", handleParticipantUpdate);
+        room.on("participantDisconnected", handleParticipantUpdate);
+        room.on("trackSubscribed", handleTrackUpdate);
+        room.on("trackUnsubscribed", handleTrackUpdate);
+        room.on("activeSpeakersChanged", handleParticipantUpdate);
 
         const publishTracks = async () => {
-          if (!room || !media.stream) {
-            return;
-          }
-
           try {
-            const response = await fetch('/api/lk-token', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({ roomId: ROOM_ID, role: 'participant' }),
+            const response = await fetch("/api/lk-token", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ roomId: ROOM_ID, role: "participant" }),
             });
 
             if (!response.ok) {
@@ -174,18 +172,18 @@ export function MeetingParticipantProvider({ children }: { children: ReactNode }
             if (audioTrack) {
               await room.localParticipant.publishTrack(audioTrack, {
                 source: Track.Source.Microphone,
-                name: 'microphone',
+                name: "microphone",
               });
             }
 
             if (videoTrack) {
               await room.localParticipant.publishTrack(videoTrack, {
                 source: Track.Source.Camera,
-                name: 'camera',
+                name: "camera",
               });
             }
           } catch (error) {
-            console.error('LiveKit connection failed', error);
+            console.error("LiveKit connection failed", error);
           }
         };
 
