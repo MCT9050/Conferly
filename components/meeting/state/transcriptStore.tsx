@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from 'react';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useSpeechTranscript } from '../../../hooks/useSpeechTranscript';
 import { trackEvent } from '../../../lib/monitoring';
 
@@ -17,6 +17,7 @@ type MeetingTranscriptContextValue = {
 const MeetingTranscriptContext = createContext<MeetingTranscriptContextValue | null>(null);
 
 export function MeetingTranscriptProvider({ children }: { children: ReactNode }) {
+  // All hooks at the top, unconditional, in fixed order — Rules of Hooks compliant
   const [isClient, setIsClient] = useState(false);
   const transcriptState = useSpeechTranscript();
 
@@ -24,13 +25,7 @@ export function MeetingTranscriptProvider({ children }: { children: ReactNode })
     setIsClient(true);
   }, []);
 
-  // On server: provide null (speech recognition not available server-side)
-  // On client: provide real transcript state after hydration
-  if (!isClient) {
-    return <MeetingTranscriptContext.Provider value={null}>{children}</MeetingTranscriptContext.Provider>;
-  }
-
-  // Monitoring: track transcript size and listening state
+  // Monitoring: track transcript size — always called, never conditional
   useEffect(() => {
     trackEvent({
       type: 'custom',
@@ -49,14 +44,30 @@ export function MeetingTranscriptProvider({ children }: { children: ReactNode })
     });
   }, [transcriptState.isListening]);
 
-  const value = {
-    transcript: transcriptState.transcript,
-    interimText: transcriptState.interimText,
-    isListening: transcriptState.isListening,
-    isSpeechSupported: transcriptState.isSpeechSupported,
-    startListening: transcriptState.startListening,
-    stopListening: transcriptState.stopListening,
-  };
+  // No early return! All hooks have been called. Conditional data is passed
+  // through the Provider value (and memoized for stable references).
+  const value = useMemo(
+    () =>
+      isClient
+        ? {
+            transcript: transcriptState.transcript,
+            interimText: transcriptState.interimText,
+            isListening: transcriptState.isListening,
+            isSpeechSupported: transcriptState.isSpeechSupported,
+            startListening: transcriptState.startListening,
+            stopListening: transcriptState.stopListening,
+          }
+        : null,
+    [
+      isClient,
+      transcriptState.transcript,
+      transcriptState.interimText,
+      transcriptState.isListening,
+      transcriptState.isSpeechSupported,
+      transcriptState.startListening,
+      transcriptState.stopListening,
+    ],
+  );
 
   return <MeetingTranscriptContext.Provider value={value}>{children}</MeetingTranscriptContext.Provider>;
 }

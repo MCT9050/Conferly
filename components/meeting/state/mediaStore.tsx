@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from 'react';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useBrowserMedia } from '../../../hooks/useBrowserMedia';
 import { trackEvent } from '../../../lib/monitoring';
 
@@ -9,6 +9,7 @@ type MeetingMediaContextValue = ReturnType<typeof useBrowserMedia> | null;
 const MeetingMediaContext = createContext<MeetingMediaContextValue | null>(null);
 
 export function MeetingMediaProvider({ children }: { children: ReactNode }) {
+  // All hooks at the top, unconditional, in fixed order — Rules of Hooks compliant
   const [isClient, setIsClient] = useState(false);
   const media = useBrowserMedia();
 
@@ -22,21 +23,17 @@ export function MeetingMediaProvider({ children }: { children: ReactNode }) {
         timestamp: Date.now(),
       });
     }
-     
   }, [media?.mediaError]); // Only depend on mediaError string, not the entire media object
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // On server render: provide null to avoid browser API calls
-  // On client hydration: hydrate with real media state
-  // This prevents hydration mismatches from browser APIs
-  if (!isClient) {
-    return <MeetingMediaContext.Provider value={null}>{children}</MeetingMediaContext.Provider>;
-  }
+  // No early return! All hooks have been called. Conditional data is passed
+  // through the Provider value (and memoized for stable references).
+  const value = useMemo(() => (isClient ? media : null), [isClient, media]);
 
-  return <MeetingMediaContext.Provider value={media}>{children}</MeetingMediaContext.Provider>;
+  return <MeetingMediaContext.Provider value={value}>{children}</MeetingMediaContext.Provider>;
 }
 
 export function useMeetingMedia() {
