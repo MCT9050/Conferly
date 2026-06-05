@@ -18,9 +18,7 @@ export default async function MeetingPage({ searchParams }: MeetingPageProps) {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <MeetingShell roomId={roomId} />
-      <div className="max-w-7xl mx-auto px-5 sm:px-8 py-10">
-        <MeetingRuntimeClient />
-      </div>
+      <MeetingRuntimeClient roomId={roomId} />
     </main>
   );
 }
