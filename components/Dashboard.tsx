@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   Video, Plus, Users, ArrowRight, Clock, Crown,
   Settings, LogOut, Shield, Calendar,
-  Copy, Check, Zap, Languages,
+  Copy, Check, Zap, Languages, Loader2,
   Brain, FileText, Mic, Monitor, Lock, AlertTriangle, RotateCcw, X
 } from 'lucide-react';
 import type { AppView, PlanTier, Subscription, PlanLimits } from '../types';
@@ -48,13 +48,25 @@ function generateRoomId() {
 
 const PLAN_COLORS: Record<PlanTier, string> = {
   trial: 'from-amber-500 to-orange-400',
+  classroom: 'from-emerald-500 to-teal-400',
+  classroom_plus: 'from-emerald-600 to-teal-500',
+  individual: 'from-cyan-500 to-sky-400',
   pro: 'from-blue-500 to-cyan-400',
   business: 'from-purple-500 to-pink-500',
   enterprise: 'from-amber-500 to-orange-500',
+  // Platinum / dark for the high-capacity tier
+  unlimited: 'from-slate-300 via-zinc-400 to-slate-600',
 };
 
 const PLAN_NAMES: Record<PlanTier, string> = {
-  trial: '14-Day Trial', pro: 'Pro', business: 'Business', enterprise: 'Enterprise',
+  trial: '14-Day Trial',
+  classroom: 'Classroom (R89/mo)',
+  classroom_plus: 'Classroom+ (R220/mo)',
+  individual: 'Individual (R110/mo)',
+  pro: 'Pro',
+  business: 'Business',
+  enterprise: 'Enterprise',
+  unlimited: 'Unlimited (R389/mo)',
 };
 
 function formatDuration(seconds: number): string {
@@ -84,13 +96,16 @@ export default function Dashboard({
   const [joinCode, setJoinCode] = useState('');
   const [copiedCode, setCopiedCode] = useState('');
   const [sidebarTab, setSidebarTab] = useState<'home' | 'meetings' | 'settings'>('home');
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
   const { copy } = useClipboard();
 
   const initials = profile.displayName.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
-  const handleNewMeeting = () => {
+  const handleNewMeeting = (type: 'meeting' | 'classroom' = 'meeting') => {
     if (!userName) setUserName(profile.displayName);
-    setRoomId(generateRoomId());
+    const code = generateRoomId();
+    // Use URL search params approach if state reset occurs, but here we set internal state
+    setRoomId(`${code}:${type}`);
     setView('lobby');
   };
 
@@ -125,7 +140,7 @@ export default function Dashboard({
         {/* New meeting button */}
         <div className="px-4 py-4">
           <button
-            onClick={handleNewMeeting}
+            onClick={() => handleNewMeeting('meeting')}
             className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold flex items-center justify-center gap-2 hover:from-blue-500 hover:to-cyan-400 transition-all shadow-lg glow-blue text-sm"
           >
             <Plus className="w-4 h-4" />
@@ -211,31 +226,99 @@ export default function Dashboard({
               <Crown className="w-4 h-4" />
               {PLAN_NAMES[subscription.tier]} Plan
               {subscription.tier === 'trial' && (
-                <button onClick={() => setView('pricing')} className="text-blue-400 hover:text-blue-300 ml-1 text-xs underline">Upgrade</button>
+                <button
+                  onClick={async () => {
+                    setUpgradeLoading(true);
+                    try {
+                      const { createProCheckout } = await import('../app/actions/checkout-actions');
+                      const result = await createProCheckout();
+                      if (result.url) {
+                        window.location.href = result.url;
+                      } else if (result.error) {
+                        alert(result.error);
+                      }
+                    } catch {
+                      setView('pricing');
+                    } finally {
+                      setUpgradeLoading(false);
+                    }
+                  }}
+                  disabled={upgradeLoading}
+                  className="text-blue-400 hover:text-blue-300 ml-1 text-xs underline disabled:opacity-50"
+                >
+                  {upgradeLoading ? 'Loading…' : 'Upgrade'}
+                </button>
               )}
             </div>
           </div>
 
           {/* ─── QUICK ACTIONS ─── */}
-          <div className="grid md:grid-cols-2 gap-4">
-            {/* New Meeting */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Business Meeting */}
             <div className="glass rounded-2xl p-6 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shadow-lg">
                   <Video className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold">New Meeting</h2>
-                  <p className="text-xs text-slate-500">Start an instant meeting</p>
+                  <h2 className="text-lg font-bold">Business Meeting</h2>
+                  <p className="text-xs text-slate-500">Professional sync</p>
                 </div>
               </div>
-              <p className="text-sm text-slate-400">Create a meeting room and invite others with a shareable code. Up to {planLimits.maxParticipants} participants on your plan.</p>
+              <p className="text-sm text-slate-400">Collaborative tools, AI summaries, and professional layout. Up to {planLimits.maxParticipants} participants.</p>
               <button
-                onClick={handleNewMeeting}
+                onClick={() => handleNewMeeting('meeting')}
                 className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold flex items-center justify-center gap-2 hover:from-blue-500 hover:to-cyan-400 transition-all shadow-lg glow-blue"
               >
-                <Plus className="w-4 h-4" />
-                Create Meeting
+                <Video className="w-4 h-4" />
+                Start Business Meeting
+              </button>
+            </div>
+
+            {/* Education Room */}
+            <div className="glass rounded-2xl p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center shadow-lg">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">Education Room</h2>
+                  <p className="text-xs text-slate-500">Interactive learning</p>
+                </div>
+              </div>
+              <p className="text-sm text-slate-400">Whiteboard, tutor controls, and 5-learner cap. Perfect for high-end education ($89/mo).</p>
+              <button
+                onClick={async () => {
+                  if (subscription.tier !== 'classroom') {
+                    // Unpaid user — redirect to Lemon Squeezy checkout (R89/mo ZAR)
+                    setUpgradeLoading(true);
+                    try {
+                      const { createClassroomCheckout } = await import('../app/actions/checkout-actions');
+                      const result = await createClassroomCheckout();
+                      if (result.url) {
+                        window.location.href = result.url;
+                      } else if (result.error) {
+                        alert(result.error);
+                      }
+                    } catch {
+                      setView('pricing');
+                    } finally {
+                      setUpgradeLoading(false);
+                    }
+                  } else {
+                    // Already subscribed — launch the room directly
+                    handleNewMeeting('classroom');
+                  }
+                }}
+                disabled={upgradeLoading}
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 text-white font-semibold flex items-center justify-center gap-2 hover:from-emerald-500 hover:to-teal-400 transition-all shadow-lg glow-emerald disabled:opacity-50"
+              >
+                {upgradeLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+                {upgradeLoading ? 'Redirecting to checkout…' : 'Launch Classroom'}
               </button>
             </div>
 
@@ -268,6 +351,108 @@ export default function Dashboard({
                 Join Meeting
                 <ArrowRight className="w-4 h-4" />
               </button>
+            </div>
+
+            {/* Education Room — Classroom+ (R220/mo, 30 learners) */}
+            <div className="glass rounded-2xl p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center shadow-lg">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-lg font-bold flex items-center gap-2">
+                    Classroom Plus
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">PLUS</span>
+                  </h2>
+                  <p className="text-xs text-slate-500">High-capacity learning</p>
+                </div>
+              </div>
+              <p className="text-sm text-slate-400">Whiteboard, tutor controls, and a 30-learner cap. For larger classes and bootcamps (R220/mo).</p>
+              <button
+                onClick={async () => {
+                  if (subscription.tier !== 'classroom_plus') {
+                    setUpgradeLoading(true);
+                    try {
+                      const { createClassroomPlusCheckout } = await import('../app/actions/checkout-actions');
+                      const result = await createClassroomPlusCheckout();
+                      if (result.url) {
+                        window.location.href = result.url;
+                      } else if (result.error) {
+                        alert(result.error);
+                      }
+                    } catch {
+                      setView('pricing');
+                    } finally {
+                      setUpgradeLoading(false);
+                    }
+                  } else {
+                    handleNewMeeting('classroom');
+                  }
+                }}
+                disabled={upgradeLoading}
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 text-white font-semibold flex items-center justify-center gap-2 hover:from-emerald-500 hover:to-teal-400 transition-all shadow-lg glow-emerald disabled:opacity-50"
+              >
+                {upgradeLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+                {upgradeLoading ? 'Redirecting to checkout…' : 'Launch Classroom Plus — R220/mo'}
+              </button>
+            </div>
+
+            {/* Conferly Unlimited — R389/mo, no cap (Platinum / dark style) */}
+            <div className="glass rounded-2xl p-6 space-y-4 relative overflow-hidden">
+              {/* Subtle platinum sheen */}
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-700/20 via-zinc-800/20 to-slate-900/20 pointer-events-none" />
+              <div className="relative space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-300 via-zinc-400 to-slate-600 flex items-center justify-center shadow-lg ring-1 ring-white/20">
+                    <Crown className="w-6 h-6 text-slate-900" />
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                      Conferly Unlimited
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gradient-to-r from-slate-300 to-zinc-400 text-slate-900">PLATINUM</span>
+                    </h2>
+                    <p className="text-xs text-slate-400">No limits. No boundaries.</p>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-300">
+                  Conferly Unlimited: No limits, no boundaries. Host unlimited participants for R389/month.
+                </p>
+                <button
+                  onClick={async () => {
+                    if (subscription.tier !== 'unlimited') {
+                      setUpgradeLoading(true);
+                      try {
+                        const { createUnlimitedCheckout } = await import('../app/actions/checkout-actions');
+                        const result = await createUnlimitedCheckout();
+                        if (result.url) {
+                          window.location.href = result.url;
+                        } else if (result.error) {
+                          alert(result.error);
+                        }
+                      } catch {
+                        setView('pricing');
+                      } finally {
+                        setUpgradeLoading(false);
+                      }
+                    } else {
+                      handleNewMeeting('meeting');
+                    }
+                  }}
+                  disabled={upgradeLoading}
+                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-slate-700 via-zinc-800 to-slate-900 text-white font-semibold flex items-center justify-center gap-2 hover:from-slate-600 hover:via-zinc-700 hover:to-slate-800 transition-all shadow-xl ring-1 ring-white/10 disabled:opacity-50"
+                >
+                  {upgradeLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Crown className="w-4 h-4" />
+                  )}
+                  {upgradeLoading ? 'Redirecting to checkout…' : 'Go Unlimited — R389/mo'}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -304,8 +489,27 @@ export default function Dashboard({
                   <p className="text-xs text-slate-400 mt-0.5">{meetingsThisMonth}/{maxMeetingsPerMonth} meetings used this month. Upgrade to Pro for unlimited meetings.</p>
                 </div>
               </div>
-              <button onClick={() => setView('pricing')} className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold text-sm min-h-[44px]">
-                Upgrade to Pro — Unlimited Meetings
+              <button
+                onClick={async () => {
+                  setUpgradeLoading(true);
+                  try {
+                    const { createProCheckout } = await import('../app/actions/checkout-actions');
+                    const result = await createProCheckout();
+                    if (result.url) {
+                      window.location.href = result.url;
+                    } else if (result.error) {
+                      alert(result.error);
+                    }
+                  } catch {
+                    setView('pricing');
+                  } finally {
+                    setUpgradeLoading(false);
+                  }
+                }}
+                disabled={upgradeLoading}
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold text-sm min-h-[44px] disabled:opacity-50"
+              >
+                {upgradeLoading ? 'Loading…' : 'Upgrade to Pro — Unlimited Meetings'}
               </button>
             </div>
           )}

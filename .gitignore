@@ -64,7 +64,13 @@ pnpm-debug.log*
 /.vercel/
 .vercelignore
 
+# test artifacts and reports
+/playwright-report/
+
 # editor and OS files
 /.idea/
 /.vscode/
 .vercel
+
+# IDE extensions and AI artifacts
+/.continue/

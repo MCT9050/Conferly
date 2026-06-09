@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { SALanguage, TranslationResult } from '../../../hooks/useTranslation';
+import { translateAction } from '../../../app/actions/ai-actions';
 
 const defaultLanguages: SALanguage[] = [
   { code: 'en', name: 'English', nativeName: 'English', apiCode: 'en-US' },
@@ -10,6 +11,11 @@ const defaultLanguages: SALanguage[] = [
   { code: 'af', name: 'Afrikaans', nativeName: 'Afrikaans', apiCode: 'af-ZA' },
   { code: 'xh', name: 'isiXhosa', nativeName: 'isiXhosa', apiCode: 'xh-ZA' },
 ];
+
+// Map SALanguage apiCode (e.g. "zu-ZA") to mBART code (e.g. "zu_ZA")
+function toMbartCode(apiCode: string): string {
+  return apiCode.replace('-', '_');
+}
 
 type MeetingTranslationContextValue = {
   translations: TranslationResult[];
@@ -41,10 +47,17 @@ export function MeetingTranslationProvider({ children }: { children: ReactNode }
     try {
       setIsTranslating(true);
       setTranslationError(null);
+
+      const translatedText = await translateAction({
+        text,
+        sourceLang: toMbartCode(translationSourceLang.apiCode),
+        targetLang: toMbartCode(translationTargetLang.apiCode),
+      });
+
       const result: TranslationResult = {
         id: Math.random().toString(36).slice(2, 10),
         originalText: text,
-        translatedText: `[${translationTargetLang.code}] ${text}`,
+        translatedText,
         sourceLang: translationSourceLang,
         targetLang: translationTargetLang,
         speaker,
@@ -53,6 +66,7 @@ export function MeetingTranslationProvider({ children }: { children: ReactNode }
       setTranslations(current => [result, ...current]);
       return result;
     } catch (error) {
+      console.error('Translation failed:', error);
       setTranslationError('Translation failed.');
       return null;
     } finally {

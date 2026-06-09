@@ -1,9 +1,8 @@
-"use client";
-
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { Room, Track as TrackType } from 'livekit-client';
-import type { Participant } from '../../../types';
+import type { Room, Track as TrackType, RemoteParticipant } from 'livekit-client'; // Import RemoteParticipant
+import { RoomEvent } from 'livekit-client'; // Import RoomEvent
+import { UNLIMITED_PARTICIPANT_CAP, type Participant } from '../../../types';
 import { getLiveKitModule } from '../../../lib/livekit-client';
 import { useMeetingMedia } from './mediaStore';
 import { trackEvent } from '../../../lib/monitoring';
@@ -11,6 +10,9 @@ import { trackEvent } from '../../../lib/monitoring';
 type MeetingParticipantContextValue = {
   participants: Participant[];
   participantCount: number;
+  roomType: 'meeting' | 'classroom';
+  isLocalParticipantHost: boolean;
+  participantCap: number;
 };
 
 const MeetingParticipantContext = createContext<MeetingParticipantContextValue | null>(null);
@@ -80,12 +82,29 @@ async function mapRemoteParticipant(
   };
 }
 
+// Helper to check if a remote participant is a host (assuming role in metadata)
+function isHost(participant: RemoteParticipant): boolean {
+  if (participant.metadata) {
+    try {
+      const metadata = JSON.parse(participant.metadata);
+      return metadata.role === 'host';
+    } catch (e) {
+      console.error("Failed to parse participant metadata for host check", e);
+    }
+  }
+  return false;
+}
+
+
 export function MeetingParticipantProvider({ children }: { children: ReactNode }) {
   const media = useMeetingMedia();
   const [remoteParticipants, setRemoteParticipants] = useState<Participant[]>([]);
   const roomRef = useRef<Room | null>(null);
   const trackRef = useRef<typeof TrackType | null>(null);
   const mountedRef = useRef(true);
+  const [currentRoomType, setCurrentRoomType] = useState<'meeting' | 'classroom'>('meeting');
+  const [isLocalHost, setIsLocalHost] = useState(false);
+  const [participantCap, setParticipantCap] = useState(5); // Default to 5 (Pro); fetched from subscription
 
   /**
    * Update the list of remote participants.
@@ -127,7 +146,7 @@ export function MeetingParticipantProvider({ children }: { children: ReactNode }
     (async () => {
       try {
         // Lazy-load LiveKit module here - deferred until room is needed
-        const { Room, Track } = await getLiveKitModule();
+        const { Room, Track, RoomEvent } = await getLiveKitModule();
         
         if (!mounted) return;
 
@@ -149,13 +168,25 @@ export function MeetingParticipantProvider({ children }: { children: ReactNode }
         room.on("trackUnsubscribed", handleTrackUpdate);
         room.on("activeSpeakersChanged", handleParticipantUpdate);
 
+        // Add DataReceived listener for global mute
+        room.on(RoomEvent.DataReceived, (payload: Uint8Array, participant?: RemoteParticipant) => {
+          const message = new TextDecoder().decode(payload);
+          if (message === 'MUTE_ALL' && participant && isHost(participant) && !media.isMuted) {
+            media.toggleMute(); // Mute local participant if received MUTE_ALL from a host
+            console.log("Received MUTE_ALL from host. Muting local participant.");
+          }
+        });
+
+
         const publishTracks = async () => {
           try {
             const response = await fetch("/api/lk-token", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
-              body: JSON.stringify({ roomId: DEFAULT_ROOM_ID, role: "participant" }),
+              // The `role` should ideally come from user authentication,
+              // for now, we'll assume the server assigns it via metadata.
+              body: JSON.stringify({ roomId: DEFAULT_ROOM_ID, /* role can be inferred server-side */ }),
             });
 
             if (!response.ok) {
@@ -164,6 +195,72 @@ export function MeetingParticipantProvider({ children }: { children: ReactNode }
 
             const { token, url } = await response.json();
             await room.connect(url, token, { autoSubscribe: true });
+
+            let roomType: 'meeting' | 'classroom' = 'meeting';
+            let localIsHost = false;
+
+            if (room.metadata) {
+              try {
+                const metadata = JSON.parse(room.metadata);
+                if (metadata.roomType) {
+                  roomType = metadata.roomType;
+                }
+                // Check if local participant's metadata (or token payload) indicates 'host' role
+                if (room.localParticipant.metadata) {
+                  const localMetadata = JSON.parse(room.localParticipant.metadata);
+                  if (localMetadata.role === 'host') {
+                    localIsHost = true;
+                  }
+                }
+              } catch (e) {
+                console.error("Failed to parse room metadata", e);
+              }
+            }
+            setCurrentRoomType(roomType);
+            setIsLocalHost(localIsHost); // Set local host status
+
+            // Enforce participant cap from subscription — fetch from DB
+            // Default cap of 5 matches the legacy Pro tier.
+            let cap = 5;
+            try {
+              const response = await fetch('/api/subscription-cap', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+              });
+              if (response.ok) {
+                const data = await response.json();
+                if (data.participantCap) {
+                  cap = data.participantCap;
+                }
+                if (data.plan) {
+                  setParticipantCap(cap);
+                }
+              }
+            } catch {
+              // Fall back to default cap if fetch fails
+              console.warn("Failed to fetch subscription cap, using default (5)");
+            }
+
+            // Global cap enforcement — applies to BOTH classroom and meeting rooms.
+            //
+            // Unlimited (R389) and any other plan whose `participant_cap` was
+            // written to UNLIMITED_PARTICIPANT_CAP (9999) is treated as "no
+            // enforcement" and the join is allowed unconditionally. The plan
+            // name itself is irrelevant here — we key off the cap value so
+            // future tiers above 9999 inherit the bypass for free.
+            if (cap === UNLIMITED_PARTICIPANT_CAP) {
+              console.info(
+                `[Conferly] Unlimited plan active (cap=${UNLIMITED_PARTICIPANT_CAP}) — no participant cap enforced.`
+              );
+            } else if (room.remoteParticipants.size >= cap) {
+              console.warn(
+                `[Conferly] Plan cap reached (${cap} participants, roomType=${roomType}). Disconnecting.`
+              );
+              room.disconnect();
+              return;
+            }
+
             await updateRemoteParticipantList();
 
             if (!media.stream) {
@@ -201,7 +298,7 @@ export function MeetingParticipantProvider({ children }: { children: ReactNode }
       roomRef.current?.disconnect().catch(() => undefined);
       roomRef.current = null;
     };
-  }, [media.stream]);
+  }, [media.stream, media.toggleMute]); // Added media.toggleMute to dependencies
 
   /**
    * Effect: Publish screen share when available.
@@ -262,8 +359,10 @@ export function MeetingParticipantProvider({ children }: { children: ReactNode }
   }, [participants.length]);
 
   const value = useMemo(
-    () => ({ participants, participantCount: participants.length }),
-    [participants]
+    () => {
+      return { participants, participantCount: participants.length, roomType: currentRoomType, isLocalParticipantHost: isLocalHost, participantCap };
+    },
+    [participants, currentRoomType, isLocalHost, participantCap]
   );
 
   return <MeetingParticipantContext.Provider value={value}>{children}</MeetingParticipantContext.Provider>;

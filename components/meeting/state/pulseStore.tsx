@@ -1,8 +1,9 @@
 "use client";
 
 import type { ReactNode } from 'react';
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, useRef } from 'react';
 import { useMeetingTranscript } from './transcriptStore';
+import { summarizeAction } from '../../../app/actions/ai-actions';
 
 type MeetingPulseContextValue = {
   pulseSummary: string[];
@@ -18,6 +19,7 @@ export function MeetingPulseProvider({ children }: { children: ReactNode }) {
   const [pulseSummary, setPulseSummary] = useState<string[]>([]);
   const [pulseTopics, setPulseTopics] = useState<string[]>([]);
   const [isPulseLoading, setIsPulseLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const generatePulse = useCallback(() => {
     const finalEntries = transcriptState.transcript.filter(entry => entry.isFinal);
@@ -27,25 +29,39 @@ export function MeetingPulseProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setIsPulseLoading(true);
+    // Cancel any in-flight request
+    abortRef.current?.abort();
     const controller = new AbortController();
-    
-    const timeout = window.setTimeout(() => {
-      if (!controller.signal.aborted) {
-        setPulseSummary([
-          'Presented meeting goals and agenda updates.',
-          'Highlighted inclusive translation flows for SA languages.',
-          'Reviewed security and participant experience settings.',
-        ]);
-        setPulseTopics(['translation', 'security', 'collaboration']);
-        setIsPulseLoading(false);
-      }
-    }, 800);
+    abortRef.current = controller;
 
-    return () => {
-      clearTimeout(timeout);
-      controller.abort();
-    };
+    setIsPulseLoading(true);
+
+    // Build the full transcript text for summarization
+    const fullText = finalEntries
+      .map(e => `[${e.speaker}]: ${e.text}`)
+      .join('\n');
+
+    summarizeAction(fullText)
+      .then((summary) => {
+        if (!controller.signal.aborted) {
+          // Split the summary into bullet points by sentence boundaries
+          const bullets = summary
+            .split(/(?<=[.!?])\s+/)
+            .filter(s => s.trim().length > 0)
+            .map(s => s.trim());
+          setPulseSummary(bullets.length > 0 ? bullets : [summary]);
+          setPulseTopics([]); // Topics are not extracted by bart-large-cnn
+          setIsPulseLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          console.error('AI Pulse summarization failed:', err);
+          setPulseSummary(['Could not generate summary. The AI service may be unavailable.']);
+          setPulseTopics([]);
+          setIsPulseLoading(false);
+        }
+      });
   }, [transcriptState.transcript]);
 
   const value = useMemo(

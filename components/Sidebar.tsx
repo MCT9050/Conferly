@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useRef, useEffect } from 'react';
+import { memo, useState, useRef, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import {
   X, MessageSquare, FileText, Brain, Users,
@@ -91,6 +91,7 @@ const TABS: { id: SidebarTab; label: string; icon: typeof MessageSquare }[] = [
   { id: 'transcript', label: 'Transcript', icon: FileText },
   { id: 'notes', label: 'Notes', icon: Edit3 },
   { id: 'pulse', label: 'AI Pulse', icon: Brain },
+  { id: 'assistant', label: 'AI Assistant', icon: Brain },
   { id: 'participants', label: 'People', icon: Users },
   { id: 'security', label: 'Security', icon: ShieldCheck },
   { id: 'translate', label: 'Translate', icon: Languages },
@@ -322,6 +323,166 @@ const PulsePanel = memo(function PulsePanel({
   );
 });
 
+// ---------------------------------------------------------------------------
+// AI Assistant Panel
+// ---------------------------------------------------------------------------
+
+const AssistantPanel = memo(function AssistantPanel({
+  transcript,
+  sendChatMessage,
+}: {
+  transcript: TranscriptEntry[];
+  sendChatMessage: (text: string) => void;
+}) {
+  const [messages, setMessages] = useState<
+    { id: string; sender: "user" | "assistant"; text: string }[]
+  >([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const systemPrompt =
+    "You are an expert tutor. Help the teacher explain concepts and suggest whiteboard diagrams.";
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSend = useCallback(async () => {
+    const trimmed = input.trim();
+    if (!trimmed || isLoading) return;
+    setInput("");
+    setIsLoading(true);
+
+    const userMsg = {
+      id: Math.random().toString(36).slice(2, 10),
+      sender: "user" as const,
+      text: trimmed,
+    };
+    setMessages((prev) => [...prev, userMsg]);
+
+    try {
+      const { assistantAction } = await import("../app/actions/ai-actions");
+
+      const recentTranscript = transcript
+        .filter((e) => e.isFinal)
+        .slice(-5)
+        .map((e) => `[${e.speaker}]: ${e.text}`)
+        .join("\n");
+
+      const contextBlock = recentTranscript
+        ? `Here is what is happening in the room:\n${recentTranscript}\n\n`
+        : "";
+
+      const fullPrompt = `${systemPrompt}\n\n${contextBlock}User: ${trimmed}\nAssistant:`;
+      const response = await assistantAction(fullPrompt);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Math.random().toString(36).slice(2, 10),
+          sender: "assistant",
+          text: response || "I'm sorry, I couldn't generate a response.",
+        },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Math.random().toString(36).slice(2, 10),
+          sender: "assistant",
+          text: "Sorry, the AI service is temporarily unavailable.",
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [input, isLoading, transcript]);
+
+  const handleSendToChat = useCallback(
+    (text: string) => {
+      sendChatMessage(text);
+    },
+    [sendChatMessage],
+  );
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {messages.length === 0 && !isLoading && (
+          <div className="text-center text-sm text-slate-500 py-12">
+            <Brain className="w-8 h-8 mx-auto mb-3 opacity-40" />
+            Ask me anything about this lesson.
+          </div>
+        )}
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`${msg.sender === "user" ? "ml-6" : "mr-6"}`}
+          >
+            <div
+              className={`rounded-2xl px-4 py-2.5 ${
+                msg.sender === "user"
+                  ? "bg-blue-600/20 border border-blue-500/20 ml-auto"
+                  : "bg-slate-800/60 border border-slate-700/30"
+              }`}
+            >
+              <div className="text-xs text-slate-400 mb-1 font-medium">
+                {msg.sender === "user" ? "You" : "AI Assistant"}
+              </div>
+              <div className="text-sm text-slate-200">{msg.text}</div>
+              {msg.sender === "assistant" && (
+                <button
+                  type="button"
+                  onClick={() => handleSendToChat(msg.text)}
+                  className="mt-2 text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
+                >
+                  <MessageSquare className="w-3 h-3" />
+                  Send to Chat
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+        {isLoading && (
+          <div className="mr-6">
+            <div className="rounded-2xl px-4 py-3 bg-slate-800/60 border border-slate-700/30">
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                AI is thinking...
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+      <div className="p-3 border-t border-slate-800/50">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void handleSend();
+            }}
+            placeholder="Ask about the lesson..."
+            disabled={isLoading}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/30 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/40 disabled:opacity-50"
+          />
+          <button
+            type="button"
+            onClick={() => void handleSend()}
+            disabled={!input.trim() || isLoading}
+            className="p-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 function ParticipantsPanel({ participants }: { participants: Participant[] }) {
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -398,6 +559,9 @@ export default function Sidebar({
               }`}
               title={t.label}
             >
+              {t.id === 'assistant' && isListening && (
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse mr-1 -mt-0.5" />
+              )}
               <t.icon className="w-4 h-4 sm:w-3.5 sm:h-3.5 sm:inline sm:mr-1.5 sm:-mt-0.5" />
               <span className="hidden sm:inline">{t.label}</span>
             </button>
@@ -432,6 +596,12 @@ export default function Sidebar({
             topics={pulseTopics}
             onGenerate={generatePulse}
             transcriptCount={transcript.filter(t => t.isFinal).length}
+          />
+        )}
+        {tab === 'assistant' && (
+          <AssistantPanel
+            transcript={transcript}
+            sendChatMessage={sendChatMessage}
           />
         )}
         {tab === 'participants' && <ParticipantsPanel participants={participants} />}

@@ -13,14 +13,14 @@ export default function MeetingShell({ roomId = '\u2014', participantCap = '16 p
           <div className="flex items-center gap-3 min-w-0">
             <Logo size="sm" className="text-white shrink-0" />
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-white truncate">Conferly Meeting</p>
+              <p className="text-sm font-semibold text-slate-200 truncate">Conferly Meeting</p>
               <p className="text-xs text-slate-400 truncate">
-                Room <span className="font-mono text-slate-300">{roomId}</span>
+                Room <span className="font-mono text-slate-200">{roomId}</span>
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 border border-white/5">
+            <span className="rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-200 border border-white/5">
               {participantCap}
             </span>
             <span className="rounded-full bg-green-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-green-400 border border-green-500/20">

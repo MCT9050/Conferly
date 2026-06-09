@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Check, X, ArrowLeft, Users, Clock, Video,
   Mic, Brain, Palette, HardDrive, ShieldCheck,
@@ -17,22 +18,17 @@ interface PricingPageProps {
   pricing: Record<PlanTier, { monthly: number; annual: number }>;
   allLimits: Record<PlanTier, PlanLimits>;
   onUpgrade: (tier: PlanTier, cycle: 'monthly' | 'annual') => void;
-  // Payment
-  onStartCheckout?: (planTier: string, cycle: 'monthly' | 'annual') => void;
-  paymentProcessing?: boolean;
-  paymentError?: string | null;
-  paymentResult?: { success: boolean; plan?: string } | null;
-  isPeachConfigured?: boolean;
-  planPricesZAR?: Record<string, { monthly: number; annual: number }>;
-  clearPaymentError?: () => void;
-  clearPaymentResult?: () => void;
 }
 
 const PLAN_META: Record<PlanTier, { name: string; tagline: string; icon: typeof Zap; color: string; gradient: string }> = {
   trial: { name: '14-Day Trial', tagline: 'Try everything free', icon: Zap, color: 'text-amber-400', gradient: 'from-amber-500 to-orange-400' },
+  classroom: { name: 'Classroom', tagline: 'For tutors and trainers', icon: Users, color: 'text-emerald-400', gradient: 'from-emerald-600 to-teal-500' },
+  classroom_plus: { name: 'Classroom Plus', tagline: 'High-capacity learning (R220/mo)', icon: Users, color: 'text-emerald-300', gradient: 'from-emerald-700 to-teal-600' },
+  individual: { name: 'Individual', tagline: 'Solo professionals (R110/mo)', icon: Video, color: 'text-cyan-400', gradient: 'from-cyan-500 to-sky-400' },
   pro: { name: 'Pro', tagline: 'For small teams', icon: Crown, color: 'text-blue-400', gradient: 'from-blue-600 to-cyan-500' },
   business: { name: 'Business', tagline: 'For growing companies', icon: Building2, color: 'text-purple-400', gradient: 'from-purple-600 to-pink-500' },
   enterprise: { name: 'Enterprise', tagline: 'For large organizations', icon: Globe, color: 'text-amber-400', gradient: 'from-amber-500 to-orange-500' },
+  unlimited: { name: 'Unlimited', tagline: 'No limits. No boundaries. (R389/mo)', icon: Crown, color: 'text-slate-100', gradient: 'from-slate-700 via-zinc-800 to-slate-900' },
 };
 
 const FEATURE_ROWS: { key: keyof PlanLimits; label: string; icon: typeof Users; format?: (v: number | boolean) => string }[] = [
@@ -54,16 +50,51 @@ const FEATURE_ROWS: { key: keyof PlanLimits; label: string; icon: typeof Users; 
 
 export default function PricingPage({
   setView, subscription, pricing, allLimits, onUpgrade,
-  onStartCheckout, paymentProcessing, paymentError, paymentResult,
-  isPeachConfigured: peachReady, planPricesZAR, clearPaymentError, clearPaymentResult,
 }: PricingPageProps) {
+  const router = useRouter();
   const [cycle, setCycle] = useState<'monthly' | 'annual'>('annual');
+  const [processingTier, setProcessingTier] = useState<PlanTier | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentResult, setPaymentResult] = useState<{ success: boolean; plan?: string } | null>(null);
   const tiers: PlanTier[] = ['pro', 'business', 'enterprise'];
 
-  const handleUpgrade = (tier: PlanTier) => {
+  const handleUpgrade = useCallback(async (tier: PlanTier) => {
+    // Enterprise goes to contact sales
+    if (tier === 'enterprise') {
+      window.open('mailto:sales@conferly.app', '_blank');
+      return;
+    }
+
+    // Trial users upgrading to pro: use the local demo path
+    if (subscription.tier === 'trial' && tier === 'pro') {
+      setProcessingTier(tier);
+      setPaymentError(null);
+
+      try {
+        // Dynamically import the server action
+        const { createProCheckout } = await import('../app/actions/checkout-actions');
+        const result = await createProCheckout();
+
+        if (result.error) {
+          setPaymentError(result.error);
+          setProcessingTier(null);
+          return;
+        }
+
+        if (result.url) {
+          // Redirect to Lemon Squeezy checkout (this is the "In-App" purchase flow)
+          window.location.href = result.url;
+        }
+      } catch (err) {
+        setPaymentError(err instanceof Error ? err.message : 'Checkout failed. Please try again.');
+        setProcessingTier(null);
+      }
+      return;
+    }
+
     // Fallback: local-only upgrade (demo)
     onUpgrade(tier, cycle);
-  };
+  }, [cycle, onUpgrade, subscription.tier]);
 
   return (
     <div className="min-h-screen pb-20">
@@ -88,7 +119,7 @@ export default function PricingPage({
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
             <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
             <span className="text-sm text-red-400 flex-1">{paymentError}</span>
-            {clearPaymentError && <button onClick={clearPaymentError} className="text-xs text-red-300 underline">Dismiss</button>}
+            <button onClick={() => setPaymentError(null)} className="text-xs text-red-300 underline">Dismiss</button>
           </div>
         </div>
       )}
@@ -97,7 +128,7 @@ export default function PricingPage({
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/20">
             <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
             <span className="text-sm text-green-400 flex-1">Payment successful! Your plan has been upgraded.</span>
-            {clearPaymentResult && <button onClick={clearPaymentResult} className="text-xs text-green-300 underline">Dismiss</button>}
+            <button onClick={() => setPaymentResult(null)} className="text-xs text-green-300 underline">Dismiss</button>
           </div>
         </div>
       )}
@@ -211,10 +242,10 @@ export default function PricingPage({
 
                   <button
                     onClick={() => handleUpgrade(tier)}
-                    disabled={paymentProcessing}
+                    disabled={processingTier === tier}
                     className={`w-full py-3 min-h-[44px] rounded-xl bg-gradient-to-r ${meta.gradient} text-white font-semibold text-sm active:opacity-80 transition-all shadow-lg disabled:opacity-50`}
                   >
-                    {paymentProcessing ? 'Processing…' : tier === 'enterprise' ? 'Contact Sales' : `Upgrade to ${meta.name}`}
+                    {processingTier === tier ? 'Redirecting…' : tier === 'enterprise' ? 'Contact Sales' : `Upgrade to ${meta.name}`}
                   </button>
                 </div>
               </div>

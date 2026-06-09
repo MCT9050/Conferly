@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
-import { Video, Users, FileText, ArrowRight, LogIn } from "lucide-react";
+import { Video, Users, FileText, ArrowRight, LogIn, Crown, Loader2 } from "lucide-react";
 import Logo from "./Logo";
 
 function generateRoomCode(): string {
@@ -18,6 +18,7 @@ function generateRoomCode(): string {
 export default function ClientDashboard() {
   const router = useRouter();
   const [joinCode, setJoinCode] = useState("");
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
 
   const stats = useMemo(
     () => [
@@ -51,12 +52,41 @@ export default function ClientDashboard() {
               translation-enabled collaboration.
             </p>
           </div>
-          <Link
-            href="/pricing"
-            className="text-sm text-slate-400 transition hover:text-white"
-          >
-            View pricing
-          </Link>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={async () => {
+                    setUpgradeLoading(true);
+                    try {
+                      const { createCheckoutSession } = await import('../app/actions/checkout-actions');
+                      const result = await createCheckoutSession('pro', 'annual');
+                      if (result.url) {
+                        window.location.href = result.url;
+                      } else if (result.error) {
+                        alert(result.error);
+                      }
+                    } catch (err) {
+                      router.push('/pricing');
+                    } finally {
+                      setUpgradeLoading(false);
+                    }
+                  }}
+                  disabled={upgradeLoading}
+                  className="text-sm text-amber-400 hover:text-amber-300 transition flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {upgradeLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Crown className="w-4 h-4" />
+                  )}
+                  {upgradeLoading ? 'Loading…' : 'Upgrade'}
+                </button>
+                <Link
+                  href="/pricing"
+                  className="text-sm text-slate-400 transition hover:text-white"
+                >
+                  View pricing
+                </Link>
+              </div>
         </header>
 
         {/* Quick actions */}

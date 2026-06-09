@@ -13,7 +13,6 @@
     "@supabase/ssr": "0.10.3",
     "@supabase/supabase-js": "2.106.1",
     "@tiptap/extension-collaboration": "^3.23.5",
-    "@vercel/speed-insights": "^1.2.1",
     "@tiptap/extension-highlight": "^3.23.5",
     "@tiptap/extension-placeholder": "^3.23.5",
     "@tiptap/extension-task-item": "^3.23.5",
@@ -21,12 +20,14 @@
     "@tiptap/extension-typography": "^3.23.5",
     "@tiptap/react": "^3.23.5",
     "@tiptap/starter-kit": "^3.23.5",
+    "@vercel/speed-insights": "^1.2.1",
     "livekit-client": "^2.19.0",
     "livekit-server-sdk": "^2.15.3",
     "lucide-react": "^1.16.0",
     "next": "^16.2.6",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "tldraw": "^5.1.0",
     "y-webrtc": "^10.3.0"
   },
   "devDependencies": {
