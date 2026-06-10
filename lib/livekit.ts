@@ -14,6 +14,12 @@ export async function createLiveKitToken({
   room: string;
   role: LiveKitRole;
 }): Promise<string> {
+  if (!identity || !name || !room) {
+    throw new Error(
+      `createLiveKitToken called with invalid params: identity=${JSON.stringify(identity)}, name=${JSON.stringify(name)}, room=${JSON.stringify(room)}`
+    );
+  }
+
   const env = getServerEnv();
   if (!env.LIVEKIT_API_KEY || !env.LIVEKIT_API_SECRET) {
     throw new Error('Missing LiveKit credentials: LIVEKIT_API_KEY and LIVEKIT_API_SECRET are required');
