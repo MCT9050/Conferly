@@ -1,10 +1,21 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { createLiveKitToken, LiveKitRole } from '@/lib/livekit';
-import { getServerEnv } from '@/lib/serverEnv';
 import { verifyRoomAccess } from '@/lib/meetingAuth';
 
 const VALID_ROLES = new Set<LiveKitRole>(['participant', 'spectator']);
+
+/**
+ * Retrieve LiveKit URL directly from process.env.
+ * Bypasses getServerEnv() cache to avoid 'Env Desync' issues.
+ */
+function getLiveKitUrl(): string {
+  const url = process.env.LIVEKIT_URL?.trim();
+  if (!url) {
+    throw new Error('LIVEKIT_URL is not configured. Check .env.local or Vercel env vars.');
+  }
+  return url;
+}
 
 export async function POST(request: Request) {
   try {
@@ -34,13 +45,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const env = getServerEnv();
-    if (!env.LIVEKIT_API_KEY || !env.LIVEKIT_API_SECRET) {
-      return NextResponse.json({ error: 'LiveKit SDK credentials not configured on the server' }, { status: 500 });
-    }
-    if (!env.LIVEKIT_URL) {
-      return NextResponse.json({ error: 'LiveKit URL is not configured on the server' }, { status: 500 });
-    }
+    const liveKitUrl = getLiveKitUrl();
 
     const role = access.accessRole === 'spectator' ? 'spectator' : requestedRole;
     const token = await createLiveKitToken({
@@ -50,7 +55,7 @@ export async function POST(request: Request) {
       role,
     });
 
-    return NextResponse.json({ token, url: env.LIVEKIT_URL });
+    return NextResponse.json({ token, url: liveKitUrl });
   } catch (error) {
     console.error('LIVEKIT_TOKEN_CRASH:', error);
     return NextResponse.json(
