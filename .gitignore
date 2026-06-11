@@ -74,3 +74,4 @@ pnpm-debug.log*
 
 # IDE extensions and AI artifacts
 /.continue/
+.env.production
