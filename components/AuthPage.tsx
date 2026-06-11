@@ -6,6 +6,7 @@ import {
   AlertCircle, CheckCircle2, Loader2
 } from 'lucide-react';
 import Logo from './Logo';
+import { warmupAPIs } from '../app/actions/system-warmup';
 
 interface AuthPageProps {
   onSignUp: (email: string, password: string, displayName: string) => Promise<{ success: boolean; needsConfirmation?: boolean }>;
@@ -17,6 +18,17 @@ interface AuthPageProps {
 
 export default function AuthPage({ onSignUp, onSignIn, error, clearError, loading }: AuthPageProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    // Fire-and-forget warmup: wake up serverless APIs before user logs in
+    warmupAPIs().then((result) => {
+      if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+        console.log('[Warmup]', result);
+      }
+    }).catch(() => {
+      // Silently ignore — warmup is best-effort and never blocks login
+    });
+  }, []);
 
   useEffect(() => {
     const root = containerRef.current;

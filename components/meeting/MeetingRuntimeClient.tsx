@@ -11,6 +11,7 @@ import { ClassroomWhiteboard } from "./ClassroomWhiteboard";
 import CaptionsOverlay from "./CaptionsOverlay";
 import { useSpeechTranscript } from "../../hooks/useSpeechTranscript";
 import { summarizeAction, assistantAction } from "../../app/actions/ai-actions";
+import type { AIActionResponse } from "../../app/actions/ai-actions";
 import type { Participant, SidebarTab, Reaction } from "../../types";
 import type { Room } from "livekit-client";
 
@@ -632,16 +633,36 @@ function AssistantPanel({
         : "";
 
       const fullPrompt = `${systemPrompt}\n\n${contextBlock}User: ${trimmed}\nAssistant:`;
-      const response = await assistantAction(fullPrompt);
+      const result = await assistantAction(fullPrompt);
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Math.random().toString(36).slice(2, 10),
-          sender: "assistant",
-          text: response || "I'm sorry, I couldn't generate a response.",
-        },
-      ]);
+      if (result.status === 'COOLDOWN') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).slice(2, 10),
+            sender: "assistant",
+            text: `AI is resting to maintain quality. Back in ${result.retryAfter}s.`,
+          },
+        ]);
+      } else if (result.status === 'ERROR') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).slice(2, 10),
+            sender: "assistant",
+            text: result.error || "Sorry, the AI service is temporarily unavailable.",
+          },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).slice(2, 10),
+            sender: "assistant",
+            text: result.data || "I'm sorry, I couldn't generate a response.",
+          },
+        ]);
+      }
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -1137,8 +1158,14 @@ function MeetingContent({ roomId, roomType }: { roomId: string; roomType: "meeti
         .join("\n");
 
       summarizeAction(fullText)
-        .then((summary) => {
-          setSummaryText(summary);
+        .then((result) => {
+          if (result.status === 'COOLDOWN') {
+            setSummaryText(`AI is resting to maintain quality. Back in ${result.retryAfter}s.`);
+          } else if (result.status === 'ERROR') {
+            setSummaryText(result.error || "Summary could not be generated. The AI service may be unavailable.");
+          } else {
+            setSummaryText(result.data);
+          }
           setIsSummaryLoading(false);
         })
         .catch(() => {
