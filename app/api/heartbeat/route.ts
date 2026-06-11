@@ -91,7 +91,7 @@ async function checkHuggingFace(): Promise<PillarResult> {
   }
 
   try {
-    const response = await fetch('https://api-inference.huggingface.co/models/google-bert/bert-base-uncased', {
+    const response = await fetch('https://router.huggingface.co/hf-inference/models/google-bert/bert-base-uncased', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ inputs: 'Ping.' }),
