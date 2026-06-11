@@ -42,8 +42,10 @@ export function MeetingPulseProvider({ children }: { children: ReactNode }) {
       .join('\n');
 
     summarizeAction(fullText)
-      .then((summary) => {
+      .then((response) => {
         if (!controller.signal.aborted) {
+          // extract text from AIActionResponse
+          const summary = response.status === "OK" ? response.data : "Summary unavailable.";
           // Split the summary into bullet points by sentence boundaries
           const bullets = summary
             .split(/(?<=[.!?])\s+/)

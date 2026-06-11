@@ -48,11 +48,12 @@ export function MeetingTranslationProvider({ children }: { children: ReactNode }
       setIsTranslating(true);
       setTranslationError(null);
 
-      const translatedText = await translateAction({
+      const translateResponse = await translateAction({
         text,
         sourceLang: toMbartCode(translationSourceLang.apiCode),
         targetLang: toMbartCode(translationTargetLang.apiCode),
       });
+      const translatedText = translateResponse.status === "OK" ? translateResponse.data : `[Translation error: ${translateResponse.status === "ERROR" ? translateResponse.error : "AI cooldown"}]`;
 
       const result: TranslationResult = {
         id: Math.random().toString(36).slice(2, 10),

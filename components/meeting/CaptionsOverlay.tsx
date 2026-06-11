@@ -110,8 +110,10 @@ export default function CaptionsOverlay({
         const next = [...prev];
         batch.forEach((caption, idx) => {
           const result = results[idx];
+          // translateAction returns AIActionResponse — unwrap it
+          const responseBody = result.status === "fulfilled" ? result.value : null;
           const translated =
-            result.status === "fulfilled" ? result.value : `[Translation error]`;
+            responseBody?.status === "OK" ? responseBody.data : `[Translation error]`;
           // Replace existing entry with same id or append
           const existingIdx = next.findIndex((e) => e.id === caption.id);
           const entry: CaptionEntry = {
