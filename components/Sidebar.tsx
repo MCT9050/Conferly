@@ -375,16 +375,37 @@ const AssistantPanel = memo(function AssistantPanel({
         : "";
 
       const fullPrompt = `${systemPrompt}\n\n${contextBlock}User: ${trimmed}\nAssistant:`;
-      const response = await assistantAction(fullPrompt);
+      const result = await assistantAction(fullPrompt);
+      if (result.status === 'COOLDOWN') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).slice(2, 10),
+            sender: "assistant",
+            text: `AI is resting to maintain quality. Back in ${result.retryAfter}s.`,
+          },
+        ]);
+      } else if (result.status === 'ERROR') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).slice(2, 10),
+            sender: "assistant",
+            text: result.error || "Sorry, the AI service is temporarily unavailable.",
+          },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).slice(2, 10),
+            sender: "assistant",
+            text: result.data || "I'm sorry, I couldn't generate a response.",
+          },
+        ]);
+      }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Math.random().toString(36).slice(2, 10),
-          sender: "assistant",
-          text: response || "I'm sorry, I couldn't generate a response.",
-        },
-      ]);
+
     } catch {
       setMessages((prev) => [
         ...prev,
