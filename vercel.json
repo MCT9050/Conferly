@@ -1,0 +1,16 @@
+{
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "www.conferly.site" }],
+      "destination": "https://conferly.site/$1",
+      "permanent": true
+    },
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "conferly.vercel.app" }],
+      "destination": "https://conferly.site/$1",
+      "permanent": true
+    }
+  ]
+}
