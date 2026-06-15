@@ -1,4 +1,5 @@
 {
+  "cleanUrls": true,
   "redirects": [
     {
       "source": "/:path*",
@@ -10,6 +11,76 @@
       ],
       "destination": "https://conferly.site/:path*",
       "permanent": true
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=14400"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "conferly.site"
+        }
+      ],
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self' app.all-hands.dev; script-src 'self' 'unsafe-inline' static.cloudflareinsights.com app.all-hands.dev; connect-src 'self' app.all-hands.dev; style-src 'self' 'unsafe-inline'; img-src 'self' data: app.all-hands.dev; font-src 'self'; frame-ancestors 'self' app.all-hands.dev; base-uri 'self'; form-action 'self'"
+        },
+        {
+          "key": "Link",
+          "value": "<https://conferly.site>; rel=\"canonical\""
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "missing": [
+        {
+          "type": "host",
+          "value": "www.conferly.site"
+        }
+      ],
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot|mp4|webm|ogg))",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=2592000, immutable"
+        }
+      ]
     }
   ]
 }
