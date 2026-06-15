@@ -233,7 +233,7 @@ export async function createCheckout(
     planTier: plan,
     variantId,
     currency: 'ZAR',
-    successUrl: `${appUrl}/dashboard?checkout=success&plan=${plan}`,
+    successUrl: `${appUrl}/dashboard?checkout=success`,
     cancelUrl: `${appUrl}/dashboard?checkout=cancelled`,
   });
 }

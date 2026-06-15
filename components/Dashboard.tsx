@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Video, Plus, Users, ArrowRight, Clock, Crown,
   Settings, LogOut, Shield, Calendar,
@@ -69,6 +69,14 @@ const PLAN_NAMES: Record<PlanTier, string> = {
   unlimited: 'Unlimited (R389/mo)',
 };
 
+const PLAN_PRICES: Record<string, number> = {
+  classroom: 89,
+  classroom_plus: 220,
+  individual: 110,
+  pro: 149,
+  unlimited: 389,
+};
+
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
   const m = Math.floor(seconds / 60);
@@ -127,6 +135,87 @@ export default function Dashboard({
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(''), 2000);
   };
+
+  // Google Ads conversion tracking: detect checkout success from URL param,
+  // then verify the subscription server-side before firing the conversion event.
+  // This prevents conversion spoofing via manually crafted ?checkout=success URLs.
+  const conversionFired = useRef(false);
+  useEffect(() => {
+    let cancelled = false;
+
+    async function verifyAndFire() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('checkout') !== 'success') return;
+
+        // Step 1: Immediately strip the param from the URL to avoid duplicate triggers
+        const cleanUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, cleanUrl);
+
+        // Step 2: Fetch the user's actual subscription from Supabase with retries
+        // The webhook may race with the redirect; retry up to 3 times with 2s delay.
+        let subscription: Record<string, unknown> | null = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          if (cancelled) return;
+          try {
+            const { getSupabaseClientInstance } = await import(
+              '../lib/supabaseClient'
+            );
+            const supabase = await getSupabaseClientInstance();
+            const { data } = await supabase
+              .from('subscriptions')
+              .select('*')
+              .maybeSingle();
+
+            if (data) {
+              subscription = data as Record<string, unknown>;
+              break;
+            }
+          } catch {
+            // Fetch failed — retry if attempts remain
+          }
+          if (attempt < 3) {
+            await new Promise((r) => setTimeout(r, 2000));
+          }
+        }
+
+        // Step 3: If no active subscription found after retries, skip silently
+        if (!subscription || cancelled) return;
+
+        const subPlan = (subscription.plan as string) || '';
+        const subId = (subscription.lemon_squeezy_subscription_id as string) || subscription.id as string;
+        const price = PLAN_PRICES[subPlan];
+
+        // Guard: only fire if we have a valid plan with a known price
+        if (!subPlan || price === undefined) return;
+
+        // Step 4: Deduplicate using the real subscription ID from the database
+        const firedKey = `conferly_conversion_fired_${subId}`;
+        if (localStorage.getItem(firedKey)) return;
+
+        if ((window as any).gtag) {
+          (window as any).gtag('event', 'conversion', {
+            value: price,
+            currency: 'ZAR',
+            event_label: subPlan,
+          });
+        }
+
+        localStorage.setItem(firedKey, '1');
+      } catch {
+        // Silently fail — conversion tracking is non-critical
+      }
+    }
+
+    if (!conversionFired.current) {
+      conversionFired.current = true;
+      verifyAndFire();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="h-screen h-[100dvh] flex">
