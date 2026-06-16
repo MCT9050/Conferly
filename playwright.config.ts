@@ -6,7 +6,7 @@ import { defineConfig, devices } from '@playwright/test';
  * and production environments (conferly.site).
  */
 
-const isProductionTest = process.env.BASE_URL?.includes('conferly.site');
+const isProductionTest = process.env.BASE_URL?.includes('conferly.site') ?? false;
 const isCI = !!process.env.CI;
 
 export default defineConfig({
@@ -23,7 +23,7 @@ export default defineConfig({
   /* Retry on CI only */
   retries: isCI ? 2 : 0,
   /* Limit workers to 1 in CI/Production testing to prevent resource timeouts */
-  workers: isProductionTest || isCI ? 1 : undefined,
+  workers: (isProductionTest || isCI) ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [['line'], ['html', { open: 'never' }]],
   
@@ -54,7 +54,15 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        headless: true,
+        /* Use Playwright's auto-resolved Chromium binary with
+           flags to avoid headless_shell hang and system Chrome dependency. */
+        launchOptions: {
+          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
+        },
+      },
     },
   ],
 });
