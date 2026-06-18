@@ -29,7 +29,7 @@ test.describe('Sign-In Error Diagnostic', () => {
     });
 
     // Navigate to auth page
-    await page.goto('https://www.conferly.site/auth', { waitUntil: 'networkidle' });
+    await page.goto('https://conferly.site/auth', { waitUntil: 'networkidle' });
     await page.waitForTimeout(1000);
 
     // Verify Sign In tab is active (default)

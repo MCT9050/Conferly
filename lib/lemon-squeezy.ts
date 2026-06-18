@@ -116,7 +116,7 @@ export async function generateCheckoutUrl(options: CheckoutOptions): Promise<Che
           },
         },
         receipt_button_text: "Go to Dashboard",
-        receipt_link_url: "https://www.conferly.site/dashboard",
+        receipt_link_url: "https://conferly.site/dashboard",
         receipt_thank_you_note: "Thank you for choosing Conferly! Your subscription is now active, and your workspace has been successfully upgraded. You can start your first session right away from your dashboard.",
         checkout_options: {
           embed: false,

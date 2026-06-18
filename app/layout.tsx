@@ -5,7 +5,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import ServiceWorkerRegistration from "../components/ServiceWorkerRegistration";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://www.conferly.site"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://conferly.site"),
   title: {
     default: "Conferly | The Dual-Mode Workspace for Tutors & Pros",
     template: "%s | Conferly - AI-Powered Tutoring & Meetings",
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_ZA",
-    url: "https://www.conferly.site",
+    url: "https://conferly.site",
     siteName: "Conferly",
     title: "Conferly | The Dual-Mode Workspace for Tutors & Pros",
     description:
@@ -79,7 +79,7 @@ export default function RootLayout({
     name: "Conferly",
     applicationCategory: ["EducationalApplication", "BusinessApplication"],
     operatingSystem: ["Web", "Android", "iOS"],
-    url: "https://www.conferly.site",
+    url: "https://conferly.site",
     description:
       "AI-Powered Tutoring & Business Conferencing platform with real-time translation, collaborative whiteboards, and automated summaries.",
     offers: {

@@ -23,7 +23,7 @@ export async function generateMetadata({
         title: "Interactive AI Classroom | Conferly",
         description:
           "Join an integrated tutoring session with collaborative whiteboard and AI assistance.",
-        url: "https://www.conferly.site/meeting",
+        url: "https://conferly.site/meeting",
         images: [
           {
             url: "/icons/og-classroom.png",
@@ -49,7 +49,7 @@ export async function generateMetadata({
     openGraph: {
       title: "Secure Professional Meeting | Conferly",
       description: "Join a high-fidelity business conferencing session.",
-      url: "https://www.conferly.site/meeting",
+      url: "https://conferly.site/meeting",
       images: [
         {
           url: "/icons/og-meeting.png",

@@ -4,19 +4,23 @@ import { test, expect } from '@playwright/test';
  * Network Audit — Canonical Header & Security Headers Diagnostic
  *
  * Captures all response headers from the production site and verifies:
- * 1. Canonical link header points to www.conferly.site (not apex)
+ * 1. Canonical link header points to conferly.site (apex domain)
  * 2. Content-Security-Policy is present and strict
  * 3. X-Frame-Options is SAMEORIGIN
- * 4. Redirect chain from apex→www is exactly 1 hop with final 200
+ * 4. www.conferly.site redirects to conferly.site with 308 (single hop)
+ * 5. Protocol and Host at each hop
+ *
+ * Updated 2026-06-18: Canonical domain is now conferly.site (not www).
+ * www → apex redirect set via vercel.json (308 permanent).
  *
  * Run with:
- *   BASE_URL=https://www.conferly.site npx playwright test tests/network-audit.spec.ts --workers=1
+ *   BASE_URL=https://conferly.site npx playwright test tests/network-audit.spec.ts --workers=1
  *
  * This is a DIAGNOSTIC test — it logs findings but only fails on broken assertions.
  */
 
-const BASE = process.env.BASE_URL || 'https://www.conferly.site';
-const APEX = 'https://conferly.site';
+const BASE = process.env.BASE_URL || 'https://conferly.site';
+const WWW_BASE = 'https://www.conferly.site';
 
 // ============================================================================
 // Helper: Raw fetch with redirect: 'manual' to capture redirect chain
@@ -42,11 +46,23 @@ async function fetchWithManualRedirect(url: string): Promise<{
 }
 
 // ============================================================================
+// Helper: Extract Protocol + Host from a URL string
+// ============================================================================
+function extractProtoHost(url: string): { protocol: string; host: string } {
+  try {
+    const parsed = new URL(url);
+    return { protocol: parsed.protocol.replace(':', ''), host: parsed.host };
+  } catch {
+    return { protocol: 'unknown', host: 'unknown' };
+  }
+}
+
+// ============================================================================
 // Section 1: Live Site Header Capture (via Playwright page context)
 // ============================================================================
 
 test.describe('Network Audit — Live Site Headers', () => {
-  test('NA1-CAPTURE: Capture all response headers from www.conferly.site', async ({ page }) => {
+  test('NA1-CAPTURE: Capture all response headers from conferly.site', async ({ page }) => {
     const responseHeaders: Record<string, Record<string, string>> = {};
 
     // Capture headers for every response
@@ -101,10 +117,10 @@ test.describe('Network Audit — Live Site Headers', () => {
         if (canonicalMatch) {
           const canonicalUrl = canonicalMatch[1];
           console.log(`  Canonical URL: ${canonicalUrl}`);
-          if (canonicalUrl === 'https://www.conferly.site') {
-            console.log('  ✅ CORRECT: Canonical points to https://www.conferly.site');
-          } else if (canonicalUrl === 'https://conferly.site') {
-            console.warn('  ❌ MISMATCH: Canonical points to apex (conferly.site) — Cloudflare Transform override detected!');
+          if (canonicalUrl === 'https://conferly.site') {
+            console.log('  ✅ CORRECT: Canonical points to https://conferly.site');
+          } else if (canonicalUrl === 'https://www.conferly.site') {
+            console.warn('  ❌ MISMATCH: Canonical still points to www — should be conferly.site!');
           } else {
             console.warn(`  ⚠️  UNEXPECTED: Canonical points to "${canonicalUrl}"`);
           }
@@ -121,10 +137,9 @@ test.describe('Network Audit — Live Site Headers', () => {
       if (csp) {
         console.log(`  CSP: ${csp}`);
         const hasSelf = csp.includes("'self'");
-        const hasScriptNonce = csp.includes('unsafe-inline'); // or nonce-
+        const hasScriptNonce = csp.includes('unsafe-inline');
         console.log(`  Has 'self': ${hasSelf}`);
         console.log(`  Has script-src: ${csp.includes('script-src')}`);
-        // Basic strictness check: no 'unsafe-inline' in default-src or if present only in script-src
         const defaultSrc = csp.match(/default-src\s+([^;]+)/);
         if (defaultSrc) {
           console.log(`  default-src: ${defaultSrc[1]}`);
@@ -191,16 +206,16 @@ test.describe('Network Audit — Live Site Headers', () => {
 });
 
 // ============================================================================
-// Section 2: Redirect Chain — Apex → WWW
+// Section 2: Redirect Chain — WWW → Apex (Canonical Domain Enforcement)
 // ============================================================================
 
 test.describe('Redirect Chain Analysis', () => {
-  test('NA2-REDIRECT: Trace conferly.site (apex) redirect chain', async () => {
-    console.log('\n── Redirect Chain: conferly.site (apex) ──\n');
+  test('NA2-REDIRECT: Trace www.conferly.site — must redirect to conferly.site', async () => {
+    console.log('\n── REDIRECT DIAGNOSTIC: www.conferly.site → conferly.site ──\n');
 
     const visited = new Set<string>();
-    let currentUrl = APEX;
-    const chain: Array<{ url: string; status: number; location: string | null }> = [];
+    let currentUrl = WWW_BASE;
+    const chain: Array<{ url: string; status: number; location: string | null; protocol: string; host: string }> = [];
     let loopDetected = false;
 
     for (let i = 0; i < 10; i++) {
@@ -212,9 +227,19 @@ test.describe('Redirect Chain Analysis', () => {
       visited.add(currentUrl);
 
       const result = await fetchWithManualRedirect(currentUrl);
-      chain.push({ url: currentUrl, status: result.status, location: result.locationHeader });
+      const { protocol, host } = extractProtoHost(currentUrl);
+      chain.push({
+        url: currentUrl,
+        status: result.status,
+        location: result.locationHeader,
+        protocol,
+        host,
+      });
+
       console.log(`  Hop ${i}: ${currentUrl}`);
-      console.log(`    Status: ${result.status}`);
+      console.log(`    Protocol: ${protocol}`);
+      console.log(`    Host:     ${host}`);
+      console.log(`    Status:   ${result.status}`);
       console.log(`    Location: ${result.locationHeader ?? '(terminal)'}`);
 
       if (result.locationHeader) {
@@ -228,30 +253,53 @@ test.describe('Redirect Chain Analysis', () => {
     console.log(`  Total hops: ${chain.length}`);
     console.log(`  Loop detected: ${loopDetected}`);
 
-    const startUrl = chain[0]?.url || '';
     const endUrl = chain[chain.length - 1]?.url || '';
     const endStatus = chain[chain.length - 1]?.status || 0;
+    const endHost = chain[chain.length - 1]?.host || '';
 
-    console.log(`  Start: ${startUrl}`);
+    console.log(`  Start: ${chain[0]?.url}`);
     console.log(`  End:   ${endUrl} (HTTP ${endStatus})`);
 
-    // The expected behavior: apex → www in 1 redirect, final 200
+    // Log each hop's protocol/host for diagnostic
+    console.log('\n── Per-Hop Protocol/Host Audit ──');
+    chain.forEach((hop, idx) => {
+      const locationTarget = hop.location
+        ? `${extractProtoHost(hop.location).protocol}://${extractProtoHost(hop.location).host}`
+        : '(terminal)';
+      console.log(`  Hop ${idx}: ${hop.protocol}://${hop.host} → ${locationTarget}`);
+    });
+
+    // Expected: www → conferly.site with 308 in 1 hop, final 200
     if (chain.length === 2 && !loopDetected) {
-      // apex → www redirect
-      const redirectFromApex = chain[0].locationHeader?.includes('www.conferly.site');
-      const finalIsWww = endUrl.includes('www.conferly.site');
+      const redirectIs308 = chain[0].status === 308;
+      const redirectToApex = chain[0].location?.includes('conferly.site');
+      const redirectToHttps = chain[0].location?.startsWith('https://conferly.site') ?? false;
+      const finalIsApex = endHost === 'conferly.site';
       const finalIs200 = endStatus === 200;
 
-      if (redirectFromApex && finalIsWww && finalIs200) {
-        console.log('\n✅ PASS: Apex redirects to www in 1 hop with final 200');
+      console.log('\n── Assertions ──');
+      console.log(`  Redirect status 308:            ${redirectIs308 ? '✅' : '❌'}`);
+      console.log(`  Redirect to conferly.site:       ${redirectToApex ? '✅' : '❌'}`);
+      console.log(`  Redirect target is HTTPS:        ${redirectToHttps ? '✅' : '❌'}`);
+      console.log(`  Final host is conferly.site:     ${finalIsApex ? '✅' : '❌'}`);
+      console.log(`  Final status is 200:             ${finalIs200 ? '✅' : '❌'}`);
+
+      if (redirectIs308 && redirectToApex && redirectToHttps && finalIsApex && finalIs200) {
+        console.log('\n✅ PASS: www.conferly.site redirects to https://conferly.site with 308 + final 200');
       } else {
-        console.warn(`\n⚠️  UNEXPECTED REDIRECT PATTERN:`);
-        if (!redirectFromApex) console.warn('     - Apex does not redirect to www');
-        if (!finalIsWww) console.warn(`     - Final destination is not www: ${endUrl}`);
+        console.warn('\n⚠️  UNEXPECTED REDIRECT PATTERN:');
+        if (!redirectIs308) console.warn(`     - Expected 308, got ${chain[0].status}`);
+        if (!redirectToApex) console.warn(`     - Redirect target does not include conferly.site: ${chain[0].location}`);
+        if (!redirectToHttps) console.warn(`     - Redirect target is not HTTPS: ${chain[0].location}`);
+        if (!finalIsApex) console.warn(`     - Final host is not conferly.site: ${endHost}`);
         if (!finalIs200) console.warn(`     - Final status is not 200: ${endStatus}`);
       }
-    } else if (chain.length === 1) {
-      console.warn(`\n⚠️  Apex serves directly (no redirect) — status ${endStatus}`);
+    } else if (chain.length === 1 && chain[0].status === 200) {
+      console.warn(`\n⚠️  www.conferly.site serves directly (no redirect) — status 200`);
+      console.log(`  This means Vercel redirect is NOT active. Check the vercel.json redirects.`);
+    } else if (chain.length === 1 && chain[0].status === 308) {
+      console.warn(`\n⚠️  www returns 308 with Location: ${chain[0].location}`);
+      console.log(`  This is a redirect-only response — the destination is not reachable.`);
     } else {
       console.warn(`\n⚠️  REDIRECT CHAIN HAS ${chain.length} hops — expected exactly 1 redirect`);
       if (loopDetected) {
@@ -261,14 +309,15 @@ test.describe('Redirect Chain Analysis', () => {
 
     expect(loopDetected).toBe(false);
     expect(endStatus).toBe(200);
+    expect(endUrl).toContain('conferly.site');
   });
 
-  test('NA3-REDIRECT: Trace www.conferly.site redirect chain', async () => {
-    console.log('\n── Redirect Chain: www.conferly.site ──\n');
+  test('NA3-REDIRECT: Trace conferly.site (apex) — must serve directly', async () => {
+    console.log('\n── DIAGNOSTIC: conferly.site (must serve directly) ──\n');
 
     const visited = new Set<string>();
     let currentUrl = BASE;
-    const chain: Array<{ url: string; status: number; location: string | null }> = [];
+    const chain: Array<{ url: string; status: number; location: string | null; protocol: string; host: string }> = [];
     let loopDetected = false;
 
     for (let i = 0; i < 10; i++) {
@@ -280,9 +329,19 @@ test.describe('Redirect Chain Analysis', () => {
       visited.add(currentUrl);
 
       const result = await fetchWithManualRedirect(currentUrl);
-      chain.push({ url: currentUrl, status: result.status, location: result.locationHeader });
+      const { protocol, host } = extractProtoHost(currentUrl);
+      chain.push({
+        url: currentUrl,
+        status: result.status,
+        location: result.locationHeader,
+        protocol,
+        host,
+      });
+
       console.log(`  Hop ${i}: ${currentUrl}`);
-      console.log(`    Status: ${result.status}`);
+      console.log(`    Protocol: ${protocol}`);
+      console.log(`    Host:     ${host}`);
+      console.log(`    Status:   ${result.status}`);
       console.log(`    Location: ${result.locationHeader ?? '(terminal)'}`);
 
       if (result.locationHeader) {
@@ -294,15 +353,31 @@ test.describe('Redirect Chain Analysis', () => {
 
     const endStatus = chain[chain.length - 1]?.status || 0;
     const endUrl = chain[chain.length - 1]?.url || '';
+    const endHost = chain[chain.length - 1]?.host || '';
+    const servesDirectly = chain.length === 1 && chain[0].location === null;
 
     console.log(`\n── Summary ──`);
     console.log(`  Total hops: ${chain.length}`);
-    console.log(`  www.conferly.site serves directly: ${chain.length === 1 && chain[0].locationHeader === null}`);
+    console.log(`  conferly.site serves directly: ${servesDirectly ? '✅' : '❌'}`);
     console.log(`  Final status: ${endStatus}${endStatus === 200 ? ' ✅' : ' ❌'}`);
+    console.log(`  Final host:   ${endHost}`);
+
+    if (!servesDirectly && chain.length > 1) {
+      console.warn('\n⚠️  conferly.site is redirecting — this should NOT happen!');
+      console.log('\n── Redirect Hops ──');
+      chain.forEach((hop, idx) => {
+        console.log(`  Hop ${idx}: ${hop.protocol}://${hop.host} → ${hop.status} → ${hop.location ?? '(end)'}`);
+      });
+    }
+
+    if (loopDetected) {
+      console.error('\n❌ FAIL: Redirect loop detected on apex domain');
+    }
 
     expect(loopDetected).toBe(false);
     expect(endStatus).toBe(200);
-    expect(endUrl).toContain('www.conferly.site');
+    expect(endUrl).toContain('conferly.site');
+    expect(endUrl.startsWith('https://conferly.site')).toBe(true);
   });
 });
 
@@ -311,7 +386,7 @@ test.describe('Redirect Chain Analysis', () => {
 // ============================================================================
 
 test.describe('Auth Session Verification', () => {
-  test('NA4-AUTH: GET /api/auth/session on WWW domain', async ({ page }) => {
+  test('NA4-AUTH: GET /api/auth/session on apex domain', async ({ page }) => {
     // Capture session response via page context
     const sessionResult = await page.evaluate(async (baseUrl: string) => {
       try {
@@ -338,7 +413,6 @@ test.describe('Auth Session Verification', () => {
     } else if (sessionResult.status === 200) {
       console.log(`  ✅ PASS: /api/auth/session returned 200 — auth API healthy`);
     } else if (sessionResult.status === 401) {
-      // 401 is OK — means the endpoint is alive but user is not logged in
       console.log(`  ✅ PASS: /api/auth/session returned 401 (expected — no auth session)`);
       console.log(`  (200 or 401 are both healthy; 500 or 0 indicate a problem)`);
     } else {

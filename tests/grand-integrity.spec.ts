@@ -10,7 +10,7 @@ import { test, expect } from '@playwright/test';
  *   npx playwright test tests/grand-integrity.spec.ts --workers=1
  *
  * For production run:
- *   BASE_URL=https://www.conferly.site npx playwright test tests/grand-integrity.spec.ts --workers=1
+ *   BASE_URL=https://conferly.site npx playwright test tests/grand-integrity.spec.ts --workers=1
  */
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';

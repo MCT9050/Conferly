@@ -9,13 +9,13 @@ import { test, expect } from '@playwright/test';
  *   3) React Runtime Errors / LiveKit failures
  *
  * Run with:
- *   BASE_URL=https://www.conferly.site npx playwright test tests/prod-rescue.spec.ts --project=chromium --workers=1
+ *   BASE_URL=https://conferly.site npx playwright test tests/prod-rescue.spec.ts --project=chromium --workers=1
  *
  * This test does NOT fail on infrastructure issues — it reports them.
  * Failure means the test itself broke, not the production site.
  */
 
-const BASE = process.env.BASE_URL || 'https://www.conferly.site';
+const BASE = process.env.BASE_URL || 'https://conferly.site';
 const APEX = 'https://conferly.site';
 
 // ============================================================================
@@ -173,8 +173,8 @@ test.describe('Redirect Analysis', () => {
         'Fix: Either change vercel.json to redirect apex→www (to match Vercel config),',
         '     or change Vercel domain settings to redirect www→apex (to match vercel.json).',
         '',
-        `  vercel.json:  www.conferly.site → conferly.site (301)`,
-        `  Vercel DNS:   conferly.site → www.conferly.site (implied)`,
+        `  vercel.json:  www.conferly.site → conferly.site (308)`,
+        `  Vercel DNS:   conferly.site serves directly (no redirect)`,
       ];
       loopMsgs.forEach((m) => console.warn(`[${m}]`));
     } else if (apexRedirects && !wwwRedirects) {

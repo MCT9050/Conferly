@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
  * connected and the Dual-Mode logic is flawless.
  *
  * Run with:
- *   BASE_URL=https://www.conferly.site npx playwright test tests/full-app-smoke.spec.ts --project=chromium --workers=1
+ *   BASE_URL=https://conferly.site npx playwright test tests/full-app-smoke.spec.ts --project=chromium --workers=1
  *
  * NOTE: If the production site has a redirect loop (www ↔ non-www),
  * navigation tests will catch it and log a CRITICAL-FINDING instead of

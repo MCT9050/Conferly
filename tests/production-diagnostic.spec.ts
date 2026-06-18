@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const TEST_EMAIL = 'nathi.ylt@gmail.com';
 const TEST_PASSWORD = 'Nashel@1';
-const PRODUCTION_URL = 'https://www.conferly.site';
+const PRODUCTION_URL = 'https://conferly.site';
 
 /**
  * Production Diagnostic Test — Sign-in Flow

@@ -8,19 +8,13 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({ enabled: process.e
 
 const nextConfig: NextConfig = {
   // Production-ready configuration for Conferly
-  
-  // Security headers
+
+  // Security headers — all applied to the canonical conferly.site domain
   async headers() {
     return [
-      // ── WWW-specific headers (canonical, CORS, CSP) ──
+      // ── Primary: served for ALL hosts (conferly.site, preview deployments, etc.) ──
       {
         source: '/:path*',
-        has: [
-          {
-            type: 'host',
-            value: 'www.conferly.site',
-          },
-        ],
         headers: [
           {
             key: 'X-DNS-Prefetch-Control',
@@ -50,56 +44,12 @@ const nextConfig: NextConfig = {
             key: 'Access-Control-Allow-Credentials',
             value: 'true',
           },
-          // Canonical URL — only on www domain
+          // Canonical URL — always points to the apex domain
           {
             key: 'Link',
-            value: '<https://www.conferly.site>; rel="canonical"',
+            value: '<https://conferly.site$1>; rel="canonical"',
           },
           // Content Security Policy — strict but functional with All-Hands and monitoring
-          {
-            key: 'Content-Security-Policy',
-            value: "default-src 'self' app.all-hands.dev; script-src 'self' 'unsafe-inline' static.cloudflareinsights.com app.all-hands.dev https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' app.all-hands.dev https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: app.all-hands.dev; font-src 'self'; frame-ancestors 'self' app.all-hands.dev; base-uri 'self'; form-action 'self'",
-          },
-        ],
-      },
-      // ── Fallback: applied to ALL routes regardless of host ──
-      {
-        source: '/:path*',
-        headers: [
-          {
-            key: 'X-DNS-Prefetch-Control',
-            value: 'on',
-          },
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload',
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'SAMEORIGIN',
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
-          },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(self), microphone=(self), geolocation=(), interest-cohort=()',
-          },
-          {
-            key: 'Access-Control-Allow-Credentials',
-            value: 'true',
-          },
-          // Canonical URL — fallback (same as www)
-          {
-            key: 'Link',
-            value: '<https://www.conferly.site>; rel="canonical"',
-          },
-          // Content Security Policy — same strict policy for all hosts
           {
             key: 'Content-Security-Policy',
             value: "default-src 'self' app.all-hands.dev; script-src 'self' 'unsafe-inline' static.cloudflareinsights.com app.all-hands.dev https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' app.all-hands.dev https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: app.all-hands.dev; font-src 'self'; frame-ancestors 'self' app.all-hands.dev; base-uri 'self'; form-action 'self'",

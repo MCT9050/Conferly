@@ -31,7 +31,7 @@ test.describe('Meeting Room Error Diagnostic', () => {
 
     // Step 1: Sign in first
     await test.step('Sign in', async () => {
-      await page.goto('https://www.conferly.site/auth', { waitUntil: 'networkidle' });
+      await page.goto('https://conferly.site/auth', { waitUntil: 'networkidle' });
       await page.waitForTimeout(1000);
       await page.locator('input[type="email"]').fill(TEST_EMAIL);
       await page.locator('input[type="password"]').fill(TEST_PASSWORD);
@@ -44,7 +44,7 @@ test.describe('Meeting Room Error Diagnostic', () => {
     // Step 2: Navigate to meeting
     await test.step('Navigate to meeting room', async () => {
       // First navigate to lobby to see if that works
-      await page.goto('https://www.conferly.site/meeting', { waitUntil: 'domcontentloaded' });
+      await page.goto('https://conferly.site/meeting', { waitUntil: 'domcontentloaded' });
       
       // Wait for the page to settle — the error should fire within seconds
       await page.waitForTimeout(2000);

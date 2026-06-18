@@ -27,7 +27,7 @@ import { getCircuitBreakerState } from '../lib/system-guard';
 // ---------------------------------------------------------------------------
 
 const BASE_URL = process.argv.includes('--production')
-  ? 'https://www.conferly.site'
+  ? 'https://conferly.site'
   : 'http://localhost:3000';
 
 interface AuditResult {
