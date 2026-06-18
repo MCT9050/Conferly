@@ -2,14 +2,14 @@
   "cleanUrls": true,
   "redirects": [
     {
-      "source": "/:path*",
+      "source": "/(.*)",
       "has": [
         {
           "type": "host",
-          "value": "www.conferly.site"
+          "value": "conferly.site"
         }
       ],
-      "destination": "https://conferly.site/:path*",
+      "destination": "https://www.conferly.site/$1",
       "permanent": true
     }
   ],
@@ -29,38 +29,11 @@
     },
     {
       "source": "/(.*)",
-      "has": [
+      "missing": [
         {
           "type": "host",
           "value": "conferly.site"
-        }
-      ],
-      "headers": [
-        {
-          "key": "Content-Security-Policy",
-          "value": "default-src 'self' app.all-hands.dev; script-src 'self' 'unsafe-inline' static.cloudflareinsights.com app.all-hands.dev https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' app.all-hands.dev https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: app.all-hands.dev; font-src 'self'; frame-ancestors 'self' app.all-hands.dev; base-uri 'self'; form-action 'self'"
         },
-        {
-          "key": "Link",
-          "value": "<https://conferly.site>; rel=\"canonical\""
-        },
-        {
-          "key": "Referrer-Policy",
-          "value": "strict-origin-when-cross-origin"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "SAMEORIGIN"
-        }
-      ]
-    },
-    {
-      "source": "/(.*)",
-      "missing": [
         {
           "type": "host",
           "value": "www.conferly.site"
@@ -70,15 +43,6 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=0, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot|mp4|webm|ogg))",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=2592000, immutable"
         }
       ]
     }

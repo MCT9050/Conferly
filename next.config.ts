@@ -12,49 +12,105 @@ const nextConfig: NextConfig = {
   // Security headers
   async headers() {
     return [
+      // ── WWW-specific headers (canonical, CORS, CSP) ──
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'www.conferly.site',
+          },
+        ],
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(self), microphone=(self), geolocation=(), interest-cohort=()',
+          },
+          {
+            key: 'Access-Control-Allow-Credentials',
+            value: 'true',
+          },
+          // Canonical URL — only on www domain
+          {
+            key: 'Link',
+            value: '<https://www.conferly.site>; rel="canonical"',
+          },
+          // Content Security Policy — strict but functional with All-Hands and monitoring
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self' app.all-hands.dev; script-src 'self' 'unsafe-inline' static.cloudflareinsights.com app.all-hands.dev https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' app.all-hands.dev https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: app.all-hands.dev; font-src 'self'; frame-ancestors 'self' app.all-hands.dev; base-uri 'self'; form-action 'self'",
+          },
+        ],
+      },
+      // ── Fallback: applied to ALL routes regardless of host ──
       {
         source: '/:path*',
         headers: [
           {
             key: 'X-DNS-Prefetch-Control',
-            value: 'on'
+            value: 'on',
           },
           {
             key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload'
+            value: 'max-age=63072000; includeSubDomains; preload',
           },
           {
             key: 'X-Frame-Options',
-            value: 'SAMEORIGIN'
+            value: 'SAMEORIGIN',
           },
           {
             key: 'X-Content-Type-Options',
-            value: 'nosniff'
+            value: 'nosniff',
           },
           {
             key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin'
+            value: 'strict-origin-when-cross-origin',
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(self), microphone=(self), geolocation=(), interest-cohort=()'
-          }
-          ,
+            value: 'camera=(self), microphone=(self), geolocation=(), interest-cohort=()',
+          },
           {
             key: 'Access-Control-Allow-Credentials',
-            value: 'true'
-          }
-        ]
-      }
+            value: 'true',
+          },
+          // Canonical URL — fallback (same as www)
+          {
+            key: 'Link',
+            value: '<https://www.conferly.site>; rel="canonical"',
+          },
+          // Content Security Policy — same strict policy for all hosts
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self' app.all-hands.dev; script-src 'self' 'unsafe-inline' static.cloudflareinsights.com app.all-hands.dev https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' app.all-hands.dev https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: app.all-hands.dev; font-src 'self'; frame-ancestors 'self' app.all-hands.dev; base-uri 'self'; form-action 'self'",
+          },
+        ],
+      },
     ];
   },
 
-  // Content Security Policy (basic version - enhance with nonce for production)
-  // Note: For full CSP with nonces, use next-safe-csp or similar library
+  // Optimize package imports
   experimental: {
-    // Enable when ready for production CSP
-    // cpus: 1, // Limit CPU usage for edge compatibility
-    // Optimize package imports: automatic tree-shaking for specified libraries
     optimizePackageImports: ['lucide-react'],
   },
 
