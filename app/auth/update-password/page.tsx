@@ -30,7 +30,9 @@ export default function UpdatePasswordPage() {
       return;
     }
     // Check if we arrived via a valid recovery link
-    client.auth.getSession().then(({ data: { session } }) => {
+    // getSessionFromUrl parses the #access_token=... fragment that Supabase
+    // appends to the reset-link redirect and exchanges it for a session.
+    client.auth.getSessionFromUrl({ storeSession: true }).then(({ data: { session } }) => {
       if (!session) {
         setError('Invalid or expired recovery link. Please request a new one.');
       }
@@ -189,4 +191,4 @@ export default function UpdatePasswordPage() {
       </div>
     </div>
   );
-}
+}..
