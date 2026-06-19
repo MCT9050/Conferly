@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import Logo from '@/components/Logo';
 import { Lock, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
@@ -15,7 +15,6 @@ function getSupabaseBrowserClient() {
 
 export default function UpdatePasswordPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -24,19 +23,33 @@ export default function UpdatePasswordPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const client = getSupabaseBrowserClient();
-    if (!client) {
-      setError('Configuration error — missing Supabase credentials.');
-      return;
-    }
-    // Check if we arrived via a valid recovery link
-    // getSessionFromUrl parses the #access_token=... fragment that Supabase
-    // appends to the reset-link redirect and exchanges it for a session.
-    client.auth.getSessionFromUrl({ storeSession: true }).then(({ data: { session } }) => {
-      if (!session) {
-        setError('Invalid or expired recovery link. Please request a new one.');
+    async function init() {
+      const client = getSupabaseBrowserClient();
+      if (!client) {
+        setError('Configuration error — missing Supabase credentials.');
+        return;
       }
-    });
+
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+
+      if (accessToken && refreshToken) {
+        const { data, error: setSessionError } = await client.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (setSessionError || !data.session) {
+          setError('Invalid or expired recovery link. Please request a new one.');
+        }
+      } else {
+        const { data: { session } } = await client.auth.getSession();
+        if (!session) {
+          setError('Invalid or expired recovery link. Please request a new one.');
+        }
+      }
+    }
+    void init();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
