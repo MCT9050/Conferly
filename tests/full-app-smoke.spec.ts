@@ -123,6 +123,22 @@ test.describe('Auth & Entry', () => {
     await expect(page.locator('text=Welcome back')).toBeVisible({ timeout: 15_000 });
   });
 
+  test('T2b: Forgot Password link navigates to /auth/forgot-password', async ({ page }) => {
+    await gotoNo500(page, `${BASE}/auth`);
+
+    // Verify the auth page renders
+    await expect(page.locator('text=Welcome back')).toBeVisible({ timeout: 15_000 });
+
+    // Find and click the "Forgot password?" link
+    const forgotLink = page.locator('button:has-text("Forgot password?")');
+    await expect(forgotLink).toBeVisible({ timeout: 10_000 });
+    await forgotLink.click();
+
+    // Verify navigation to the forgot-password page
+    await page.waitForURL(/\/auth\/forgot-password/, { timeout: 10_000 });
+    await expect(page).toHaveURL(new RegExp(`\\/auth\\/forgot-password$`));
+  });
+
   test('T3: Dashboard renders authenticated content', async ({ page }) => {
     // Login first
     await gotoNo500(page, `${BASE}/auth`);

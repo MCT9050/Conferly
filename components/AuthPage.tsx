@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Mail, Lock, User, ArrowRight, Eye, EyeOff,
   AlertCircle, CheckCircle2, Loader2
@@ -77,6 +78,7 @@ export default function AuthPage({ onSignUp, onSignIn, error, clearError, loadin
     mo.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['data-aria-hidden'] });
     return () => mo.disconnect();
   }, []);
+  const router = useRouter();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -227,10 +229,17 @@ export default function AuthPage({ onSignUp, onSignIn, error, clearError, loadin
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              {mode === 'signup' && password.length > 0 && password.length < 6 && (
-                <p className="text-[10px] text-amber-400 mt-1.5">Password must be at least 6 characters</p>
-              )}
-            </div>
+            {mode === 'signup' && password.length > 0 && password.length < 6 && (
+              <p className="text-[10px] text-amber-400 mt-1.5">Password must be at least 6 characters</p>
+            )}
+            {mode === 'signin' && (
+              <div className="flex justify-end">
+                <button type="button" onClick={() => router.push('/auth/forgot-password')} className="text-sm text-amber-500 hover:text-amber-400 transition-colors">
+                  Forgot password?
+                </button>
+              </div>
+            )}
+          </div>
 
             {/* Submit */}
             <button

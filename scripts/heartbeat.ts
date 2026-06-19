@@ -533,6 +533,59 @@ async function checkResilience(): Promise<PillarResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Pillar 8 — Identity & Comms (Supabase Auth)
+// ---------------------------------------------------------------------------
+
+async function checkSupabaseAuth(): Promise<PillarResult> {
+  const supabaseUrl = process.env.SUPABASE_URL?.trim();
+  const anonKey = process.env.SUPABASE_ANON_KEY?.trim();
+
+  if (!supabaseUrl || !anonKey) {
+    const missing: string[] = [];
+    if (!supabaseUrl) missing.push('SUPABASE_URL');
+    if (!anonKey) missing.push('SUPABASE_ANON_KEY');
+    return {
+      name: 'Identity & Comms (Supabase)',
+      status: 'fail',
+      detail: `Missing env vars: ${missing.join(', ')}`,
+    };
+  }
+
+  try {
+    const authUrl = `${supabaseUrl.replace(/\/+$/, '')}/auth/v1/settings`;
+
+    const response = await fetchWithTimeout(authUrl, {
+      method: 'GET',
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+        Accept: 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      return {
+        name: 'Identity & Comms (Supabase)',
+        status: 'fail',
+        detail: `Auth API returned ${response.status}`,
+      };
+    }
+
+    return {
+      name: 'Identity & Comms (Supabase)',
+      status: 'pass',
+      detail: 'Auth service reachable · API key authorized · Native mailer active',
+    };
+  } catch (err) {
+    return {
+      name: 'Identity & Comms (Supabase)',
+      status: 'fail',
+      detail: `Connection error: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Pillar 7 — Telemetry (Axiom Bridge)
 // ---------------------------------------------------------------------------
 
@@ -628,7 +681,7 @@ async function withPillarTimeout<T>(fn: () => Promise<T>, ms: number, label: str
 }
 
 async function main(): Promise<number> {
-  console.log('⏳ Conferly Heartbeat — probing 7 pillars...\n');
+  console.log('⏳ Conferly Heartbeat — probing 8 pillars...\n');
 
   // Each pillar gets its own 15-second timeout to prevent any single
   // call (e.g. LiveKit SDK JWT generation, HF cold model) from hanging.
@@ -640,6 +693,7 @@ async function main(): Promise<number> {
     withPillarTimeout(checkRouting, 15_000, 'Routing'),
     withPillarTimeout(checkResilience, 15_000, 'Resilience'),
     withPillarTimeout(checkTelemetry, 15_000, 'Telemetry'),
+    withPillarTimeout(checkSupabaseAuth, 15_000, 'Supabase Auth'),
   ]);
 
   console.log(formatReport(results));

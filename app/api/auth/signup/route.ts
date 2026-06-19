@@ -144,7 +144,6 @@ export async function POST(request: Request) {
 
   const needsConfirmation = Boolean(data?.confirmation_sent_at || data?.next_action?.type === 'email_verification');
 
-  // If Supabase returned tokens, set cookies similarly to signin flow.
   if (data?.access_token) {
     const cookieStore = await cookies();
     const cookieOptions = buildCookieOptions(request, data.expires_in ?? 60 * 60);
