@@ -81,3 +81,6 @@ pnpm-debug.log*
 *.swp
 *.swo
 *~
+playwright-report/
+demo-output/
+next-env.d.ts
