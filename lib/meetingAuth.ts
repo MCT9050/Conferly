@@ -6,6 +6,23 @@ export type MeetingAccess = {
   source: 'owner' | 'participant' | 'public';
 };
 
+async function createPersonalRoom(ownerId: string, slug: string): Promise<{ id: string } | null> {
+  const supabase = getSupabaseServerClient();
+  const id = slug;
+  const { data, error } = await supabase
+    .from('meetings')
+    .insert({ id, owner: ownerId, slug, is_public: false, title: `Room ${slug}` })
+    .select('id')
+    .single();
+
+  if (error || !data) {
+    console.error('verifyRoomAccess: auto-create meeting failed', error?.message);
+    return null;
+  }
+  console.log(`[verifyRoomAccess] Auto-created meeting ${id} for user ${ownerId}`);
+  return data;
+}
+
 export async function verifyRoomAccess(userId: string, roomId: string): Promise<MeetingAccess | null> {
   const supabase = getSupabaseServerClient();
   const normalizedRoomId = roomId.trim();
@@ -17,7 +34,8 @@ export async function verifyRoomAccess(userId: string, roomId: string): Promise<
     .maybeSingle();
 
   if (meetingBySlugError) {
-    throw new Error(meetingBySlugError.message);
+    console.error('verifyRoomAccess: meeting lookup by slug failed', meetingBySlugError.message);
+    return null;
   }
 
   const meeting = meetingBySlug ?? (await supabase
@@ -27,6 +45,10 @@ export async function verifyRoomAccess(userId: string, roomId: string): Promise<
     .maybeSingle()).data;
 
   if (!meeting) {
+    const created = await createPersonalRoom(userId, normalizedRoomId);
+    if (created) {
+      return { meetingId: created.id, accessRole: 'participant', source: 'owner' };
+    }
     return null;
   }
 
@@ -42,7 +64,8 @@ export async function verifyRoomAccess(userId: string, roomId: string): Promise<
     .maybeSingle();
 
   if (participantError) {
-    throw new Error(participantError.message);
+    console.error('verifyRoomAccess: participant lookup failed', participantError.message);
+    return null;
   }
 
   if (participant?.role) {

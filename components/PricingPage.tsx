@@ -56,7 +56,7 @@ export default function PricingPage({
   const [processingTier, setProcessingTier] = useState<PlanTier | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentResult, setPaymentResult] = useState<{ success: boolean; plan?: string } | null>(null);
-  const tiers: PlanTier[] = ['pro', 'business', 'enterprise'];
+  const tiers: PlanTier[] = ['classroom', 'classroom_plus', 'individual', 'pro', 'business'];
 
   const handleUpgrade = useCallback(async (tier: PlanTier) => {
     // Enterprise goes to contact sales
@@ -65,36 +65,51 @@ export default function PricingPage({
       return;
     }
 
-    // Trial users upgrading to pro: use the local demo path
-    if (subscription.tier === 'trial' && tier === 'pro') {
-      setProcessingTier(tier);
-      setPaymentError(null);
+    setProcessingTier(tier);
+    setPaymentError(null);
 
-      try {
-        // Dynamically import the server action
-        const { createProCheckout } = await import('../app/actions/checkout-actions');
-        const result = await createProCheckout();
+    try {
+      let checkoutFn: () => Promise<{ url?: string; error?: string }>;
 
-        if (result.error) {
-          setPaymentError(result.error);
+      switch (tier) {
+        case 'classroom':
+          checkoutFn = async () => (await import('../app/actions/checkout-actions')).createClassroomCheckout();
+          break;
+        case 'classroom_plus':
+          checkoutFn = async () => (await import('../app/actions/checkout-actions')).createClassroomPlusCheckout();
+          break;
+        case 'individual':
+          checkoutFn = async () => (await import('../app/actions/checkout-actions')).createIndividualCheckout();
+          break;
+        case 'pro':
+          checkoutFn = async () => (await import('../app/actions/checkout-actions')).createProCheckout();
+          break;
+        case 'business':
+          checkoutFn = async () => (await import('../app/actions/checkout-actions')).createProCheckout();
+          break;
+        default:
+          setPaymentError('Invalid plan selected.');
           setProcessingTier(null);
           return;
-        }
-
-        if (result.url) {
-          // Redirect to Lemon Squeezy checkout (this is the "In-App" purchase flow)
-          window.location.href = result.url;
-        }
-      } catch (err) {
-        setPaymentError(err instanceof Error ? err.message : 'Checkout failed. Please try again.');
-        setProcessingTier(null);
       }
-      return;
-    }
 
-    // Fallback: local-only upgrade (demo)
-    onUpgrade(tier, cycle);
-  }, [cycle, onUpgrade, subscription.tier]);
+      const result = await checkoutFn();
+
+      if (result.error) {
+        setPaymentError(result.error);
+        setProcessingTier(null);
+        return;
+      }
+
+      if (result.url) {
+        // Redirect to Lemon Squeezy checkout
+        window.location.href = result.url;
+      }
+    } catch (err) {
+      setPaymentError(err instanceof Error ? err.message : 'Checkout failed. Please try again.');
+      setProcessingTier(null);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen pb-20">
@@ -219,11 +234,11 @@ export default function PricingPage({
                     </div>
                   </div>
 
-                  <div className="flex items-baseline gap-1">
-                    {price[cycle] === 0 ? <span className="text-4xl font-extrabold">$0</span> : <span className="text-4xl font-extrabold">${price[cycle]}</span>}
-                    {price[cycle] > 0 && <span className="text-slate-500 text-sm">/user/{cycle === 'annual' ? 'mo' : 'month'}</span>}
-                    {price[cycle] === -1 && <span className="text-2xl font-extrabold">Custom</span>}
-                  </div>
+                   <div className="flex items-baseline gap-1">
+                     {price[cycle] === 0 ? <span className="text-4xl font-extrabold">R0</span> : <span className="text-4xl font-extrabold">R{price[cycle]}</span>}
+                     {price[cycle] > 0 && <span className="text-slate-500 text-sm">/user/{cycle === 'annual' ? 'mo' : 'month'}</span>}
+                     {price[cycle] === -1 && <span className="text-2xl font-extrabold">Custom</span>}
+                   </div>
 
                   <div className="space-y-2.5 flex-1">
                     {FEATURE_ROWS.slice(0, 8).map(row => {

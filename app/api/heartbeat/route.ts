@@ -84,6 +84,34 @@ async function checkLemonSqueezy(): Promise<PillarResult> {
 // Pillar 3 — Intelligence (Hugging Face)
 // ---------------------------------------------------------------------------
 
+const HF_USER_AGENT = 'Conferly/1.0';
+const HF_MAX_RETRIES = 2;
+const HF_RETRY_DELAY_MS = 2000;
+
+async function hfFetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+  const headers = new Headers(init.headers);
+  if (!headers.has('User-Agent')) {
+    headers.set('User-Agent', HF_USER_AGENT);
+  }
+
+  let lastError: Error | null = null;
+  for (let attempt = 1; attempt <= HF_MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(url, { ...init, headers });
+      // Got a response (even error status) — return it for status code handling
+      return response;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt < HF_MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, HF_RETRY_DELAY_MS));
+      }
+    }
+  }
+  throw new Error(
+    `Network error after ${HF_MAX_RETRIES} attempts: ${lastError?.message ?? 'Unknown fetch error'}`,
+  );
+}
+
 async function checkHuggingFace(): Promise<PillarResult> {
   const apiKey = process.env.HUGGINGFACE_API_KEY?.trim();
   if (!apiKey) {
@@ -91,9 +119,9 @@ async function checkHuggingFace(): Promise<PillarResult> {
   }
 
   try {
-    const response = await fetch('https://api-inference.huggingface.co/models/google-bert/bert-base-uncased', {
+    const response = await hfFetchWithRetry('https://router.huggingface.co/models/TinyLlama/TinyLlama-1.1B-Chat-v1.0', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'User-Agent': HF_USER_AGENT },
       body: JSON.stringify({ inputs: 'Ping.' }),
     });
 
@@ -108,8 +136,9 @@ async function checkHuggingFace(): Promise<PillarResult> {
       return { name: 'Intelligence (Hugging Face)', status: 'pass', detail: 'API key authorized · Model loading (cold start)' };
     }
     return { name: 'Intelligence (Hugging Face)', status: 'pass', detail: `API key authorized · HTTP ${response.status}` };
-  } catch {
-    return { name: 'Intelligence (Hugging Face)', status: 'fail', detail: 'Network error connecting to Hugging Face' };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return { name: 'Intelligence (Hugging Face)', status: 'fail', detail: message };
   }
 }
 

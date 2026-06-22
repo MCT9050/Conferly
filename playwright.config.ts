@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { defineConfig, devices } from '@playwright/test';
 
 /**
@@ -25,6 +26,9 @@ export default defineConfig({
   /* Limit workers to 1 in CI/Production testing to prevent resource timeouts */
   workers: (isProductionTest || isCI) ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
+  /* Output directory for test artifacts (video, screenshots, traces).
+     Set to demo-output/ for demo video generation. */
+  outputDir: process.env.DEMO_OUTPUT_DIR || 'test-results',
   reporter: [['line'], ['html', { open: 'never' }]],
   
   /* Shared settings for all the projects below. */
@@ -33,7 +37,8 @@ export default defineConfig({
     baseURL: process.env.BASE_URL || 'http://localhost:3000',
     /* Collect trace when retrying the failed test. */
     trace: 'retain-on-failure',
-    video: 'retain-on-failure',
+    /* Record video for all tests to support demo creation */
+    video: process.env.DEMO_VIDEO === 'on' ? 'on' : 'retain-on-failure',
     screenshot: 'only-on-failure',
     headless: true,
   },
@@ -57,10 +62,17 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         headless: true,
-        /* Use Playwright's auto-resolved Chromium binary with
-           flags to avoid headless_shell hang and system Chrome dependency. */
         launchOptions: {
-          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-gpu',
+            '--disable-dev-shm-usage',
+            '--disable-software-rasterizer',
+            '--disable-background-networking',
+            '--disable-background-timer-throttling',
+            '--disable-breakpad',
+          ],
         },
       },
     },

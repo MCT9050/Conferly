@@ -22,9 +22,9 @@ export default function ClientDashboard() {
 
   const stats = useMemo(
     () => [
-      { label: "Meetings hosted", value: "142", icon: Video },
-      { label: "Active users", value: "28", icon: Users },
-      { label: "Transcriptions", value: "369", icon: FileText },
+      { label: "Meetings hosted", value: "0", icon: Video },
+      { label: "Minutes saved", value: "0", icon: Users },
+      { label: "Notes created", value: "0", icon: FileText },
     ],
     [],
   );
@@ -57,8 +57,8 @@ export default function ClientDashboard() {
                   onClick={async () => {
                     setUpgradeLoading(true);
                     try {
-                      const { createCheckoutSession } = await import('../app/actions/checkout-actions');
-                      const result = await createCheckoutSession('pro', 'annual');
+                      const { createProCheckout } = await import('../app/actions/checkout-actions');
+                      const result = await createProCheckout();
                       if (result.url) {
                         window.location.href = result.url;
                       } else if (result.error) {
@@ -80,12 +80,12 @@ export default function ClientDashboard() {
                   )}
                   {upgradeLoading ? 'Loading…' : 'Upgrade'}
                 </button>
-                <Link
-                  href="/pricing"
-                  className="text-sm text-slate-400 transition hover:text-white"
-                >
-                  View pricing
-                </Link>
+                   <Link
+                   href="/pricing"
+                   className="text-sm text-slate-300 transition hover:text-white"
+                 >
+                   View pricing
+                 </Link>
               </div>
         </header>
 

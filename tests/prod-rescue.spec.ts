@@ -414,7 +414,130 @@ test.describe('Meeting Runtime Audit', () => {
 });
 
 // ============================================================================
-// Section 4: Heartbeat Proxy — All 7 Pillars
+// Section 4: LiveKit Token "Live Handshake" Test
+// ============================================================================
+
+test.describe('LiveKit Token Handshake', () => {
+  test('T7-LK-HANDSHAKE: Sign in, trigger meeting join, capture /api/lk-token response', async ({ page }) => {
+    const TEST_EMAIL = 'nathi.ylt@gmail.com';
+    const TEST_PASSWORD = 'Nashel@1';
+
+    // Track /api/lk-token responses
+    const lkTokenResponses: { status: number; body: unknown }[] = [];
+
+    page.on('response', async (res) => {
+      const url = res.url();
+      if (url.includes('/api/lk-token')) {
+        try {
+          const text = await res.text().catch(() => '(unreadable)');
+          const body = (() => { try { return JSON.parse(text); } catch { return text; } })();
+          lkTokenResponses.push({ status: res.status(), body });
+          console.log(`[LK-TOKEN] ${res.status()} ${url}`);
+          console.log(`[LK-TOKEN] Body: ${JSON.stringify(body).slice(0, 500)}`);
+        } catch (e) {
+          console.error(`[LK-TOKEN] Error reading response:`, e);
+        }
+      }
+    });
+
+    // Step 1: Navigate to auth page
+    await test.step('1 — Sign in', async () => {
+      try {
+        await page.goto(`${BASE}/auth`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+      } catch (err) {
+        const msg = err?.toString() || '';
+        if (msg.includes('ERR_TOO_MANY_REDIRECTS')) {
+          console.warn(`[CRITICAL-FINDING] /auth page cannot load — redirect loop active`);
+          return;
+        }
+        console.error(`[AUTH] Navigation error: ${msg}`);
+        return;
+      }
+
+      await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {});
+      await page.waitForTimeout(2000);
+
+      // Fill credentials via evaluate (React-safe)
+      await page.evaluate(({ email, password }: { email: string; password: string }) => {
+        const emailEl = document.querySelector<HTMLInputElement>('input[type="email"]');
+        if (emailEl) {
+          emailEl.value = email;
+          emailEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        const passEl = document.querySelector<HTMLInputElement>('input[type="password"]');
+        if (passEl) {
+          passEl.value = password;
+          passEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      }, { email: TEST_EMAIL, password: TEST_PASSWORD });
+
+      await page.waitForTimeout(500);
+
+      await page.evaluate(() => {
+        const btn = document.querySelector<HTMLButtonElement>('button[type="submit"]');
+        if (btn) {
+          btn.removeAttribute('disabled');
+          btn.click();
+        }
+      });
+
+      // Wait for session cookie to settle
+      await page.waitForTimeout(3000);
+
+      // Ensure we land on dashboard
+      if (!page.url().includes('/dashboard')) {
+        await page.goto(`${BASE}/dashboard`, { waitUntil: 'domcontentloaded', timeout: 30_000 }).catch(() => {});
+      }
+      await page.waitForTimeout(2000);
+      console.log('[HANDSHAKE] Signed in');
+    });
+
+    // Step 2: Navigate to meeting (triggers /api/lk-token call)
+    await test.step('2 — Trigger meeting join', async () => {
+      const testRoom = `handshake-test-${Date.now()}`;
+      try {
+        await page.goto(`${BASE}/meeting?room=${testRoom}&type=meeting`, {
+          waitUntil: 'domcontentloaded',
+          timeout: 30_000,
+        });
+        // Wait for LiveKit connection attempt
+        await page.waitForTimeout(8_000);
+      } catch (err) {
+        console.error('[HANDSHAKE] Meeting navigation error:', err?.toString() || '');
+      }
+
+      // Report captured responses
+      console.log(`\n╔══════════════════════════════════════════════════════════════╗`);
+      console.log(`║        LIVEKIT TOKEN HANDSHAKE RESULT                       ║`);
+      console.log(`╚══════════════════════════════════════════════════════════════╝`);
+      console.log(`[HANDSHAKE] /api/lk-token captured ${lkTokenResponses.length} response(s):`);
+      for (const r of lkTokenResponses) {
+        const statusIcon = r.status === 200 ? '✅' : r.status === 401 ? '🔒' : '❌';
+        console.log(`  ${statusIcon} HTTP ${r.status}`);
+        console.log(`  Body: ${JSON.stringify(r.body).slice(0, 300)}`);
+      }
+
+      if (lkTokenResponses.length === 0) {
+        console.warn(`[CRITICAL-FINDING] No /api/lk-token call was intercepted — LiveKit connection may not have been triggered`);
+      } else {
+        const hasError = lkTokenResponses.some((r) => r.status >= 400);
+        if (hasError) {
+          console.warn(`[FAILURE-REPORT] /api/lk-token returned an error status:`);
+          for (const r of lkTokenResponses) {
+            if (r.status >= 400) {
+              console.warn(`  ❌ HTTP ${r.status}: ${JSON.stringify(r.body)}`);
+            }
+          }
+        } else {
+          console.log(`[HANDSHAKE-OK] All /api/lk-token responses returned 2xx`);
+        }
+      }
+    });
+  });
+});
+
+// ============================================================================
+// Section 5: Heartbeat Proxy — All 7 Pillars
 // ============================================================================
 
 test.describe('Heartbeat API', () => {

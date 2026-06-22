@@ -1,56 +1,193 @@
-import Link from "next/link";
-import Logo from "../../components/Logo";
+"use client";
 
-const plans = [
-  { name: 'Starter', price: 'Free', description: 'Up to 5 participants, basic meetings, chat history, and team access.' },
-  { name: 'Pro', price: 'R149 / month', description: 'Unlimited meetings, AI summaries, translation support, and attendee controls.' },
-  { name: 'Enterprise', price: 'Custom', description: 'Advanced security, analytics, and premium support for organizations.' },
-];
+import type { PlanTier, PlanLimits } from '../../types';
+import PricingPage from '../../components/PricingPage';
 
-export default function PricingPage() {
+// Pricing data for all tiers
+const PRICING: Record<PlanTier, { monthly: number; annual: number }> = {
+  trial: { monthly: 0, annual: 0 },
+  classroom: { monthly: 89, annual: 71 },
+  classroom_plus: { monthly: 220, annual: 176 },
+  individual: { monthly: 110, annual: 88 },
+  pro: { monthly: 149, annual: 119 },
+  business: { monthly: 249, annual: 199 },
+  enterprise: { monthly: -1, annual: -1 },
+  unlimited: { monthly: 389, annual: 311 },
+};
+
+const ALL_LIMITS: Record<PlanTier, PlanLimits> = {
+  trial: {
+    maxParticipants: 2,
+    maxDurationMinutes: 40,
+    recording: false,
+    transcription: true,
+    aiPulse: true,
+    waitingRoom: false,
+    meetingPassword: true,
+    meetingLock: false,
+    cloudStorage: false,
+    customBranding: false,
+    sso: false,
+    analytics: false,
+    adminDashboard: false,
+    prioritySupport: false,
+    storageLimitGb: 0,
+  },
+  classroom: {
+    maxParticipants: 5,
+    maxDurationMinutes: 120,
+    recording: true,
+    transcription: true,
+    aiPulse: true,
+    waitingRoom: true,
+    meetingPassword: true,
+    meetingLock: true,
+    cloudStorage: true,
+    customBranding: false,
+    sso: false,
+    analytics: true,
+    adminDashboard: false,
+    prioritySupport: false,
+    storageLimitGb: 5,
+  },
+  classroom_plus: {
+    maxParticipants: 30,
+    maxDurationMinutes: 240,
+    recording: true,
+    transcription: true,
+    aiPulse: true,
+    waitingRoom: true,
+    meetingPassword: true,
+    meetingLock: true,
+    cloudStorage: true,
+    customBranding: false,
+    sso: false,
+    analytics: true,
+    adminDashboard: false,
+    prioritySupport: true,
+    storageLimitGb: 20,
+  },
+  individual: {
+    maxParticipants: 10,
+    maxDurationMinutes: 120,
+    recording: true,
+    transcription: true,
+    aiPulse: true,
+    waitingRoom: false,
+    meetingPassword: true,
+    meetingLock: true,
+    cloudStorage: true,
+    customBranding: false,
+    sso: false,
+    analytics: false,
+    adminDashboard: false,
+    prioritySupport: false,
+    storageLimitGb: 5,
+  },
+  pro: {
+    maxParticipants: 50,
+    maxDurationMinutes: 480,
+    recording: true,
+    transcription: true,
+    aiPulse: true,
+    waitingRoom: true,
+    meetingPassword: true,
+    meetingLock: true,
+    cloudStorage: true,
+    customBranding: true,
+    sso: false,
+    analytics: true,
+    adminDashboard: true,
+    prioritySupport: true,
+    storageLimitGb: 50,
+  },
+  business: {
+    maxParticipants: 200,
+    maxDurationMinutes: 480,
+    recording: true,
+    transcription: true,
+    aiPulse: true,
+    waitingRoom: true,
+    meetingPassword: true,
+    meetingLock: true,
+    cloudStorage: true,
+    customBranding: true,
+    sso: true,
+    analytics: true,
+    adminDashboard: true,
+    prioritySupport: true,
+    storageLimitGb: 200,
+  },
+  enterprise: {
+    maxParticipants: 500,
+    maxDurationMinutes: 480,
+    recording: true,
+    transcription: true,
+    aiPulse: true,
+    waitingRoom: true,
+    meetingPassword: true,
+    meetingLock: true,
+    cloudStorage: true,
+    customBranding: true,
+    sso: true,
+    analytics: true,
+    adminDashboard: true,
+    prioritySupport: true,
+    storageLimitGb: 1000,
+  },
+  unlimited: {
+    maxParticipants: 500,
+    maxDurationMinutes: -1,
+    recording: true,
+    transcription: true,
+    aiPulse: true,
+    waitingRoom: true,
+    meetingPassword: true,
+    meetingLock: true,
+    cloudStorage: true,
+    customBranding: true,
+    sso: true,
+    analytics: true,
+    adminDashboard: true,
+    prioritySupport: true,
+    storageLimitGb: -1,
+  },
+};
+
+function getSubscription() {
+  return {
+    tier: 'trial' as PlanTier,
+    renewalDate: undefined,
+    nextBilling: undefined,
+  };
+}
+
+export default function PricingRoute() {
+  const subscription = getSubscription();
+
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <div className="max-w-6xl mx-auto px-5 sm:px-8 py-10">
-        <header className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <Logo size="sm" className="text-white" />
-          <Link href="/" className="text-sm text-slate-300 transition hover:text-white">
-            Back to home
-          </Link>
-        </header>
-
-        <section className="mt-16 text-center">
-          <p className="text-sm uppercase tracking-[0.35em] text-amber-400">Pricing</p>
-          <h1 className="mt-4 text-4xl font-bold text-white">Choose the plan that fits your team.</h1>
-          <p className="mt-4 max-w-2xl mx-auto text-slate-400">
-            Conferly pricing is designed to help teams collaborate securely while keeping things simple and predictable.
-          </p>
-        </section>
-
-        <div className="mt-14 grid gap-6 md:grid-cols-3">
-          {plans.map(plan => (
-            <div key={plan.name} className="rounded-3xl border border-white/10 bg-slate-900/80 p-8 text-left shadow-xl shadow-black/20">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="text-2xl font-semibold text-white">{plan.name}</h2>
-                <span className="text-sm text-amber-300">{plan.price}</span>
-              </div>
-              <p className="mt-4 text-slate-400">{plan.description}</p>
-              <div className="mt-8">
-                <button className="w-full rounded-full bg-amber-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-300">
-                  Select
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-16 rounded-3xl border border-white/10 bg-slate-900/80 p-8 text-slate-300">
-          <h2 className="text-xl font-semibold text-white">Need help choosing?</h2>
-          <p className="mt-3">Reach out to our team for tailored recommendations, deployment planning, and enterprise onboarding.</p>
-          <Link href="/dashboard" className="mt-6 inline-flex rounded-full bg-amber-400 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-300">
-            View Dashboard
-          </Link>
-        </div>
-      </div>
-    </main>
+    <PricingPage
+      setView={(v) => {
+        if (v === 'dashboard') {
+          window.location.href = '/dashboard';
+        }
+      }}
+      subscription={subscription}
+      pricing={PRICING}
+      allLimits={ALL_LIMITS}
+      onUpgrade={async (tier, _cycle) => {
+        if (tier === 'classroom') {
+          const { createClassroomCheckout } = await import('../actions/checkout-actions');
+          const result = await createClassroomCheckout();
+          if (result.url) window.location.href = result.url;
+        } else if (tier === 'pro') {
+          const { createProCheckout } = await import('../actions/checkout-actions');
+          const result = await createProCheckout();
+          if (result.url) window.location.href = result.url;
+        } else {
+          window.location.href = '/dashboard';
+        }
+      }}
+    />
   );
 }

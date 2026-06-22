@@ -18,49 +18,101 @@ function getLiveKitUrl(): string {
 }
 
 export async function POST(request: Request) {
+  // ── Auth Guard ───────────────────────────────────────────────────────────
+  let session;
   try {
-    const session = await getServerSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    session = await getServerSession();
+  } catch {
+    return NextResponse.json(
+      { error: 'Please log in to join the meeting' },
+      { status: 401 }
+    );
+  }
 
-    if (!session.userId) {
-      return NextResponse.json({ error: 'Invalid session: missing userId' }, { status: 401 });
-    }
+  if (!session) {
+    return NextResponse.json(
+      { error: 'Please log in to join the meeting' },
+      { status: 401 }
+    );
+  }
 
-    const payload = await request.json().catch(() => null);
-    const roomId = String(payload?.roomId ?? '').trim();
-    const requestedRole = String(payload?.role ?? 'participant').trim() as LiveKitRole;
+  if (!session.userId) {
+    return NextResponse.json(
+      { error: 'Invalid session: missing userId' },
+      { status: 401 }
+    );
+  }
 
-    if (!roomId) {
-      return NextResponse.json({ error: 'Missing roomId' }, { status: 400 });
-    }
+  // ── Data Validation ──────────────────────────────────────────────────────
+  let payload: Record<string, unknown>;
+  try {
+    payload = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: 'Meeting ID required' },
+      { status: 400 }
+    );
+  }
 
-    if (!VALID_ROLES.has(requestedRole)) {
-      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
-    }
+  const roomId = String(payload?.roomId ?? payload?.room ?? '').trim();
+  const requestedRole = String(payload?.role ?? 'participant').trim() as LiveKitRole;
+  const username = String(payload?.username ?? payload?.name ?? '').trim();
 
-    const access = await verifyRoomAccess(session.userId, roomId);
-    if (!access) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+  if (!roomId) {
+    return NextResponse.json(
+      { error: 'Meeting ID required' },
+      { status: 400 }
+    );
+  }
 
-    const liveKitUrl = getLiveKitUrl();
+  if (!VALID_ROLES.has(requestedRole)) {
+    return NextResponse.json(
+      { error: 'Invalid role' },
+      { status: 400 }
+    );
+  }
 
-    const role = access.accessRole === 'spectator' ? 'spectator' : requestedRole;
-    const token = await createLiveKitToken({
+  // ── Room Access Verification ─────────────────────────────────────────────
+  let access;
+  try {
+    access = await verifyRoomAccess(session.userId, roomId);
+  } catch {
+    return NextResponse.json(
+      { error: 'Forbidden' },
+      { status: 403 }
+    );
+  }
+
+  if (!access) {
+    return NextResponse.json(
+      { error: 'Forbidden' },
+      { status: 403 }
+    );
+  }
+
+  // ── LiveKit URL ──────────────────────────────────────────────────────────
+  const liveKitUrl = getLiveKitUrl();
+
+  const role = access.accessRole === 'spectator' ? 'spectator' : requestedRole;
+  const displayName = username || session.email || `Participant-${session.userId.slice(0, 4)}`;
+
+  // ── LiveKit Token Generation (isolated try/catch) ────────────────────────
+  let token: string;
+  try {
+    token = await createLiveKitToken({
       identity: session.userId,
-      name: session.email ?? session.userId,
+      name: displayName,
       room: roomId,
       role,
     });
-
-    return NextResponse.json({ token, url: liveKitUrl });
-  } catch (error) {
-    console.error('LIVEKIT_TOKEN_CRASH:', error);
+  } catch (err) {
+    console.error('[LK_SERVER_ERROR] LiveKit token generation failed:', err);
+    console.error('[LK_SERVER_ERROR] Input:', { identity: session.userId, name: displayName, room: roomId, role });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500 }
     );
   }
+
+  return NextResponse.json({ token, url: liveKitUrl });
 }

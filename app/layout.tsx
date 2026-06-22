@@ -106,24 +106,7 @@ export default function RootLayout({
           body{margin:0;background:var(--background);color:var(--foreground);font-family:Arial, Helvetica, sans-serif}
           .min-h-full{min-height:100vh}
         ` }} />
-        {/* Try to make the Next-generated global stylesheet non-blocking: convert
-            it to a preload then swap to stylesheet onload. This reduces blocking
-            render time while preserving styles. */}
-        <script dangerouslySetInnerHTML={{ __html: `
-          (function(){
-            try{
-              var l = document.querySelector('link[data-precedence="next"][rel="stylesheet"]');
-              if(l){
-                l.rel = 'preload';
-                l.as = 'style';
-                l.onload = function(){ this.rel = 'stylesheet'; };
-                // In case onload doesn't fire (older browsers), ensure stylesheet
-                // is applied after a short timeout.
-                setTimeout(function(){ if(l.rel !== 'stylesheet') l.rel='stylesheet'; }, 3000);
-              }
-            }catch(e){/* no-op */}
-          })();
-        ` }} />
+        {/* Next.js handles data-precedence="next" stylesheet loading automatically. */}
         {/* Google Tag Manager (gtag.js) - initialized when NEXT_PUBLIC_GA_ID is set */}
         {process.env.NEXT_PUBLIC_GA_ID && (
           <>

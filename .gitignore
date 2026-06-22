@@ -75,3 +75,9 @@ pnpm-debug.log*
 # IDE extensions and AI artifacts
 /.continue/
 .env.production
+
+
+# vim / editor swap files
+*.swp
+*.swo
+*~

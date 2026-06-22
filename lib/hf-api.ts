@@ -3,6 +3,9 @@
 // Keeps the PWA bundle tiny by avoiding @huggingface/inference.
 
 const HF_API_BASE = "https://api-inference.huggingface.co/models";
+const HF_USER_AGENT = "Conferly/1.0";
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 2000;
 
 /**
  * Supported inference intents mapped to Hugging Face model IDs.
@@ -26,6 +29,54 @@ export type HFErrorResponse = {
   error: string;
   estimated_time?: number;
 };
+
+/**
+ * Delay helper for retry logic.
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Internal fetch helper with User-Agent and optional retry.
+ * This is not exported — use callHF or the typed wrappers instead.
+ */
+async function fetchWithRetry(
+  url: string,
+  requestInit: RequestInit,
+  retries = MAX_RETRIES,
+  delayMs = RETRY_DELAY_MS,
+): Promise<Response> {
+  // Ensure User-Agent is present
+  const headers = new Headers(requestInit.headers);
+  if (!headers.has("User-Agent")) {
+    headers.set("User-Agent", HF_USER_AGENT);
+  }
+
+  const init: RequestInit = {
+    ...requestInit,
+    headers,
+  };
+
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url, init);
+      // If we got a response (even an error status), return it — let the caller handle status codes
+      return response;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt < retries) {
+        await sleep(delayMs);
+      }
+    }
+  }
+
+  throw new Error(
+    `HF API network error after ${retries} attempts: ${lastError?.message ?? "Unknown fetch error"}`,
+  );
+}
 
 /**
  * Call a Hugging Face Serverless Inference endpoint using native fetch.
@@ -63,11 +114,12 @@ export async function callHF<TOutput = unknown>(
     body.parameters = opts.params;
   }
 
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
+      "User-Agent": HF_USER_AGENT,
     },
     body: JSON.stringify(body),
   });

@@ -375,7 +375,7 @@ export default function Dashboard({
                   <p className="text-xs text-slate-500">Interactive learning</p>
                 </div>
               </div>
-              <p className="text-sm text-slate-400">Whiteboard, tutor controls, and 5-learner cap. Perfect for high-end education ($89/mo).</p>
+              <p className="text-sm text-slate-400">Whiteboard, tutor controls, and 5-learner cap. Perfect for high-end education (R89/mo).</p>
               <button
                 onClick={async () => {
                   if (subscription.tier !== 'classroom') {
@@ -682,7 +682,7 @@ export default function Dashboard({
                   <Zap className="w-5 h-5 text-yellow-400" />
                   <h3 className="text-lg font-bold">Unlock all features</h3>
                 </div>
-                <p className="text-sm text-slate-400">Upgrade to Pro for recording, AI summaries, waiting room, and 8-hour meetings — starting at $9/user/month.</p>
+                <p className="text-sm text-slate-400">Upgrade to Pro for recording, AI summaries, waiting room, and 8-hour meetings — starting at R149/user/month.</p>
               </div>
               <button
                 onClick={() => setView('pricing')}
