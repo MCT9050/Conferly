@@ -5,9 +5,9 @@ import { NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '../../../lib/supabaseServerClient';
 import { getServerSession } from '../../../lib/auth';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(request);
     if (!session?.userId) {
       // Unauthenticated users get the trial cap
       return NextResponse.json({ participantCap: 2, plan: 'trial' });

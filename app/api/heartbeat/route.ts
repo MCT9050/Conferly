@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { AccessToken } from 'livekit-server-sdk';
 import { getCircuitBreakerState, getSystemLoad } from '../../../lib/system-guard';
+import { getServerSession } from '../../../lib/auth';
 
 interface PillarResult {
   name: string;
@@ -324,7 +325,14 @@ function checkResilience(): Promise<PillarResult> {
 // GET handler
 // ---------------------------------------------------------------------------
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Require authentication — heartbeat exposes circuit breaker state,
+  // rate-limit keys, Hugging Face key validity, and supabase service role access
+  const session = await getServerSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
   const results = await Promise.all([
     checkLiveKit(),

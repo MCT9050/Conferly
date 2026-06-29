@@ -12,6 +12,8 @@
 import { summarize, translate, assistant } from "../../lib/hf-api";
 import { getServerEnv } from "../../lib/serverEnv";
 import { checkRateLimit, recordHfResponse } from "../../lib/system-guard";
+import { getServerSession } from "../../lib/auth";
+import { verifyRoomAccess } from "../../lib/meetingAuth";
 
 // ---------------------------------------------------------------------------
 // Response union type — all AI actions return this shape
@@ -30,13 +32,27 @@ async function guardedCall<T>(
   hfCall: () => Promise<T>,
   roomId?: string,
 ): Promise<AIActionResponse<T>> {
-  // 1. Check rate limit + circuit breaker
+  // 1. Require authentication — every AI call costs HF quota
+  const session = await getServerSession();
+  if (!session) {
+    return { status: 'ERROR', error: 'Authentication required' };
+  }
+
+  // 2. If roomId is provided, verify the caller is a participant
+  if (roomId) {
+    const access = await verifyRoomAccess(session.userId, roomId);
+    if (!access) {
+      return { status: 'ERROR', error: 'Access denied: not a participant of this room' };
+    }
+  }
+
+  // 3. Check rate limit + circuit breaker
   const guard = checkRateLimit(roomId);
   if (!guard.allowed) {
     return { status: 'COOLDOWN', retryAfter: guard.retryAfter ?? 30 };
   }
 
-  // 2. Execute the HF call
+  // 4. Execute the HF call
   try {
     const data = await hfCall();
     recordHfResponse(200); // Success — reset circuit breaker
@@ -45,13 +61,13 @@ async function guardedCall<T>(
     const hfErr = err as { status?: number; message?: string };
     const status = hfErr.status ?? 0;
 
-    // 3. Record 429/503 to drive circuit breaker
+    // 5. Record 429/503 to drive circuit breaker
     if (status === 429 || status === 503) {
       recordHfResponse(status);
       return { status: 'COOLDOWN', retryAfter: 30 };
     }
 
-    // 4. Other errors — return as ERROR (don't affect circuit breaker)
+    // 6. Other errors — return as ERROR (don't affect circuit breaker)
     return {
       status: 'ERROR',
       error: hfErr.message ?? 'Unknown AI service error',

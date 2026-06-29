@@ -6,14 +6,18 @@ import {
   Zap, Shield, Video, ArrowRight,
   Mic, Monitor, Brain, FileText, Languages,
   CheckCircle2, Play, Building2, Star,
-  Heart, MessageSquare, ArrowDown, Globe, Cpu
+  Heart, MessageSquare, ArrowDown, Globe, Cpu,
+  BookOpen, Users, GraduationCap
 } from 'lucide-react';
 import type { UserProfile } from '../hooks/useAuth';
 import { useScrollToId } from '../hooks/useScrollToId';
 import ProfileMenu from './ProfileMenu';
 import Logo from './Logo';
 import { getSession, getSupabaseClientInstance } from '../lib/supabaseClient';
+
 import { signOut } from '../lib/clientAuth';
+import { MEET_PLANS } from '../lib/pricing/meet';
+import { CLASS_PLANS } from '../lib/pricing/class';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -86,6 +90,9 @@ const TESTIMONIALS = [
   },
 ];
 
+const meetProPlan = MEET_PLANS.find(p => p.id === 'meet_pro');
+const classRoomPlan = CLASS_PLANS.find(p => p.id === 'class_room');
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function LandingPageClient() {
@@ -101,7 +108,7 @@ export default function LandingPageClient() {
   // hydration mismatches.
   useEffect(() => {
     getSession()
-      .then(session => {
+      .then((session) => {
         if (session?.user) {
           const meta = (session.user.user_metadata ?? {}) as Record<string, unknown>;
           setProfile({
@@ -121,6 +128,7 @@ export default function LandingPageClient() {
       })
       .finally(() => setSessionLoading(false));
   }, []);
+
 
   // Update display name directly via Supabase client
   const handleUpdateName = useCallback(
@@ -160,13 +168,15 @@ export default function LandingPageClient() {
           <div className="hidden lg:flex items-center gap-8 text-[13px] text-slate-400 font-medium">
             <a href="#features" className="hover:text-white transition-colors duration-200">Features</a>
             <a href="#languages" className="hover:text-white transition-colors duration-200">Languages</a>
-            <a href="#business" className="hover:text-white transition-colors duration-200">Business</a>
             <button
               onClick={() => router.push('/pricing')}
               className="hover:text-white transition-colors duration-200"
             >
               Pricing
             </button>
+            <a href="/class" className="text-emerald-400 hover:text-emerald-300 transition-colors duration-200">
+              Conferly Class →
+            </a>
           </div>
 
           {/* Auth area — hidden during initial session check to avoid layout shift */}
@@ -312,20 +322,76 @@ export default function LandingPageClient() {
         </div>
       </section>
 
+      {/* ═══ TWO PRODUCTS ═══ */}
+      <section className="px-5 sm:px-8 py-16 sm:py-20">
+        <div className="max-w-5xl mx-auto text-center mb-12">
+          <p className="text-[13px] text-blue-400 font-semibold uppercase tracking-widest mb-4">Two products, one platform</p>
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+            Choose the right tool
+            <br />
+            <span className="text-slate-500">for every conversation.</span>
+          </h2>
+        </div>
+        <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-6">
+          {/* Conferly Meet Card */}
+          <div className="group relative rounded-2xl border border-blue-500/20 bg-gradient-to-b from-blue-500/5 to-blue-600/2 p-8 space-y-5 hover:-translate-y-1 transition-all duration-300">
+            <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+              <Video className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white">Conferly Meet</h3>
+              <p className="text-sm text-slate-400 mt-1">Professional video meetings for teams and clients</p>
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-3xl font-extrabold text-white">R{meetProPlan ? meetProPlan.monthlyPrice : 169}</span>
+              <span className="text-sm text-slate-500">/user/mo</span>
+            </div>
+            <button
+              onClick={() => router.push('/meet/dashboard')}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold text-sm transition-all duration-300 hover:opacity-90 shadow-lg"
+            >
+              Start Meeting
+            </button>
+          </div>
+
+          {/* Conferly Class Card */}
+          <div className="group relative rounded-2xl border border-emerald-500/20 bg-gradient-to-b from-emerald-500/5 to-emerald-600/2 p-8 space-y-5 hover:-translate-y-1 transition-all duration-300">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+              <BookOpen className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white">Conferly Class</h3>
+              <p className="text-sm text-slate-400 mt-1">Virtual classrooms for tutors and training businesses</p>
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-3xl font-extrabold text-white">R{classRoomPlan ? classRoomPlan.monthlyPrice : 89}</span>
+              <span className="text-sm text-slate-500">/mo</span>
+            </div>
+            <button
+              onClick={() => router.push('/class/dashboard')}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 text-white font-semibold text-sm transition-all duration-300 hover:opacity-90 shadow-lg"
+            >
+              Create Classroom
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* ═══ STATS ═══ */}
       <section className="px-8 py-20 sm:py-24">
         <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
           {[
             { value: '<100', suffix: 'ms', label: 'Latency',    sub: 'Real-time WebRTC' },
             { value: '11',   suffix: '',   label: 'Languages',  sub: 'SA official languages' },
-            { value: '0',    suffix: '',   label: 'Downloads',  sub: 'Runs in browser' },
+            { value: '',     suffix: '',   label: 'Browser-native',  sub: 'No installation required' },
             { value: '14',   suffix: 'day', label: 'Free trial', sub: 'No credit card' },
           ].map(s => (
             <div key={s.label} className="text-center group">
               <div className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-b from-white to-slate-400 bg-clip-text text-transparent">
-                <Counter target={s.value} suffix={s.suffix} />
+                {s.value ? <Counter target={s.value} suffix={s.suffix} /> : <span className="text-3xl">✓</span>}
               </div>
-              <div className="text-sm font-semibold text-slate-300 mt-2">{s.label}</div>
+              {s.value && <div className="text-sm font-semibold text-slate-300 mt-2">{s.label}</div>}
+              {!s.value && <div className="text-sm font-semibold text-slate-300 mt-2">{s.label}</div>}
               <div className="text-[11px] text-slate-500 mt-0.5">{s.sub}</div>
             </div>
           ))}
@@ -443,121 +509,6 @@ export default function LandingPageClient() {
         </div>
       </section>
 
-      {/* ═══ FOR BUSINESS ═══ */}
-      <section id="business" className="px-5 sm:px-8 py-20 sm:py-28">
-        <div className="max-w-7xl mx-auto">
-          <div className="max-w-2xl mx-auto text-center mb-16">
-            <p className="text-[13px] text-purple-400 font-semibold uppercase tracking-widest mb-4">For Business</p>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4">
-              Elevate your team's
-              <br />
-              <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                collaboration.
-              </span>
-            </h2>
-            <p className="text-slate-400">
-              Purpose-built for organizations that value security, inclusivity, and focused connection.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6 mb-16">
-            <div className="rounded-2xl border border-green-500/15 bg-green-500/[0.02] p-8 space-y-5 ring-1 ring-green-500/10">
-              <h3 className="text-lg font-bold text-green-400 flex items-center gap-2">
-                <span className="text-2xl">✓</span>
-                Conferly Business: R370/user/month
-              </h3>
-              <div className="space-y-3 text-[14px] text-slate-300">
-                {[
-                  'HD video + audio + screen share',
-                  'Live transcription included',
-                  'AI meeting summaries included',
-                  '11 SA languages translation included',
-                  'SSO, admin dashboard, analytics included',
-                ].map(item => (
-                  <div key={item} className="flex items-start gap-3">
-                    <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
-                    {item}
-                  </div>
-                ))}
-              </div>
-              <div className="pt-4 border-t border-white/5">
-                <p className="text-sm font-semibold text-green-400">Save R130+/user/month</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Plan cards */}
-          <div className="grid sm:grid-cols-3 gap-5">
-            {[
-              {
-                name: 'Pro',
-                price: 'R165',
-                period: '/user/mo',
-                desc: 'Small teams',
-                features: ['25 participants', '8-hour meetings', 'Recording + AI Pulse', 'Waiting room'],
-                gradient: 'from-blue-600 to-cyan-500',
-                popular: false,
-              },
-              {
-                name: 'Business',
-                price: 'R370',
-                period: '/user/mo',
-                desc: 'Growing companies',
-                features: ['100 participants', '24-hour meetings', 'SSO + Admin panel', 'Priority support'],
-                gradient: 'from-purple-600 to-pink-500',
-                popular: true,
-              },
-              {
-                name: 'Enterprise',
-                price: 'Custom',
-                period: '',
-                desc: 'Large orgs',
-                features: ['500 participants', 'Unlimited meetings', 'On-premise option', 'Custom SLA'],
-                gradient: 'from-amber-500 to-orange-500',
-                popular: false,
-              },
-            ].map(plan => (
-              <div
-                key={plan.name}
-                className={`rounded-2xl border p-7 space-y-5 transition-all duration-300 hover:-translate-y-1 ${
-                  plan.popular
-                    ? 'border-purple-500/30 bg-purple-500/[0.03] shadow-lg shadow-purple-500/5'
-                    : 'border-white/5 bg-white/[0.01]'
-                }`}
-              >
-                {plan.popular && (
-                  <span className="inline-block px-3 py-1 rounded-full bg-purple-500/10 text-[11px] text-purple-400 font-bold uppercase tracking-wider">
-                    Most Popular
-                  </span>
-                )}
-                <div>
-                  <h3 className="text-xl font-bold">{plan.name}</h3>
-                  <p className="text-[12px] text-slate-500 mt-0.5">{plan.desc}</p>
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-extrabold">{plan.price}</span>
-                  {plan.period && <span className="text-sm text-slate-500">{plan.period}</span>}
-                </div>
-                <div className="space-y-2.5">
-                  {plan.features.map(f => (
-                    <div key={f} className="flex items-center gap-2.5 text-[13px] text-slate-300">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-green-400/80 shrink-0" />
-                      {f}
-                    </div>
-                  ))}
-                </div>
-                <button
-                  onClick={() => router.push('/pricing')}
-                  className={`w-full py-3 min-h-[44px] rounded-xl bg-gradient-to-r ${plan.gradient} text-white font-semibold text-sm transition-all duration-300 hover:opacity-90 shadow-lg`}
-                >
-                  {plan.price === 'Custom' ? 'Contact Sales' : `Get ${plan.name}`}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ═══ TESTIMONIALS ═══ */}
       <section className="px-5 sm:px-8 py-20 sm:py-28">
         <div className="max-w-6xl mx-auto">
@@ -669,7 +620,7 @@ export default function LandingPageClient() {
                   { label: 'Features', href: '#features' },
                   { label: 'Languages', href: '#languages' },
                   { label: 'Pricing', href: '/pricing' },
-                  { label: 'Business', href: '#business' },
+                  { label: 'Conferly Class', href: '/class' },
                 ],
               },
               {

@@ -13,9 +13,11 @@ import {
 
 interface LobbyPreJoinProps {
   roomId: string;
+  domain?: string;
+  lessonId?: string;
 }
 
-export default function LobbyPreJoin({ roomId }: LobbyPreJoinProps) {
+export default function LobbyPreJoin({ roomId, domain = "meet", lessonId }: LobbyPreJoinProps) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -113,8 +115,19 @@ export default function LobbyPreJoin({ roomId }: LobbyPreJoinProps) {
     // Stop preview stream — the meeting page will start its own
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
-    router.push(`/meeting?room=${encodeURIComponent(roomId)}`);
-  }, [router, roomId]);
+
+    if (domain === "class") {
+      if (lessonId) {
+        router.push(
+          `/class/classrooms/${encodeURIComponent(roomId)}/lessons/${encodeURIComponent(lessonId)}/live`
+        );
+      } else {
+        router.push(`/class/classrooms/${encodeURIComponent(roomId)}`);
+      }
+    } else {
+      router.push(`/meet/rooms/${encodeURIComponent(roomId)}`);
+    }
+  }, [router, roomId, domain, lessonId]);
 
   const videoDevices = devices.filter((d) => d.kind === "videoinput");
   const audioDevices = devices.filter((d) => d.kind === "audioinput");

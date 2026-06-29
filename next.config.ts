@@ -52,7 +52,7 @@ const nextConfig: NextConfig = {
           // Content Security Policy — strict but functional with All-Hands and monitoring
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self' app.all-hands.dev; script-src 'self' 'unsafe-inline' static.cloudflareinsights.com app.all-hands.dev https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' app.all-hands.dev https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: app.all-hands.dev; font-src 'self'; frame-ancestors 'self' app.all-hands.dev; base-uri 'self'; form-action 'self'",
+            value: "default-src 'self' app.all-hands.dev; script-src 'self' 'unsafe-inline' 'unsafe-eval' static.cloudflareinsights.com app.all-hands.dev https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' 'self' app.all-hands.dev https://www.google-analytics.com wss://*.livekit.cloud wss://*.livekit.com https://huggingface.co https://router.huggingface.co https://*.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: app.all-hands.dev; font-src 'self'; frame-ancestors 'self' app.all-hands.dev; base-uri 'self'; form-action 'self'",
           },
         ],
       },

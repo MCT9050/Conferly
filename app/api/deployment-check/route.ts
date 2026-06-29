@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from '@/lib/auth';
 import { runDeploymentChecks, formatDeploymentReport } from '@/lib/deploymentCheck';
 
 /**
@@ -8,8 +9,12 @@ import { runDeploymentChecks, formatDeploymentReport } from '@/lib/deploymentChe
  * Returns deployment readiness status for monitoring and CI/CD
  */
 export async function GET(request: Request) {
-  // In production, you might want to add authentication here
-  // to prevent unauthorized access to deployment status
+  // Require authentication — deployment status exposes env var presence
+  // and Supabase connectivity details
+  const session = await getServerSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   
   try {
     const report = await runDeploymentChecks();

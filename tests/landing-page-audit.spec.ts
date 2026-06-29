@@ -24,7 +24,7 @@ test.describe('Landing Page Audit: Branding & Layout', () => {
 
     let headerBadges = 0;
     if (headerExists) {
-      const headerText = await header.textContent();
+      const headerText: string = (await header.textContent()) ?? '';
       console.log(`Header text length: ${headerText.length}`);
       console.log(`Header text preview: "${headerText.substring(0, 300)}"`);
 
@@ -67,7 +67,7 @@ test.describe('Landing Page Audit: Branding & Layout', () => {
     // === HERO / MAIN VISUAL ANALYSIS ===
     const heroSection = page.locator('.hero, [class*="hero"], section:first-of-type, main > section:first-child').first();
     if (await heroSection.count() > 0) {
-      const heroText = await heroSection.textContent();
+      const heroText: string = (await heroSection.textContent()) ?? '';
       console.log(`Hero text length: ${heroText.length}`);
       console.log(`Hero text preview: "${heroText.substring(0, 400)}"`);
     }

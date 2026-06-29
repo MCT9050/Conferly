@@ -2,7 +2,7 @@
 // Hugging Face Serverless Inference API — native fetch, no external dependencies.
 // Keeps the PWA bundle tiny by avoiding @huggingface/inference.
 
-const HF_API_BASE = "https://api-inference.huggingface.co/models";
+const HF_API_BASE = "https://huggingface.co";
 const HF_USER_AGENT = "Conferly/1.0";
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 2000;

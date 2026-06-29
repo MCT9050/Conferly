@@ -87,6 +87,57 @@ export async function createUnlimitedCheckout(): Promise<CheckoutActionResult> {
 }
 
 /**
+ * Product-scoped checkout: Meet plans.
+ * Validates that the plan ID is a Meet plan before creating checkout.
+ */
+export async function createMeetCheckout(planId: string): Promise<CheckoutActionResult> {
+  const { MEET_PLANS } = await import('../../lib/pricing/meet');
+  const plan = MEET_PLANS.find(p => p.id === planId);
+  if (!plan) {
+    return { error: 'Invalid Meet plan selected.' };
+  }
+
+  // Map meet plan IDs to legacy SupportedPlanTier for Lemon Squeezy
+  const legacyPlanMap: Record<string, 'individual' | 'pro' | 'unlimited'> = {
+    meet_individual: 'individual',
+    meet_pro: 'pro',
+    meet_unlimited: 'unlimited',
+  };
+
+  const legacyPlan = legacyPlanMap[planId];
+  if (!legacyPlan) {
+    return { error: 'This plan is not available for online checkout.' };
+  }
+
+  return createPlanCheckoutInternal(legacyPlan);
+}
+
+/**
+ * Product-scoped checkout: Class plans.
+ * Validates that the plan ID is a Class plan before creating checkout.
+ */
+export async function createClassCheckout(planId: string): Promise<CheckoutActionResult> {
+  const { CLASS_PLANS } = await import('../../lib/pricing/class');
+  const plan = CLASS_PLANS.find(p => p.id === planId);
+  if (!plan) {
+    return { error: 'Invalid Class plan selected.' };
+  }
+
+  // Map class plan IDs to legacy SupportedPlanTier for Lemon Squeezy
+  const legacyPlanMap: Record<string, 'classroom' | 'classroom_plus'> = {
+    class_room: 'classroom',
+    class_room_plus: 'classroom_plus',
+  };
+
+  const legacyPlan = legacyPlanMap[planId];
+  if (!legacyPlan) {
+    return { error: 'This plan is not available for online checkout.' };
+  }
+
+  return createPlanCheckoutInternal(legacyPlan);
+}
+
+/**
  * Fetches the user's current subscription status from the database.
  */
 export async function getUserSubscription() {

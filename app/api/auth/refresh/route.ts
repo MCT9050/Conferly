@@ -1,50 +1,70 @@
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { trackEvent } from '../../../../lib/monitoring';
-import { getSupabaseApiKey, getSupabaseAuthTokenUrl, requireSupabaseConfig } from '../../../../lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { trackEvent } from '@/lib/monitoring';
 
-function buildCookieOptions(request: Request, maxAge: number) {
-  const host = request.headers.get('host') ?? '';
-  const normalizedHost = host.replace(/:\d+$/, '');
-  const envDomain = process.env.COOKIE_DOMAIN ?? normalizedHost;
-  const domain = envDomain && !envDomain.includes('localhost')
-    ? envDomain.startsWith('.') ? envDomain : `.${envDomain}`
-    : undefined;
+function getSupabaseConfig() {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+  if (!url || !key) {
+    throw new Error('Missing Supabase URL or anon key');
+  }
+
+  const baseUrl = url.replace(/\/+$/, '');
   return {
-    httpOnly: true,
-    path: '/',
-    domain,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
-    maxAge,
+    apiKey: key,
+    authTokenUrl: `${baseUrl}/auth/v1/token`,
   };
 }
 
 export async function POST(request: Request) {
   try {
-    requireSupabaseConfig();
+    const { apiKey, authTokenUrl } = getSupabaseConfig();
     const cookieHeader = request.headers.get('cookie') || '';
-    // Parse supabase-auth-token cookie
-    const match = cookieHeader.split(';').map(p => p.trim()).find(p => p.startsWith('supabase-auth-token='));
-    if (!match) {
-      trackEvent({ type: 'auth_failure', stage: 'refresh', reason: 'no_refresh_token_cookie', timestamp: Date.now() });
-      return NextResponse.json({ error: 'No refresh token available' }, { status: 401 });
-    }
-    const raw = decodeURIComponent(match.split('=')[1] || '');
-    let parsed: any = null;
-    try { parsed = JSON.parse(raw); } catch { parsed = null; }
-    const refreshToken = parsed?.refresh_token;
-    if (!refreshToken) {
-      trackEvent({ type: 'auth_failure', stage: 'refresh', reason: 'no_refresh_token', timestamp: Date.now() });
-      return NextResponse.json({ error: 'No refresh token' }, { status: 401 });
+
+    // @supabase/ssr handles cookie names and chunking internally.
+    // We still need the raw cookie to send the refresh_token to Supabase's
+    // auth endpoint since this is a server-to-server call.
+    const sbCookies = cookieHeader.split(';').reduce<Record<string, string>>((map, part) => {
+      const [name, ...rest] = part.trim().split('=');
+      if (name) map[name] = rest.join('=');
+      return map;
+    }, {});
+
+    // Try to find the refresh token from the standard sb- prefix cookies
+    // that @supabase/ssr sets. The SDK stores the full session in
+    // sb-<project-ref>-auth-token cookie.
+    let refreshToken: string | null = null;
+    for (const [name, value] of Object.entries(sbCookies)) {
+      if (name.includes('auth-token') && !name.endsWith('.0') && !name.endsWith('.1')) {
+        try {
+          const decoded = decodeURIComponent(value);
+          const parsed = JSON.parse(decoded);
+          if (parsed?.refresh_token) {
+            refreshToken = parsed.refresh_token;
+            break;
+          }
+        } catch {
+          continue;
+        }
+      }
     }
 
-    const refreshUrl = `${getSupabaseAuthTokenUrl()}?grant_type=refresh_token`;
+    if (!refreshToken) {
+      trackEvent({
+        type: 'auth_failure',
+        stage: 'refresh',
+        reason: 'no_refresh_token_cookie',
+        timestamp: Date.now(),
+      });
+      return NextResponse.json({ error: 'No refresh token available' }, { status: 401 });
+    }
+
+    const refreshUrl = `${authTokenUrl}?grant_type=refresh_token`;
     const resp = await fetch(refreshUrl, {
       method: 'POST',
       headers: {
-        apikey: getSupabaseApiKey(),
+        apikey: apiKey,
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
@@ -61,10 +81,19 @@ export async function POST(request: Request) {
       contentType,
       bodyPreview: rawText.slice(0, 2000),
     };
+
     if (!resp.ok || !contentType?.includes('application/json')) {
       console.error('Supabase Upstream Failure:', debugInfo);
-      trackEvent({ type: 'auth_failure', stage: 'refresh', reason: 'refresh_api_error', timestamp: Date.now() });
-      return NextResponse.json({ error: 'Authentication gateway timeout. Please try again shortly.' }, { status: 502 });
+      trackEvent({
+        type: 'auth_failure',
+        stage: 'refresh',
+        reason: 'refresh_api_error',
+        timestamp: Date.now(),
+      });
+      return NextResponse.json(
+        { error: 'Authentication gateway timeout. Please try again shortly.' },
+        { status: 502 }
+      );
     }
 
     let data: any;
@@ -75,28 +104,44 @@ export async function POST(request: Request) {
         ...debugInfo,
         parseError: parseError instanceof Error ? parseError.message : String(parseError),
       });
-      trackEvent({ type: 'auth_failure', stage: 'refresh', reason: 'refresh_api_error', timestamp: Date.now() });
-      return NextResponse.json({ error: 'Authentication gateway timeout. Please try again shortly.' }, { status: 502 });
+      trackEvent({
+        type: 'auth_failure',
+        stage: 'refresh',
+        reason: 'refresh_api_error',
+        timestamp: Date.now(),
+      });
+      return NextResponse.json(
+        { error: 'Authentication gateway timeout. Please try again shortly.' },
+        { status: 502 }
+      );
     }
+
     if (!resp.ok || !data?.access_token) {
-      trackEvent({ type: 'auth_failure', stage: 'refresh', reason: 'refresh_api_error', timestamp: Date.now() });
+      trackEvent({
+        type: 'auth_failure',
+        stage: 'refresh',
+        reason: 'refresh_api_error',
+        timestamp: Date.now(),
+      });
       return NextResponse.json({ error: 'Refresh failed' }, { status: 401 });
     }
 
     trackEvent({ type: 'auth_success', stage: 'refresh', timestamp: Date.now() });
 
-    const cookieStore = await cookies();
-    const cookieOptions = buildCookieOptions(request, data.expires_in ?? 60 * 60);
-    const authTokenValue = JSON.stringify({
+    // Use @supabase/ssr client to set the refreshed session cookies
+    // with proper naming conventions (sb-* prefix) and chunking.
+    const response = new NextResponse(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const supabase = createSupabaseServerClient({ request, response });
+
+    await supabase.auth.setSession({
       access_token: data.access_token,
       refresh_token: data.refresh_token,
-      expires_in: data.expires_in,
     });
 
-    cookieStore.set('sb-access-token', data.access_token, cookieOptions);
-    cookieStore.set('supabase-auth-token', authTokenValue, cookieOptions);
-
-    return NextResponse.json({ success: true }, { status: 200 });
+    return response;
   } catch (error: unknown) {
     console.error('AUTH_SERVER_ERROR_LOG:', {
       message: error instanceof Error ? error.message : String(error),
@@ -106,4 +151,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Internal processing error' }, { status: 500 });
   }
 }
-

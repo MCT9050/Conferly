@@ -12,16 +12,21 @@ export default function AuthPageRoute() {
 
   const clearError = () => setError(null);
 
+  const getDefaultProduct = () => {
+    return (searchParams?.get('product') as string) || null;
+  };
+
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     setError(null);
 
     try {
+      const product = getDefaultProduct();
       const response = await fetch('/api/auth/signin', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, product }),
       });
 
       const result = await response.json();
@@ -46,11 +51,12 @@ export default function AuthPageRoute() {
     setError(null);
 
     try {
+      const product = getDefaultProduct();
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, displayName }),
+        body: JSON.stringify({ email, password, displayName, product }),
       });
 
       const result = await response.json();

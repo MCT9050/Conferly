@@ -52,6 +52,10 @@ export async function POST(request: NextRequest) {
     const productName: string = attributes.product_name ?? '';
     const variantName: string = attributes.variant_name ?? '';
 
+    // Determine product line from plan_tier prefix (or custom_data)
+    const rawPlanTier = customData?.plan_tier ?? '';
+    const productLine: 'meet' | 'class' = rawPlanTier.startsWith('class_') ? 'class' : 'meet';
+
     // Map Lemon Squeezy product/variant to our plan using custom_data plan_tier if available
     const planData = mapPlanFromProduct(productName, variantName, customData?.plan_tier);
 
@@ -60,6 +64,7 @@ export async function POST(request: NextRequest) {
       await upsertSubscription(userId, {
         plan: planData.plan,
         participantCap: planData.participantCap,
+        productLine,
         status: mapSubscriptionStatus(status),
         lemonSqueezySubscriptionId: subscriptionId,
         lemonSqueezyOrderId: (payload?.data?.attributes?.order_id as string) ?? null,
@@ -98,6 +103,7 @@ export async function GET() {
 type SubscriptionUpdate = {
   plan: string;
   participantCap: number;
+  productLine?: 'meet' | 'class';
   status: string;
   lemonSqueezySubscriptionId: string | null;
   lemonSqueezyOrderId: string | null;
@@ -112,18 +118,24 @@ type SubscriptionUpdate = {
 async function upsertSubscription(userId: string, data: SubscriptionUpdate) {
   const supabase = getSupabaseServerClient();
 
+  const record: Record<string, unknown> = {
+    user_id: userId,
+    plan: data.plan,
+    participant_cap: data.participantCap,
+    status: data.status,
+    lemon_squeezy_subscription_id: data.lemonSqueezySubscriptionId,
+    lemon_squeezy_order_id: data.lemonSqueezyOrderId,
+    current_period_start: data.currentPeriodStart ? new Date(data.currentPeriodStart).toISOString() : null,
+    current_period_end: data.currentPeriodEnd ? new Date(data.currentPeriodEnd).toISOString() : null,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (data.productLine) {
+    record.product_line = data.productLine;
+  }
+
   const { error } = await supabase.from('subscriptions').upsert(
-    {
-      user_id: userId,
-      plan: data.plan,
-      participant_cap: data.participantCap,
-      status: data.status,
-      lemon_squeezy_subscription_id: data.lemonSqueezySubscriptionId,
-      lemon_squeezy_order_id: data.lemonSqueezyOrderId,
-      current_period_start: data.currentPeriodStart ? new Date(data.currentPeriodStart).toISOString() : null,
-      current_period_end: data.currentPeriodEnd ? new Date(data.currentPeriodEnd).toISOString() : null,
-      updated_at: new Date().toISOString(),
-    },
+    record,
     {
       onConflict: 'user_id',
       ignoreDuplicates: false,

@@ -13,13 +13,13 @@ export type LemonSqueezyConfig = {
 /**
  * The 5 commercial tiers exposed in Conferly's checkout.
  * The `enterprise` tier is contact-sales only and has no Lemon Squeezy variant.
+ * Business was merged into Pro (same variant, same pricing) — removed to avoid collision.
  */
 export type SupportedPlanTier =
   | 'classroom'
   | 'classroom_plus'
   | 'individual'
   | 'pro'
-  | 'business'
   | 'unlimited';
 
 export type CheckoutOptions = {
@@ -174,7 +174,6 @@ const PLAN_TO_VARIANT_ENV: Record<SupportedPlanTier, string> = {
   classroom_plus: 'NEXT_PUBLIC_VARIANT_ID_CLASSROOM_PLUS',
   individual:     'NEXT_PUBLIC_VARIANT_ID_INDIVIDUAL',
   pro:            'NEXT_PUBLIC_VARIANT_ID_PRO',
-  business:       'NEXT_PUBLIC_VARIANT_ID_PRO', // Pro and Business share a variant unless split later
   unlimited:      'NEXT_PUBLIC_VARIANT_ID_UNLIMITED',
 };
 

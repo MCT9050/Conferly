@@ -1,46 +1,25 @@
 // lib/supabaseClient.ts
-// Lightweight wrapper that lazy-loads @supabase/supabase-js on demand.
-// This file must not import '@supabase/supabase-js' at module scope so bundlers
-// won't include the full SDK in the base client bundle.
+// Re-exports from the new @supabase/ssr-based browser module.
+// Preserves the public API for any existing consumers.
 
-import type { SupabaseClient, Session } from '@supabase/supabase-js';
+import { supabaseBrowserClient } from './supabase/browser';
+import type { Session } from '@supabase/supabase-js';
 
-let _client: SupabaseClient | null = null;
+// Re-export the raw client
+export const supabase = supabaseBrowserClient;
 
-async function getClient(): Promise<SupabaseClient> {
-  if (_client) return _client;
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !key) throw new Error('Missing NEXT_PUBLIC_SUPABASE_* environment variables for client usage');
-
-  const { createClient } = await import('@supabase/supabase-js');
-  _client = createClient(url, key, {
-    auth: { persistSession: true, detectSessionInUrl: false },
-  });
-  return _client;
+// Fix Dashboard.tsx and LandingPageClient.tsx imports
+export function getSupabaseClientInstance() {
+  return supabaseBrowserClient;
 }
 
-export async function signIn(email: string, password: string) {
-  const supabase = await getClient();
-  // v2 API
-  return supabase.auth.signInWithPassword({ email, password });
-}
-
-export async function signOut() {
-  const supabase = await getClient();
-  return supabase.auth.signOut();
-}
-
+// Fix legacy getSession references
 export async function getSession(): Promise<Session | null> {
-  const supabase = await getClient();
-  const { data } = await supabase.auth.getSession();
-  return data.session ?? null;
+  const { data: { session } } = await supabaseBrowserClient.auth.getSession();
+  return session;
 }
 
-export async function getSupabaseClientInstance(): Promise<SupabaseClient> {
-  return getClient();
-}
+// Re-export createBrowserClient + types for any other consumers
+export { createBrowserClient } from './supabase/browser';
+export type { SupabaseClient } from '@supabase/supabase-js';
 
-export default null as unknown as never;

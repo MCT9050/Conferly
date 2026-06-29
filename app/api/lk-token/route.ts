@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { createLiveKitToken, LiveKitRole } from '@/lib/livekit';
-import { verifyRoomAccess } from '@/lib/meetingAuth';
+import { verifyAccess } from '@/lib/accessControl';
 
 const VALID_ROLES = new Set<LiveKitRole>(['participant', 'spectator']);
 
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   // ── Auth Guard ───────────────────────────────────────────────────────────
   let session;
   try {
-    session = await getServerSession();
+    session = await getServerSession(request);
   } catch {
     return NextResponse.json(
       { error: 'Please log in to join the meeting' },
@@ -57,6 +57,7 @@ export async function POST(request: Request) {
   const roomId = String(payload?.roomId ?? payload?.room ?? '').trim();
   const requestedRole = String(payload?.role ?? 'participant').trim() as LiveKitRole;
   const username = String(payload?.username ?? payload?.name ?? '').trim();
+  const domain = String(payload?.domain ?? 'meet').trim();
 
   if (!roomId) {
     return NextResponse.json(
@@ -72,10 +73,17 @@ export async function POST(request: Request) {
     );
   }
 
+  if (domain !== 'meet' && domain !== 'class') {
+    return NextResponse.json(
+      { error: 'Invalid domain' },
+      { status: 400 }
+    );
+  }
+
   // ── Room Access Verification ─────────────────────────────────────────────
   let access;
   try {
-    access = await verifyRoomAccess(session.userId, roomId);
+    access = await verifyAccess(domain, session.userId, roomId);
   } catch {
     return NextResponse.json(
       { error: 'Forbidden' },
@@ -83,9 +91,9 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!access) {
+  if (!access.granted) {
     return NextResponse.json(
-      { error: 'Forbidden' },
+      { error: 'Access denied to this room' },
       { status: 403 }
     );
   }
@@ -93,7 +101,28 @@ export async function POST(request: Request) {
   // ── LiveKit URL ──────────────────────────────────────────────────────────
   const liveKitUrl = getLiveKitUrl();
 
-  const role = access.accessRole === 'spectator' ? 'spectator' : requestedRole;
+  // For class domain, resolve the classroom slug to the actual LiveKit room
+  let effectiveRoomId = access.roomId;
+  if (domain === 'class') {
+    const classroomId = access.roomId;
+    const { createClient } = await import('@supabase/supabase-js');
+    const { getServerEnv } = await import('@/lib/serverEnv');
+    const env = getServerEnv();
+    const serviceRoleKey =
+      env.SUPABASE_SERVICE_ROLE_KEY ??
+      (() => { throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY in lk-token route'); })();
+    const supabase = createClient(env.SUPABASE_URL, serviceRoleKey);
+    const { data: activeLesson } = await supabase
+      .from('classroom_lessons')
+      .select('livekit_room_id')
+      .eq('classroom_id', classroomId)
+      .eq('status', 'live')
+      .order('created_at', { ascending: false })
+      .maybeSingle();
+    effectiveRoomId = activeLesson?.livekit_room_id ?? classroomId;
+  }
+
+  const role = access.role === 'spectator' ? 'spectator' : requestedRole;
   const displayName = username || session.email || `Participant-${session.userId.slice(0, 4)}`;
 
   // ── LiveKit Token Generation (isolated try/catch) ────────────────────────
@@ -102,7 +131,7 @@ export async function POST(request: Request) {
     token = await createLiveKitToken({
       identity: session.userId,
       name: displayName,
-      room: roomId,
+      room: effectiveRoomId,
       role,
     });
   } catch (err) {

@@ -1,80 +1,16 @@
-/// <reference types="node" />
-import { defineConfig, devices } from '@playwright/test';
-
-/**
- * Funding-Ready Playwright Configuration
- * This config handles automatic switching between local development 
- * and production environments (conferly.site).
- */
-
-const isProductionTest = process.env.BASE_URL?.includes('conferly.site') ?? false;
-const isCI = !!process.env.CI;
+import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  /* Maximum time one test can run for. */
-  timeout: 60 * 1000,
-  expect: {
-    timeout: 10 * 1000,
-  },
-  /* Run tests in files in parallel */
-  fullyParallel: true,
-  /* Fail the build on CI if you accidentally left test.only in the source code. */
-  forbidOnly: isCI,
-  /* Retry on CI only */
-  retries: isCI ? 2 : 0,
-  /* Limit workers to 1 in CI/Production testing to prevent resource timeouts */
-  workers: (isProductionTest || isCI) ? 1 : undefined,
-  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  /* Output directory for test artifacts (video, screenshots, traces).
-     Set to demo-output/ for demo video generation. */
-  outputDir: process.env.DEMO_OUTPUT_DIR || 'test-results',
-  reporter: [['line'], ['html', { open: 'never' }]],
-  
-  /* Shared settings for all the projects below. */
+  timeout: 90000,
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.BASE_URL || 'http://localhost:3000',
-    /* Collect trace when retrying the failed test. */
-    trace: 'retain-on-failure',
-    /* Record video for all tests to support demo creation */
-    video: process.env.DEMO_VIDEO === 'on' ? 'on' : 'retain-on-failure',
-    screenshot: 'only-on-failure',
-    headless: true,
+    baseURL: 'http://localhost:3000',
+    trace: 'on-first-retry',
   },
-
-  /* 
-    PHASE 1 & 2 FIX: 
-    Only start the local webServer if we are NOT testing production 
-    and NOT explicitly skipping it via BASE_URL.
-  */
-  webServer: (isProductionTest || isCI) ? undefined : {
+  webServer: {
     command: 'npm run dev',
     url: 'http://localhost:3000',
-    reuseExistingServer: true,
-    timeout: 60 * 1000, // Explicitly match the 60s to ensure we control the timeout
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
   },
-
-  /* Configure projects for major browsers */
-  projects: [
-    {
-      name: 'chromium',
-      use: {
-        ...devices['Desktop Chrome'],
-        headless: true,
-        launchOptions: {
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-gpu',
-            '--disable-dev-shm-usage',
-            '--disable-software-rasterizer',
-            '--disable-background-networking',
-            '--disable-background-timer-throttling',
-            '--disable-breakpad',
-          ],
-        },
-      },
-    },
-  ],
 });

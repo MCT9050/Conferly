@@ -69,9 +69,10 @@ test.describe('Network Audit — Live Site Headers', () => {
     page.on('response', (res) => {
       const url = res.url();
       const headers: Record<string, string> = {};
-      res.headers().forEach((value, key) => {
+      const respHeaders = res.headers();
+      for (const [key, value] of Object.entries(respHeaders)) {
         headers[key] = value;
-      });
+      }
       responseHeaders[url] = headers;
     });
 
@@ -101,7 +102,7 @@ test.describe('Network Audit — Live Site Headers', () => {
       console.log('  URL:', docUrl);
       console.log('═══════════════════════════════════════════════════════════\n');
 
-      for (const [key, value] of Object.entries(headers)) {
+      for (const [key, value] of Object.entries(headers) as Array<[string, string]>) { 
         console.log(`  ${key}: ${value}`);
       }
 
