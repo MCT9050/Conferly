@@ -136,12 +136,14 @@ export default function MeetPricingPage() {
               Unlimited participants, custom SLAs, dedicated support, SSO/SAML, 
               advanced compliance, and volume licensing for organizations with 50+ users.
             </p>
-            <button 
-              onClick={() => window.open('mailto:sales@conferly.app', '_blank')}
-              className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg"
+            <a 
+              href="mailto:sales@conferly.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block px-8 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg"
             >
               Talk to Sales
-            </button>
+            </a>
           </div>
         </div>
       </div>
