@@ -1,66 +1,37 @@
-"use client";
+import BillingCycleToggle from "../../../components/marketing/BillingCycleToggle";
+import CheckoutButton from "../../../components/marketing/CheckoutButton";
+import Link from "next/link";
+import Logo from "../../../components/Logo";
+import { MEET_PLANS, type MeetPlanId } from "../../../lib/pricing/meet";
 
-import { useState, useCallback } from 'react';
-import Link from 'next/link';
-import { Check, ArrowLeft, Crown, Users, Video, Clock, ShieldCheck, HardDrive, Brain, BarChart3, LayoutDashboard, Headphones, Loader2, AlertCircle } from 'lucide-react';
-import { MEET_PLANS, type MeetPlanId } from '../../../lib/pricing/meet';
-import Logo from '../../../components/Logo';
+export const metadata = {
+  title: "Conferly Meet Pricing — Professional Video Meetings",
+  description: "Professional video meetings for consultants, agencies, and remote teams. Start free.",
+};
 
-type MeetPlan = (typeof MEET_PLANS)[number];
-
-const PLAN_ICONS: Record<string, typeof Crown> = {
-  meet_free: Video,
-  meet_individual: Users,
-  meet_pro: Crown,
-  meet_unlimited: Crown,
-  meet_enterprise: ShieldCheck,
+const PLAN_ICONS: Record<string, string> = {
+  meet_free: "Video",
+  meet_individual: "Users",
+  meet_pro: "Crown",
+  meet_unlimited: "Crown",
+  meet_enterprise: "ShieldCheck",
 };
 
 const PLAN_COLORS: Record<string, string> = {
-  meet_free: 'from-slate-500 to-slate-400',
-  meet_individual: 'from-cyan-500 to-sky-400',
-  meet_pro: 'from-blue-600 to-cyan-500',
-  meet_unlimited: 'from-purple-600 to-pink-500',
-  meet_enterprise: 'from-amber-500 to-orange-500',
+  meet_free: "from-slate-500 to-slate-400",
+  meet_individual: "from-cyan-500 to-sky-400",
+  meet_pro: "from-blue-600 to-cyan-500",
+  meet_unlimited: "from-purple-600 to-pink-500",
+  meet_enterprise: "from-amber-500 to-orange-500",
 };
 
-const FEATURE_SECTIONS: { label: string; key: keyof Omit<MeetPlan, 'id' | 'name' | 'description' | 'monthlyPrice' | 'annualPrice' | 'cta' | 'popular'>; format?: (v: number | boolean | string) => string }[] = [
-  { label: 'Participants', key: 'maxParticipants', format: v => v === 0 ? 'Unlimited' : `Up to ${v}` },
-  { label: 'Meeting duration', key: 'maxDurationMinutes', format: v => v === 0 ? 'Unlimited' : v === 40 ? '40 min' : `${v} min` },
-  { label: 'Features', key: 'features', format: v => Array.isArray(v) ? `${v.length} included` : String(v) },
+const FEATURE_SECTIONS = [
+  { label: 'Participants', key: 'maxParticipants' as const, format: (v: number) => v === 0 ? 'Unlimited' : `Up to ${v}` },
+  { label: 'Meeting duration', key: 'maxDurationMinutes' as const, format: (v: number) => v === 0 ? 'Unlimited' : v === 40 ? '40 min' : `${v} min` },
+  { label: 'Features', key: 'features' as const, format: (v: string[]) => `${v.length} included` },
 ];
 
 export default function MeetPricingPage() {
-  const [cycle, setCycle] = useState<'monthly' | 'annual'>('annual');
-  const [processingTier, setProcessingTier] = useState<string | null>(null);
-  const [paymentError, setPaymentError] = useState<string | null>(null);
-
-  const handleUpgrade = useCallback(async (plan: MeetPlan) => {
-    if (plan.id === 'meet_enterprise') {
-      window.open('mailto:sales@conferly.app', '_blank');
-      return;
-    }
-
-    setProcessingTier(plan.id);
-    setPaymentError(null);
-
-    try {
-      const { createMeetCheckout } = await import('../../actions/checkout-actions');
-      const result = await createMeetCheckout(plan.id as MeetPlanId);
-      if (result.error) {
-        setPaymentError(result.error);
-        setProcessingTier(null);
-        return;
-      }
-      if (result.url) {
-        window.location.href = result.url;
-      }
-    } catch (err) {
-      setPaymentError(err instanceof Error ? err.message : 'Checkout failed. Please try again.');
-      setProcessingTier(null);
-    }
-  }, []);
-
   const visiblePlans = MEET_PLANS.filter(p => p.id !== 'meet_free');
 
   return (
@@ -70,7 +41,9 @@ export default function MeetPricingPage() {
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/" className="p-2 rounded-xl hover:bg-slate-800/60 transition-colors">
-              <ArrowLeft className="w-5 h-5 text-slate-400" />
+              <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
             </Link>
             <Logo size="sm" />
           </div>
@@ -82,17 +55,6 @@ export default function MeetPricingPage() {
         </div>
       </div>
 
-      {/* Payment error banner */}
-      {paymentError && (
-        <div className="max-w-7xl mx-auto px-6 pt-4">
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-            <span className="text-sm text-red-400 flex-1">{paymentError}</span>
-            <button onClick={() => setPaymentError(null)} className="text-xs text-red-300 underline">Dismiss</button>
-          </div>
-        </div>
-      )}
-
       {/* Hero */}
       <div className="text-center pt-16 pb-12 px-6">
         <h1 className="text-4xl lg:text-5xl font-extrabold mb-4">
@@ -102,36 +64,13 @@ export default function MeetPricingPage() {
           For consultants, agencies, and remote teams. Start free, upgrade when you need more.
         </p>
 
-        {/* Billing toggle */}
-        <div className="inline-flex items-center gap-3 p-1.5 rounded-xl bg-slate-900 border border-slate-800">
-          <button
-            onClick={() => setCycle('monthly')}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
-              cycle === 'monthly' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setCycle('annual')}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all relative ${
-              cycle === 'annual' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Annual
-            <span className="absolute -top-2 -right-2 px-1.5 py-0.5 rounded-full bg-green-500 text-[9px] text-white font-bold">
-              -20%
-            </span>
-          </button>
-        </div>
+        <BillingCycleToggle defaultCycle="annual" />
       </div>
 
       {/* Plan Cards */}
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
           {visiblePlans.map(plan => {
-            const price = cycle === 'monthly' ? plan.monthlyPrice : plan.annualPrice;
-            const Icon = PLAN_ICONS[plan.id] || Crown;
             const color = PLAN_COLORS[plan.id] || 'from-blue-600 to-cyan-500';
 
             return (
@@ -148,50 +87,38 @@ export default function MeetPricingPage() {
                 )}
 
                 <div className="flex-1 flex flex-col space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center`}>
-                      <Icon className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-lg text-white">{plan.name}</h3>
-                      <p className="text-xs text-slate-500">{plan.description}</p>
-                    </div>
+                  <div>
+                    <h3 className="font-bold text-lg text-white">{plan.name}</h3>
+                    <p className="text-xs text-slate-500">{plan.description}</p>
                   </div>
 
                   <div className="flex items-baseline gap-1">
-                    {price === null ? (
+                    {plan.annualPrice === null ? (
                       <span className="text-4xl font-extrabold text-white">Custom</span>
                     ) : (
                       <>
-                        <span className="text-4xl font-extrabold text-white">R{price}</span>
+                        <span className="text-4xl font-extrabold text-white">R{plan.annualPrice}</span>
                         <span className="text-slate-500 text-sm">/user/month</span>
                       </>
                     )}
                   </div>
 
-                  <div className="space-y-2.5 flex-1">
-                    {plan.features.map((feature, i) => (
-                      <div key={i} className="flex items-center gap-2.5 text-sm">
-                        <Check className="w-4 h-4 text-blue-400 shrink-0" />
-                        <span className="text-slate-300">{feature}</span>
+                  <div className="space-y-2 flex-1">
+                    {FEATURE_SECTIONS.map(section => (
+                      <div key={section.key} className="flex items-center justify-between text-sm">
+                        <span className="text-slate-400">{section.label}</span>
+                        <span className="text-slate-300 font-medium">{section.format(plan[section.key] as any)}</span>
                       </div>
                     ))}
                   </div>
 
-                  <button
-                    onClick={() => handleUpgrade(plan)}
-                    disabled={processingTier === plan.id}
-                    className={`w-full py-3 min-h-[44px] rounded-xl bg-gradient-to-r ${color} text-white font-semibold text-sm active:opacity-80 transition-all shadow-lg disabled:opacity-50`}
-                  >
-                    {processingTier === plan.id ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Redirecting…
-                      </span>
-                    ) : (
-                      plan.cta
-                    )}
-                  </button>
+                  <CheckoutButton
+                    planId={plan.id}
+                    cta={plan.cta}
+                    color={color}
+                    productType="meet"
+                    isEnterprise={plan.id === 'meet_enterprise'}
+                  />
                 </div>
               </div>
             );
@@ -201,7 +128,9 @@ export default function MeetPricingPage() {
         {/* Enterprise CTA */}
         <div className="rounded-2xl p-8 lg:p-12 text-center bg-slate-900/60 border border-slate-800/50">
           <div className="max-w-2xl mx-auto space-y-4">
-            <ShieldCheck className="w-12 h-12 text-amber-400 mx-auto" />
+            <svg className="w-12 h-12 text-amber-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
             <h2 className="text-3xl font-bold text-white">Need Enterprise?</h2>
             <p className="text-slate-400 leading-relaxed">
               Unlimited participants, custom SLAs, dedicated support, SSO/SAML, 

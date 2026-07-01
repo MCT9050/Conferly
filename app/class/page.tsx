@@ -1,45 +1,13 @@
-"use client";
+import Logo from "../../components/Logo";
+import Link from "next/link";
+import QuickStartButton from "../../components/marketing/QuickStartButton";
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import {
-  BookOpen, Users, GraduationCap, Shield, ArrowRight,
-  CheckCircle2, Play, Star, Heart, MessageSquare,
-  Brain, Languages, ClipboardList, FileText, DollarSign,
-  BarChart3, Zap, Monitor, ArrowDown, Globe
-} from 'lucide-react';
-import Logo from '../../components/Logo';
-import { getSession } from '../../lib/supabaseClient';
-
-function generateRoomId() {
-  const c = 'abcdefghijklmnopqrstuvwxyz';
-  const s: string[] = [];
-  for (let i = 0; i < 3; i++) {
-    let x = '';
-    for (let j = 0; j < 4; j++) x += c[Math.floor(Math.random() * c.length)];
-    s.push(x);
-  }
-  return s.join('-');
-}
+export const metadata = {
+  title: "Conferly Class — AI-Powered Virtual Classroom for Tutors",
+  description: "The complete classroom platform for tutors and trainers. Interactive whiteboard, lesson plans, student rosters, assignments, and payment collection.",
+};
 
 export default function ClassLandingPage() {
-  const router = useRouter();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    getSession().then(session => {
-      if (session?.user) setIsLoggedIn(true);
-    }).catch(() => {});
-  }, []);
-
-  const quickStart = useCallback(() => {
-    if (!isLoggedIn) {
-      router.push('/auth?product=class');
-      return;
-    }
-    router.push(`/class/classrooms/${generateRoomId()}`);
-  }, [isLoggedIn, router]);
-
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden bg-slate-950">
       {/* ═══ NAV ═══ */}
@@ -55,41 +23,28 @@ export default function ClassLandingPage() {
           <div className="hidden lg:flex items-center gap-8 text-[13px] text-slate-400 font-medium">
             <a href="#features" className="hover:text-white transition-colors">Features</a>
             <a href="#for-tutors" className="hover:text-white transition-colors">For Tutors</a>
-            <button
-              onClick={() => router.push('/class/pricing')}
+            <Link
+              href="/class/pricing"
               className="hover:text-white transition-colors"
             >
               Pricing
-            </button>
-            <a href="/pricing" className="text-blue-400 hover:text-blue-300 transition-colors">
+            </Link>
+            <Link href="/pricing" className="text-blue-400 hover:text-blue-300 transition-colors">
               Conferly Meet →
-            </a>
+            </Link>
           </div>
 
           <div className="flex items-center gap-3">
-            {isLoggedIn ? (
-              <button
-                onClick={() => router.push('/class/dashboard')}
-                className="px-5 py-2 rounded-full bg-emerald-600 text-white text-[13px] font-semibold hover:bg-emerald-500 transition-colors"
-              >
-                Dashboard
-              </button>
-            ) : (
-              <>
-                <button
-                  onClick={() => router.push('/auth?product=class')}
-                  className="text-[13px] text-slate-400 hover:text-white font-medium transition-colors"
-                >
-                  Log in
-                </button>
-                <button
-                  onClick={() => router.push('/auth?product=class')}
-                  className="px-5 py-2 rounded-full bg-emerald-600 text-white text-[13px] font-semibold hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-500/20"
-                >
-                  Start Teaching Free
-                </button>
-              </>
-            )}
+            <Link
+              href="/auth?product=class"
+              className="text-[13px] text-slate-400 hover:text-white font-medium transition-colors"
+            >
+              Log in
+            </Link>
+            <QuickStartButton
+              product="class"
+              label="Start Teaching Free"
+            />
           </div>
         </div>
       </nav>
@@ -122,37 +77,44 @@ export default function ClassLandingPage() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-              <button
-                onClick={quickStart}
-                className="group px-8 py-4 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold text-[15px] flex items-center gap-2.5 shadow-2xl shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300"
-              >
-                <Play className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                {isLoggedIn ? 'Create a Classroom' : 'Create Your First Classroom'}
-              </button>
-              <button
-                onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+              <QuickStartButton
+                product="class"
+                label="Create Your First Classroom"
+              />
+              <a
+                href="#features"
                 className="px-8 py-4 rounded-full border border-white/10 text-slate-300 font-medium text-[15px] hover:bg-white/5 hover:border-white/20 transition-all duration-300 flex items-center gap-2"
               >
                 See how it works
-                <ArrowDown className="w-4 h-4" />
-              </button>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+              </a>
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-xs text-slate-500">
               <span className="flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-green-400/70" />
+                <svg className="w-3.5 h-3.5 text-green-400/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
                 Interactive whiteboard
               </span>
               <span className="flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-emerald-400/70" />
+                <svg className="w-3.5 h-3.5 text-emerald-400/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
                 Student roster
               </span>
               <span className="flex items-center gap-1.5">
-                <ClipboardList className="w-3.5 h-3.5 text-cyan-400/70" />
+                <svg className="w-3.5 h-3.5 text-cyan-400/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
                 Assignments & grading
               </span>
               <span className="flex items-center gap-1.5">
-                <DollarSign className="w-3.5 h-3.5 text-yellow-400/70" />
+                <svg className="w-3.5 h-3.5 text-yellow-400/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
                 Payment collection
               </span>
             </div>
@@ -169,7 +131,9 @@ export default function ClassLandingPage() {
               </div>
               <div className="aspect-video bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
                 <div className="text-center space-y-4">
-                  <BookOpen className="w-16 h-16 text-emerald-400/50 mx-auto" />
+                  <svg className="w-16 h-16 text-emerald-400/50 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
                   <p className="text-slate-500 text-sm">Interactive Whiteboard + Student Grid</p>
                 </div>
               </div>
@@ -182,14 +146,14 @@ export default function ClassLandingPage() {
       <section className="px-8 py-20 sm:py-24 border-y border-slate-800/50">
         <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
           {[
-            { value: '1', suffix: '', label: 'Classrooms', sub: 'Free tier' },
-            { value: '5', suffix: '', label: 'Students', sub: 'Per classroom' },
-            { value: 'R89', suffix: '', label: 'Starting at', sub: 'Classroom plan' },
-            { value: '14', suffix: 'day', label: 'Free trial', sub: 'No credit card' },
+            { value: '1', label: 'Classrooms', sub: 'Free tier' },
+            { value: '5', label: 'Students', sub: 'Per classroom' },
+            { value: 'R89', label: 'Starting at', sub: 'Classroom plan' },
+            { value: '14', label: 'Free trial', sub: 'No credit card' },
           ].map(s => (
             <div key={s.label} className="text-center">
               <div className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-b from-white to-slate-400 bg-clip-text text-transparent">
-                {s.value}{s.suffix}
+                {s.value}
               </div>
               <div className="text-sm font-semibold text-slate-300 mt-2">{s.label}</div>
               <div className="text-[11px] text-slate-500 mt-0.5">{s.sub}</div>
@@ -212,21 +176,23 @@ export default function ClassLandingPage() {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { icon: BookOpen,     title: 'Interactive Whiteboard',  desc: 'Real-time collaborative drawing, text, and math tools for live lessons.',          gradient: 'from-emerald-500/10 to-emerald-600/5', accent: 'text-emerald-400', border: 'hover:border-emerald-500/20' },
-              { icon: Users,        title: 'Student Roster',           desc: 'Manage enrollments, track attendance, and see progress at a glance.',               gradient: 'from-cyan-500/10 to-cyan-600/5',     accent: 'text-cyan-400',    border: 'hover:border-cyan-500/20' },
-              { icon: ClipboardList, title: 'Assignments & Grading',   desc: 'Create, distribute, and grade assignments with automatic score tracking.',            gradient: 'from-purple-500/10 to-purple-600/5', accent: 'text-purple-400',  border: 'hover:border-purple-500/20' },
-              { icon: FileText,     title: 'Lesson Plans',             desc: 'Build structured lesson plans with rich content, attachments, and scheduling.',      gradient: 'from-amber-500/10 to-amber-600/5',   accent: 'text-amber-400',   border: 'hover:border-amber-500/20' },
-              { icon: DollarSign,   title: 'Payment Collection',       desc: 'Collect tuition via Lemon Squeezy. Set your own prices for courses and sessions.',   gradient: 'from-green-500/10 to-green-600/5',   accent: 'text-green-400',   border: 'hover:border-green-500/20' },
-              { icon: Monitor,      title: 'Live Recordings',          desc: 'Record lessons for students who missed class. Playback available on demand.',        gradient: 'from-pink-500/10 to-pink-600/5',     accent: 'text-pink-400',    border: 'hover:border-pink-500/20' },
-              { icon: Brain,        title: 'AI Pulse for Class',       desc: 'Auto-generated lesson summaries and key takeaways after each session.',              gradient: 'from-blue-500/10 to-blue-600/5',     accent: 'text-blue-400',    border: 'hover:border-blue-500/20' },
-              { icon: Languages,    title: 'Multi-language Support',   desc: 'Teach in your language. Live translation for 11 SA languages supports diverse students.', gradient: 'from-rose-500/10 to-rose-600/5',  accent: 'text-rose-400', border: 'hover:border-rose-500/20' },
+              { title: 'Interactive Whiteboard', desc: 'Real-time collaborative drawing, text, and math tools for live lessons.', color: 'text-emerald-400' },
+              { title: 'Student Roster', desc: 'Manage enrollments, track attendance, and see progress at a glance.', color: 'text-cyan-400' },
+              { title: 'Assignments & Grading', desc: 'Create, distribute, and grade assignments with automatic score tracking.', color: 'text-purple-400' },
+              { title: 'Lesson Plans', desc: 'Build structured lesson plans with rich content, attachments, and scheduling.', color: 'text-amber-400' },
+              { title: 'Payment Collection', desc: 'Collect tuition via Lemon Squeezy. Set your own prices.', color: 'text-green-400' },
+              { title: 'Live Recordings', desc: 'Record lessons for students who missed class. Playback on demand.', color: 'text-pink-400' },
+              { title: 'AI Pulse for Class', desc: 'Auto-generated lesson summaries and key takeaways.', color: 'text-blue-400' },
+              { title: 'Multi-language Support', desc: 'Teach in your language with live translation for 11 SA languages.', color: 'text-rose-400' },
             ].map(f => (
               <div
                 key={f.title}
-                className={`group relative rounded-2xl border border-white/5 ${f.border} p-6 bg-gradient-to-b ${f.gradient} transition-all duration-300 hover:-translate-y-1`}
+                className="group relative rounded-2xl border border-white/5 hover:border-white/10 p-6 bg-gradient-to-b from-white/5 to-transparent transition-all duration-300 hover:-translate-y-1"
               >
-                <div className={`w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center mb-4 ${f.accent} group-hover:scale-110 transition-transform`}>
-                  <f.icon className="w-5 h-5" />
+                <div className={`w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center mb-4 ${f.color} group-hover:scale-110 transition-transform`}>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
                 </div>
                 <h3 className="font-semibold text-[15px] mb-2">{f.title}</h3>
                 <p className="text-[13px] text-slate-400 leading-relaxed">{f.desc}</p>
@@ -300,17 +266,19 @@ export default function ClassLandingPage() {
                 <div className="space-y-2.5">
                   {plan.features.map(f => (
                     <div key={f} className="flex items-center gap-2.5 text-[13px] text-slate-300">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400/80 shrink-0" />
+                      <svg className="w-3.5 h-3.5 text-emerald-400/80 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
                       {f}
                     </div>
                   ))}
                 </div>
-                <button
-                  onClick={() => router.push('/class/pricing')}
-                  className={`w-full py-3 min-h-[44px] rounded-xl bg-gradient-to-r ${plan.gradient} text-white font-semibold text-sm transition-all duration-300 hover:opacity-90 shadow-lg`}
+                <Link
+                  href="/class/pricing"
+                  className={`block w-full py-3 min-h-[44px] rounded-xl bg-gradient-to-r ${plan.gradient} text-white font-semibold text-sm transition-all duration-300 hover:opacity-90 shadow-lg text-center`}
                 >
                   {plan.price === 'Custom' ? 'Contact Sales' : `Get ${plan.title}`}
-                </button>
+                </Link>
               </div>
             ))}
           </div>
@@ -334,19 +302,16 @@ export default function ClassLandingPage() {
                 No credit card. No contracts. Create your first classroom in 30 seconds.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <button
-                  onClick={quickStart}
-                  className="group px-10 py-4 rounded-full bg-white text-slate-900 font-semibold text-[15px] flex items-center gap-2.5 shadow-2xl shadow-white/10 hover:shadow-white/20 hover:scale-[1.02] transition-all duration-300"
-                >
-                  <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  {isLoggedIn ? 'Create Classroom' : 'Create Your First Classroom'}
-                </button>
-                <button
-                  onClick={() => router.push('/class/pricing')}
+                <QuickStartButton
+                  product="class"
+                  label="Create Your First Classroom"
+                />
+                <Link
+                  href="/class/pricing"
                   className="px-10 py-4 rounded-full border border-white/10 text-slate-300 font-medium text-[15px] hover:bg-white/5 transition-all duration-300 flex items-center gap-2"
                 >
                   View Pricing
-                </button>
+                </Link>
               </div>
             </div>
           </div>
@@ -393,13 +358,13 @@ export default function ClassLandingPage() {
                 <div className="space-y-2.5">
                   {col.links.map(link =>
                     'href' in link && link.href ? (
-                      <button
+                      <Link
                         key={link.label}
-                        onClick={() => router.push(link.href!)}
+                        href={link.href}
                         className="block text-[13px] text-slate-500 hover:text-white transition-colors"
                       >
                         {link.label}
-                      </button>
+                      </Link>
                     ) : (
                       <span key={link.label} className="block text-[13px] text-slate-500 cursor-default">
                         {link.label}
@@ -413,8 +378,8 @@ export default function ClassLandingPage() {
           <div className="pt-8 border-t border-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-4 text-[12px] text-slate-500">
             <span>© {new Date().getFullYear()} Conferly. All rights reserved.</span>
             <div className="flex items-center gap-6">
-              <span>Privacy</span>
-              <span>Terms</span>
+              <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+              <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
             </div>
           </div>
         </div>
