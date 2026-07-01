@@ -2,6 +2,7 @@
 // Meet product home: upcoming meetings, schedule button, recent recordings.
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import CreateMeetingButton from '@/components/CreateMeetingButton';
 
 export default async function MeetDashboardPage() {
   const supabase = createSupabaseServerClient();
@@ -14,12 +15,7 @@ export default async function MeetDashboardPage() {
           <h1 className="text-2xl font-bold text-white">My Meetings</h1>
           <p className="text-sm text-slate-400">Professional video calls</p>
         </div>
-        <button
-          type="button"
-          className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 transition-colors"
-        >
-          New Meeting
-        </button>
+        <CreateMeetingButton />
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-slate-900/40 p-6">

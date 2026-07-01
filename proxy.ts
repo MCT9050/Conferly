@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 // Protected routes that require authentication
-const PROTECTED_ROUTES = ['/dashboard', '/meet', '/class', '/lobby', '/settings', '/profile'];
+const PROTECTED_ROUTES = ['/dashboard', '/meet', '/class', '/classrooms', '/lobby', '/settings', '/profile'];
 
 // Auth routes that should redirect if already authenticated
 const AUTH_ROUTES = ['/auth/signup', '/auth/reset', '/auth'];
@@ -39,6 +39,10 @@ export default async function proxy(request: NextRequest) {
     // Prevent Meet routes on class subdomain
     if (pathname.startsWith('/meet')) {
       return NextResponse.redirect(new URL('/class/dashboard', request.url));
+    }
+    // Rewrite /classrooms paths to the full page route on class subdomain
+    if (pathname.startsWith('/classrooms')) {
+      return NextResponse.rewrite(new URL(`/class${pathname}`, request.url));
     }
     // If user is signed in and hits the class subdomain root dashboard
     if (pathname === '/dashboard') {
