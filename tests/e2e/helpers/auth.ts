@@ -12,7 +12,7 @@ export async function login(page: Page, baseURL: string = 'https://conferly.site
   
   // Click sign in button (try multiple selectors)
   const signInButton = page.locator('button[type="submit"], button:has-text("Sign in"), button:has-text("Log in"), button:has-text("Continue")').first();
-  await signInButton.click();
+  await signInButton.click({ force: true });
   
   // Wait for redirect to dashboard or app
   await page.waitForURL('**/dashboard**', { timeout: 30000 }).catch(() => {

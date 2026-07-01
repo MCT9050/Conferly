@@ -98,7 +98,7 @@ export function createSupabaseServerClient(
           return (request as NextRequest).cookies.getAll();
         }
 
-        const store: any = cookies();
+        const store = request ? (cookies as any)(request) : cookies();
 
         // Some Next.js versions expose getAll()
         if (typeof store.getAll === 'function') {
