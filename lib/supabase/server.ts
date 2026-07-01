@@ -47,18 +47,6 @@ function deriveCookieDomain(request?: NextRequest | Request): string | undefined
   return `.${normalizedHost}`;
 }
 
-/**
- * Supabase SSR server client (cookie-based).
- *
- * When you are in middleware, pass BOTH `{ request, response }` so the SDK
- * can read + write cookies on the active Edge stream.
- *
- * When you are in a Route Handler / Server Action, pass `{ request }` so the
- * SDK can read cookies from the incoming request.
- *
- * When you are in a Server Component (no request object), pass nothing and
- * the SDK will use `cookies()` from `next/headers`.
- */
 export function createSupabaseServerClient(
   { request, response }: ClientOptions = {}
 ): SupabaseClient {
@@ -83,24 +71,19 @@ export function createSupabaseServerClient(
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookieOptions,
     cookies: {
-      /**
-       * Return all cookies as { name, value, options } objects.
-       * Implementation is defensive because Next.js cookie store typing varies
-       * across Next.js versions/runtimes.
-       */
       getAll() {
+        // Edge middleware: use request cookies directly
         if (
           request &&
           'cookies' in request &&
           typeof (request as NextRequest).cookies?.getAll === 'function'
         ) {
-          // In Edge middleware/NextRequest, cookies.getAll() is available.
           return (request as NextRequest).cookies.getAll();
         }
 
-        const store = request ? (cookies as any)(request) : cookies();
-
-        // Some Next.js versions expose getAll()
+        // Next.js 16: cookies() without args reads incoming request cookies
+        const store = cookies();
+        
         if (typeof store.getAll === 'function') {
           return store.getAll();
         }
@@ -117,14 +100,6 @@ export function createSupabaseServerClient(
         }));
       },
 
-      /**
-       * Set multiple cookies.
-       * In middleware we can write via response.cookies.set().
-       * In Route Handlers we can usually write via next/headers cookies() store.
-       *
-       * IMPORTANT: The second `headers` param carries cache-control headers
-       * that Supabase requires when setting auth cookies. We must apply them.
-       */
       setAll(
         cookiesToSet: ReadonlyArray<{
           name: string;
@@ -148,10 +123,10 @@ export function createSupabaseServerClient(
           return;
         }
 
-        // Route Handler / Server Action case: try writing via next/headers cookies store.
-        // If this is forbidden (e.g. Server Components), swallow safely.
+        // Route Handler / Server Action case without explicit response:
+        // In Next.js, cookies() without arguments sets cookies on outgoing response.
         try {
-          const store: any = cookies();
+          const store = cookies();
           if (typeof store.set === 'function') {
             cookiesToSet.forEach(({ name, value, options }) => {
               store.set(name, value, {
