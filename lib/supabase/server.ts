@@ -71,7 +71,7 @@ export function createSupabaseServerClient(
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookieOptions,
     cookies: {
-      getAll() {
+      async getAll() {
         // Edge middleware: use request cookies directly
         if (
           request &&
@@ -81,26 +81,14 @@ export function createSupabaseServerClient(
           return (request as NextRequest).cookies.getAll();
         }
 
-        // Next.js 16: cookies() without args reads incoming request cookies
-        const store = cookies();
+        // Next.js 15+: cookies() returns Promise<ReadonlyRequestCookies>
+        const store = await cookies();
         
-        if (typeof store.getAll === 'function') {
-          return store.getAll();
-        }
-
-        // Fallback: attempt to iterate cookies and convert to expected shape.
-        const entries: Array<[string, string]> = Array.from(
-          store.entries?.() ?? []
-        );
-
-        return entries.map(([name, value]) => ({
-          name,
-          value,
-          options: undefined,
-        }));
+        // ReadonlyRequestCookies has getAll() method available
+        return store.getAll();
       },
 
-      setAll(
+      async setAll(
         cookiesToSet: ReadonlyArray<{
           name: string;
           value: string;
@@ -126,7 +114,7 @@ export function createSupabaseServerClient(
         // Route Handler / Server Action case without explicit response:
         // In Next.js, cookies() without arguments sets cookies on outgoing response.
         try {
-          const store = cookies();
+          const store = await cookies();
           if (typeof store.set === 'function') {
             cookiesToSet.forEach(({ name, value, options }) => {
               store.set(name, value, {

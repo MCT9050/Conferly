@@ -153,7 +153,7 @@ test.describe('Session Start Diagnostic', () => {
         const res = await fetch('/api/auth/test');
         return { status: res.status, ok: res.ok };
       } catch (e) {
-        return { error: e.message };
+        return { error: e instanceof Error ? e.message : String(e) };
       }
     });
     console.log('[DIAG-04] Auth API test:', JSON.stringify(apiResponse));
