@@ -10,6 +10,7 @@ import {
   BookOpen, Users, GraduationCap
 } from 'lucide-react';
 import type { UserProfile } from '../hooks/useAuth';
+import Image from 'next/image';
 import { useScrollToId } from '../hooks/useScrollToId';
 import ProfileMenu from './ProfileMenu';
 import Logo from './Logo';
@@ -291,12 +292,13 @@ export default function LandingPageClient() {
                 <div className="w-3 h-3 rounded-full bg-green-500/80" />
                 <span className="ml-3 text-[11px] text-slate-500 font-mono">conferly.site — Meeting Room</span>
               </div>
-              { }
-              <img
+              <Image
                 src="/images/app-mockup.png"
                 alt="Conferly meeting interface"
-                className="w-full"
-                loading="lazy"
+                width={1200}
+                height={675}
+                className="w-full h-auto"
+                priority
               />
             </div>
           </div>

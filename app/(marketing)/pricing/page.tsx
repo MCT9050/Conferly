@@ -4,6 +4,8 @@ import Link from "next/link";
 import Logo from "../../../components/Logo";
 import { MEET_PLANS, type MeetPlanId } from "../../../lib/pricing/meet";
 
+export const revalidate = 86400; // ISR: revalidate daily
+
 export const metadata = {
   title: "Conferly Meet Pricing — Professional Video Meetings",
   description: "Professional video meetings for consultants, agencies, and remote teams. Start free.",

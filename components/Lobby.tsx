@@ -40,11 +40,17 @@ export default function Lobby({
     }
   }, [stream, startMedia]);
 
-  // Attach stream to video element
+  // Attach stream to video element with cleanup
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+    const videoEl = videoRef.current;
+    if (videoEl && stream) {
+      videoEl.srcObject = stream;
     }
+    return () => {
+      if (videoEl) {
+        videoEl.srcObject = null;
+      }
+    };
   }, [stream]);
 
   const copyRoomId = () => {

@@ -4,6 +4,8 @@ import Link from "next/link";
 import Logo from "../../../../components/Logo";
 import { CLASS_PLANS, type ClassPlanId } from "../../../../lib/pricing/class";
 
+export const revalidate = 86400; // ISR: revalidate daily
+
 export const metadata = {
   title: "Conferly Class Pricing — Tutoring Plans Starting at R89/mo",
   description: "Choose the perfect plan for your tutoring business. Free trial, no credit card required.",

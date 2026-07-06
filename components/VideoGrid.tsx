@@ -14,9 +14,15 @@ const VideoTile = memo(function VideoTile({ participant, isSelf }: { participant
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (videoRef.current && participant.stream) {
-      videoRef.current.srcObject = participant.stream;
+    const videoEl = videoRef.current;
+    if (videoEl && participant.stream) {
+      videoEl.srcObject = participant.stream;
     }
+    return () => {
+      if (videoEl) {
+        videoEl.srcObject = null;
+      }
+    };
   }, [participant.stream]);
 
   return (

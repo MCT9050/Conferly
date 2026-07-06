@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { Room, Track as TrackType, RemoteParticipant } from 'livekit-client'; // Import RemoteParticipant
-import { RoomEvent } from 'livekit-client'; // Import RoomEvent
+import type { Room, Track as TrackType, RemoteParticipant } from 'livekit-client';
 import { UNLIMITED_PARTICIPANT_CAP, type Participant } from '../../../types';
 import { getLiveKitModule } from '../../../lib/livekit-client';
 import { useMeetingMedia } from './mediaStore';

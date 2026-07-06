@@ -97,7 +97,36 @@ export function trackEvent(event: MonitoringEvent) {
 
 addMonitoringHandler((event) => {
   if (process.env.NODE_ENV === 'development') {
-     
     console.log('[MONITOR]', event);
+  }
+});
+
+// Datadog APM integration: bridge monitoring events to dd-trace
+addMonitoringHandler((event) => {
+  if (typeof window !== 'undefined') return; // server-side only
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const tracer = require('dd-trace');
+    const activeSpan = tracer.scope().active();
+    if (activeSpan) {
+      activeSpan.setTag('monitoring.event', event.type);
+      if ('errorType' in event) {
+        activeSpan.setTag('error.type', event.errorType);
+      }
+      if ('metric' in event) {
+        activeSpan.setTag('performance.metric', event.metric);
+        activeSpan.setTag('performance.value', event.value);
+      }
+      if ('component' in event) {
+        activeSpan.setTag('component', event.component);
+      }
+    }
+    // Increment a custom metric via dogstatsd if available
+    const dogstatsd = tracer.dogstatsd();
+    if (dogstatsd) {
+      dogstatsd.increment(`conferly.monitoring.${event.type}`, 1);
+    }
+  } catch {
+    // dd-trace may not be initialized; silently skip
   }
 });

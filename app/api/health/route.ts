@@ -16,6 +16,18 @@ export async function GET() {
     version: packageJson.version,
     environment: getHealthEnvironment(),
     timestamp: Date.now(),
+    datadog: {
+      enabled: true,
+      service: process.env.DD_SERVICE || 'conferly-next',
+      env: process.env.DD_ENV || 'dev',
+      site: process.env.DD_SITE || 'us5.datadoghq.com',
+      rum: process.env.DD_RUM_ENABLED === 'true',
+      apm: process.env.DD_APM_INSTRUMENTATION_ENABLED === 'host',
+    },
+  }, {
+    headers: {
+      'Cache-Control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=300',
+    },
   });
 }
 

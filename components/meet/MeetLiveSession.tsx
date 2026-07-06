@@ -14,6 +14,7 @@ import MeetingControls from "@/components/MeetingControls";
 import { useSpeechTranscript } from "@/hooks/useSpeechTranscript";
 import { summarizeAction, assistantAction } from "@/app/actions/ai-actions";
 import type { Participant, SidebarTab, Reaction } from "@/types";
+import DiagnosticOverlay from "@/components/DiagnosticOverlay";
 
 // ----------------------------------------------------------------------------
 // Media store — useSyncExternalStore, no context tree.
@@ -1151,6 +1152,9 @@ export default function MeetLiveSession({
           isListening={isTranscriptActive}
         />
       </ErrorBoundary>
+
+      {/* Diagnostic overlay */}
+      <DiagnosticOverlay />
 
       {/* Controls bar */}
       <ErrorBoundary name="ControlsBar" fallback={() => <PanelError />}>

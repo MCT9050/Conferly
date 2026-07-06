@@ -16,6 +16,7 @@ import { useSpeechTranscript } from "@/hooks/useSpeechTranscript";
 import { summarizeAction, assistantAction } from "@/app/actions/ai-actions";
 import type { Participant, SidebarTab, Reaction } from "@/types";
 import type { Room } from "livekit-client";
+import DiagnosticOverlay from "@/components/DiagnosticOverlay";
 
 // ----------------------------------------------------------------------------
 // Media store — useSyncExternalStore, no context tree.
@@ -1187,6 +1188,9 @@ export default function ClassLiveSession({
       {liveKitRoom && (
         <TutorDashboard isHost={isLocalHost} room={liveKitRoom as Room} />
       )}
+
+      {/* Diagnostic overlay */}
+      <DiagnosticOverlay />
 
       {/* Controls bar */}
       <ErrorBoundary name="ControlsBar" fallback={() => <PanelError />}>
