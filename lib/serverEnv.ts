@@ -24,11 +24,12 @@ export function getServerEnv(): ServerEnv {
   if (cachedEnv) return cachedEnv;
 
   const env = process.env as Partial<Record<keyof ServerEnv, string>>;
-  const isBuildTime = !env.NODE_ENV || env.NODE_ENV === undefined;
-  const isProduction = env.NODE_ENV === 'production';
   
-  // Only enforce required variables in production runtime, not during build
-  const missing = isProduction ? requiredEnvKeys.filter((key) => !env[key]) : [];
+  // Check for required variables - always validate at build time via direct access
+  const missing = requiredEnvKeys.filter((key) => {
+    const value = env[key];
+    return !value || value.trim() === '';
+  });
   
   if (missing.length > 0) {
     throw new Error(
@@ -39,8 +40,8 @@ export function getServerEnv(): ServerEnv {
 
   cachedEnv = {
     NODE_ENV: (env.NODE_ENV ?? 'development') as ServerEnv['NODE_ENV'],
-    SUPABASE_URL: env.SUPABASE_URL ?? '',
-    SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY ?? '',
+    SUPABASE_URL: env.SUPABASE_URL!,
+    SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY!,
     SUPABASE_SERVICE_ROLE_KEY: env.SUPABASE_SERVICE_ROLE_KEY,
     LIVEKIT_API_KEY: env.LIVEKIT_API_KEY,
     LIVEKIT_API_SECRET: env.LIVEKIT_API_SECRET,
