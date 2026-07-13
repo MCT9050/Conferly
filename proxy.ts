@@ -16,6 +16,13 @@ const DEPRECATED_ROUTES = [
   { from: '/meeting', to: null }, // handled dynamically below
 ];
 
+// Check if Supabase is configured
+function isSupabaseConfigured(): boolean {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  return !!(supabaseUrl && supabaseAnonKey);
+}
+
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const response = NextResponse.next();
@@ -51,8 +58,18 @@ export default async function proxy(request: NextRequest) {
   }
 
   // Edge SSR client: refreshes expired session cookies automatically
-  const supabase = createSupabaseServerClient({ request, response });
-  const { data: { user }, error } = await supabase.auth.getUser();
+  // Skip auth check if Supabase is not configured (e.g., during initial deployment)
+  let user = null;
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = createSupabaseServerClient({ request, response });
+      const { data } = await supabase.auth.getUser();
+      user = data?.user ?? null;
+    } catch (error) {
+      console.error('[Proxy] Supabase auth error:', error);
+      // Continue without auth - let the page handle the error
+    }
+  }
 
   // Check for deprecated routes and redirect to new paths
   const deprecatedMatch = DEPRECATED_ROUTES.find((route) => pathname === route.from || pathname.startsWith(route.from + '/'));
