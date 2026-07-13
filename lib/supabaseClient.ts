@@ -2,20 +2,21 @@
 // Re-exports from the new @supabase/ssr-based browser module.
 // Preserves the public API for any existing consumers.
 
-import { supabaseBrowserClient } from './supabase/browser';
+import { supabase, getSupabaseClient } from './supabase/browser';
 import type { Session } from '@supabase/supabase-js';
 
-// Re-export the raw client
-export const supabase = supabaseBrowserClient;
+// Re-export the lazy client proxy
+export { supabase };
 
 // Fix Dashboard.tsx and LandingPageClient.tsx imports
 export function getSupabaseClientInstance() {
-  return supabaseBrowserClient;
+  return getSupabaseClient();
 }
 
 // Fix legacy getSession references
 export async function getSession(): Promise<Session | null> {
-  const { data: { session } } = await supabaseBrowserClient.auth.getSession();
+  const client = getSupabaseClient();
+  const { data: { session } } = await client.auth.getSession();
   return session;
 }
 

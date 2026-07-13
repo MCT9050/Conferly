@@ -1,6 +1,8 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ProductSelector, RecentActivityItem } from '@/components/platform/ProductSelector';
 
+export const dynamic = 'force-dynamic';
+
 function sortByDate(a: RecentActivityItem, b: RecentActivityItem) {
   return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
 }

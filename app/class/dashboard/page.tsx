@@ -4,6 +4,8 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import CreateClassroomButton from '@/components/CreateClassroomButton';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ClassDashboardPage() {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();

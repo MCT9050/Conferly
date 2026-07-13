@@ -4,6 +4,8 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import CreateMeetingButton from '@/components/CreateMeetingButton';
 
+export const dynamic = 'force-dynamic';
+
 export default async function MeetDashboardPage() {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
