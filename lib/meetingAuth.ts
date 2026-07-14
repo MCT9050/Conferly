@@ -8,18 +8,23 @@ export type MeetingAccess = {
 
 async function createPersonalRoom(ownerId: string, slug: string): Promise<{ id: string } | null> {
   const supabase = getSupabaseServerClient();
-  const id = slug;
   const { data, error } = await supabase
     .from('meetings')
-    .insert({ id, owner: ownerId, slug, is_public: false, title: `Room ${slug}` })
+    .insert({ owner: ownerId, slug, is_public: false, title: `Room ${slug}` })
     .select('id')
     .single();
 
   if (error || !data) {
-    console.error('verifyRoomAccess: auto-create meeting failed', error?.message);
+    console.error('[MeetingAuth] Auto-create meeting failed', {
+      requestSlug: slug,
+      ownerId,
+      errorMessage: error?.message,
+      errorCode: error?.code,
+      dbError: error?.details,
+    });
     return null;
   }
-  console.log(`[verifyRoomAccess] Auto-created meeting ${id} for user ${ownerId}`);
+  console.log(`[MeetingAuth] Auto-created meeting ${data.id} for user ${ownerId} (slug: ${slug})`);
   return data;
 }
 
