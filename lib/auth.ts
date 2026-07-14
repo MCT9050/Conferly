@@ -5,6 +5,15 @@
 
 import { createSupabaseServerClient } from './supabase/server';
 
+// Request tracing for debugging
+const TRACE_ENABLED = process.env.NODE_ENV === 'development' || process.env.AUTH_TRACE === 'true';
+
+function traceAuth(step: string, detail: string, data?: Record<string, unknown>): void {
+  if (TRACE_ENABLED) {
+    console.log(`[AUTH_TRACE] [${new Date().toISOString()}] ${step}: ${detail}`, data ? JSON.stringify(data) : '');
+  }
+}
+
 export type Role = 'owner' | 'moderator' | 'participant' | 'guest';
 export type Permission =
   | 'view_dashboard'
@@ -128,8 +137,11 @@ export async function getAuthorizedSession(
 export async function getServerSession(
   request?: Request
 ): Promise<Session | null> {
+  traceAuth('getServerSession-start', 'Starting session resolution');
+  
   try {
     const supabase = createSupabaseServerClient({ request });
+    traceAuth('supabase-client-created', 'Supabase client created successfully');
 
     const {
       data: { user },
@@ -137,13 +149,25 @@ export async function getServerSession(
     } = await supabase.auth.getUser();
 
     if (userError) {
+      traceAuth('getUser-error', `getUser failed: ${userError.message}`, {
+        code: userError.code,
+        status: userError.status,
+      });
       if (process.env.NODE_ENV === 'development') {
         console.error('[AUTH_SESSION] getUser error:', userError);
       }
       return null;
     }
 
-    if (!user) return null;
+    if (!user) {
+      traceAuth('getUser-no-user', 'No user found in session');
+      return null;
+    }
+    
+    traceAuth('getUser-success', `User authenticated: ${user.id}`, {
+      email: user.email,
+      hasEmail: !!user.email,
+    });
 
     const {
       data: { session },
@@ -151,24 +175,43 @@ export async function getServerSession(
     } = await supabase.auth.getSession();
 
     if (sessionError) {
+      traceAuth('getSession-error', `getSession failed: ${sessionError.message}`, {
+        code: sessionError.code,
+        status: sessionError.status,
+      });
       if (process.env.NODE_ENV === 'development') {
         console.error('[AUTH_SESSION] getSession error:', sessionError);
       }
       return null;
     }
+    
+    traceAuth('getSession-success', 'Session retrieved successfully', {
+      hasSession: !!session,
+      expiresAt: session?.expires_at,
+    });
 
     const expires =
       session?.expires_at
         ? new Date(session.expires_at * 1000).toISOString()
         : new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
-    return {
+    const result: Session = {
       userId: user.id,
       email: user.email ?? undefined,
       role: getUserRole(user),
       expires,
     };
+    
+    traceAuth('getServerSession-success', `Session created for user ${user.id}`, {
+      role: result.role,
+      expires: result.expires,
+    });
+    
+    return result;
   } catch (err) {
+    traceAuth('getServerSession-error', `Unexpected error: ${err instanceof Error ? err.message : String(err)}`, {
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     if (process.env.NODE_ENV === 'development') {
       console.error('[AUTH_SESSION] unexpected error:', err);
     }
