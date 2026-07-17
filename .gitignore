@@ -84,3 +84,6 @@ pnpm-debug.log*
 playwright-report/
 demo-output/
 next-env.d.ts
+ENV_*.md
+CODEBASE_ANALYSIS.md
+*.bak

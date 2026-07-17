@@ -5,13 +5,47 @@
       "budget": [
         {
           "resource": "script",
-          "limit": 550,
+          "limit": 200,
           "type": "kb",
           "severity": "error"
         },
         {
           "resource": "total",
-          "limit": 1000,
+          "limit": 500,
+          "type": "kb",
+          "severity": "error"
+        }
+      ]
+    },
+    {
+      "path": "/meeting*",
+      "budget": [
+        {
+          "resource": "script",
+          "limit": 2000,
+          "type": "kb",
+          "severity": "error"
+        },
+        {
+          "resource": "total",
+          "limit": 2500,
+          "type": "kb",
+          "severity": "error"
+        }
+      ]
+    },
+    {
+      "path": "/lobby*",
+      "budget": [
+        {
+          "resource": "script",
+          "limit": 2000,
+          "type": "kb",
+          "severity": "error"
+        },
+        {
+          "resource": "total",
+          "limit": 2500,
           "type": "kb",
           "severity": "error"
         }

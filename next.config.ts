@@ -9,9 +9,19 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({ enabled: process.e
 const nextConfig: NextConfig = {
   // Production-ready configuration for Conferly
 
-  // Security headers — all applied to the canonical conferly.site domain
+  // Security and cache headers
   async headers() {
     return [
+      // ── Cache strategy for STATIC routes (marketing, informational pages) ──
+      {
+        source: '/((?:admin/health|auth(?:/forgot-password|/update-password)?|class(?:/pricing)?|pricing|robots\\.txt|sitemap\\.xml))',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=31536000',
+          },
+        ],
+      },
       // ── Primary: served for ALL hosts (conferly.site, preview deployments, etc.) ──
       {
         source: '/:path*',
@@ -52,7 +62,7 @@ const nextConfig: NextConfig = {
           // Content Security Policy — strict but functional with All-Hands and monitoring
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self' app.all-hands.dev; script-src 'self' 'unsafe-inline' 'unsafe-eval' static.cloudflareinsights.com app.all-hands.dev https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' 'self' app.all-hands.dev https://www.google-analytics.com wss://*.livekit.cloud wss://*.livekit.com https://huggingface.co https://router.huggingface.co https://*.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: app.all-hands.dev; font-src 'self'; frame-ancestors 'self' app.all-hands.dev; base-uri 'self'; form-action 'self'",
+            value: "default-src 'self' app.all-hands.dev; script-src 'self' 'unsafe-inline' 'unsafe-eval' va.vercel-scripts.com static.cloudflareinsights.com app.all-hands.dev https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' app.all-hands.dev https://www.google-analytics.com wss://*.livekit.cloud wss://*.livekit.com https://huggingface.co https://router.huggingface.co https://*.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: app.all-hands.dev; font-src 'self'; frame-ancestors 'self' app.all-hands.dev; base-uri 'self'; form-action 'self'",
           },
         ],
       },
@@ -61,7 +71,7 @@ const nextConfig: NextConfig = {
 
   // Optimize package imports
   experimental: {
-    optimizePackageImports: ['lucide-react'],
+    optimizePackageImports: ['lucide-react', '@supabase/supabase-js', '@tiptap/react', '@tiptap/starter-kit'],
   },
 
   // Optimize images
