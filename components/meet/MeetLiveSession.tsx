@@ -79,14 +79,14 @@ function useMediaStore<T>(selector: (state: MediaState) => T): T {
   );
 }
 
-async function startMedia() {
+async function startMedia(): Promise<MediaStream | null> {
   if (typeof window === "undefined" || !navigator?.mediaDevices?.getUserMedia) {
     setMediaState((s) => ({
       ...s,
       isSupported: false,
       mediaError: "Media devices unavailable in this browser.",
     }));
-    return;
+    return null;
   }
   try {
     const next = await navigator.mediaDevices.getUserMedia({
@@ -102,11 +102,13 @@ async function startMedia() {
       isSupported: true,
       mediaError: null,
     }));
+    return next;
   } catch {
     setMediaState((s) => ({
       ...s,
       mediaError: "Unable to access camera or microphone.",
     }));
+    return null;
   }
 }
 
@@ -247,8 +249,8 @@ function getAvatar(name: string) {
   );
 }
 
-async function connectToRoom(roomId: string, localStream: MediaStream | null) {
-  if (typeof window === "undefined") return;
+async function connectToRoom(roomId: string): Promise<boolean> {
+  if (typeof window === "undefined") return false;
   try {
     const { Room, Track, RoomEvent } = await import("livekit-client");
 
@@ -270,6 +272,7 @@ async function connectToRoom(roomId: string, localStream: MediaStream | null) {
     await room.connect(url, token, { autoSubscribe: true });
     setLiveKitState((s) => ({ ...s, connected: true, connectionError: null }));
 
+    const localStream = await startMedia();
     if (localStream) {
       const audioTrack = localStream.getAudioTracks()[0];
       const videoTrack = localStream.getVideoTracks()[0];
@@ -325,6 +328,7 @@ async function connectToRoom(roomId: string, localStream: MediaStream | null) {
     room.on(RoomEvent.TrackUnsubscribed, updateParticipants);
     room.on(RoomEvent.ActiveSpeakersChanged, updateParticipants);
     updateParticipants();
+    return true;
   } catch (error) {
     console.error("LiveKit connection failed:", error);
     setLiveKitState((s) => ({
@@ -332,6 +336,11 @@ async function connectToRoom(roomId: string, localStream: MediaStream | null) {
       connectionError:
         error instanceof Error ? error.message : "Connection failed",
     }));
+    if (liveKitRoom) {
+      await liveKitRoom.disconnect().catch(() => {});
+      liveKitRoom = null;
+    }
+    return false;
   }
 }
 
@@ -891,6 +900,8 @@ export default function MeetLiveSession({
   const [isRecording, setIsRecording] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [reactions, setReactions] = useState<Reaction[]>([]);
+  const [hasJoined, setHasJoined] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
 
   // Summary modal — shown when session ends
   const [showSummary, setShowSummary] = useState(false);
@@ -898,8 +909,8 @@ export default function MeetLiveSession({
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const connectedRef = useRef(false);
   const isLeavingRef = useRef(false);
+  const isOwner = role === "owner";
 
   // Duration timer
   useEffect(() => {
@@ -909,38 +920,21 @@ export default function MeetLiveSession({
     return () => window.clearInterval(timer);
   }, []);
 
-  // Start media on mount
+  // Cleanup only. Joining, token acquisition, media, and connection are click-gated.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const supported =
-      typeof navigator !== "undefined" &&
-      !!navigator.mediaDevices?.getUserMedia;
-    if (!media.isSupported && !media.mediaError && !media.stream) {
-      setMediaState((s) => ({ ...s, isSupported: supported }));
-      if (supported) void startMedia();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Connect to LiveKit when media stream is ready and room ID is valid
-  useEffect(() => {
-    if (media.stream && roomId && roomId !== "—" && !connectedRef.current) {
-      connectedRef.current = true;
-      connectToRoom(roomId, media.stream);
-    }
     return () => {
+      stopMedia();
       disconnectFromRoom();
-      connectedRef.current = false;
     };
-  }, [media.stream, roomId]);
+  }, []);
 
   // Start speech transcription once media is active
   useEffect(() => {
-    if (media.stream && isSpeechSupported && !isTranscriptActive) {
+    if (hasJoined && media.stream && isSpeechSupported && !isTranscriptActive) {
       startListening();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [media.stream]);
+  }, [hasJoined, media.stream]);
 
   // Publish screen share track when it changes
   useEffect(() => {
@@ -994,6 +988,15 @@ export default function MeetLiveSession({
     a.click();
     URL.revokeObjectURL(url);
   }, [recordedBlob]);
+
+  const handleJoin = useCallback(async () => {
+    if (isJoining || hasJoined || !roomId || roomId === "—") return;
+
+    setIsJoining(true);
+    const joined = await connectToRoom(roomId);
+    if (joined) setHasJoined(true);
+    setIsJoining(false);
+  }, [hasJoined, isJoining, roomId]);
 
   // Reactions
   const addReaction = useCallback((emoji: string) => {
@@ -1050,6 +1053,34 @@ export default function MeetLiveSession({
     },
     [],
   );
+
+  if (!hasJoined) {
+    return (
+      <div className="max-w-7xl mx-auto px-5 sm:px-8 py-10">
+        <div className="rounded-3xl border border-white/10 bg-slate-900/85 p-10 text-center shadow-xl shadow-black/20">
+          <p className="text-lg font-semibold text-white mb-2">
+            {isOwner ? "Ready to start?" : "Ready to join?"}
+          </p>
+          <p className="text-sm text-slate-400 mb-6">
+            Room: <span className="font-mono text-slate-300">{roomId}</span>
+          </p>
+          {liveKit.connectionError && (
+            <p className="text-sm text-red-400 mb-4" role="alert">
+              {liveKit.connectionError}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => void handleJoin()}
+            disabled={isJoining || !roomId || roomId === "—"}
+            className="px-6 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            {isJoining ? "Connecting..." : isOwner ? "Start Meeting" : "Join Meeting"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Media error state
   if (media.mediaError && !media.stream) {

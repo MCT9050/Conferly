@@ -3,16 +3,17 @@ import { getServerSession } from '@/lib/auth';
 import { verifyAccess } from '@/lib/accessControl';
 import { redirect } from 'next/navigation';
 
-export default async function MeetRoomPage({ params }: { params: { slug: string } }) {
+export default async function MeetRoomPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
   const session = await getServerSession();
   if (!session) redirect('/auth');
 
-  const access = await verifyAccess('meet', session.userId, params.slug);
+  const access = await verifyAccess('meet', session.userId, slug);
   if (!access.granted) redirect('/dashboard');
 
   return (
     <MeetLiveSession
-      roomId={params.slug}
+      roomId={slug}
       userId={session.userId}
       role={access.role}
       userName={session.email}
