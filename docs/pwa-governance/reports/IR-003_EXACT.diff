@@ -1,0 +1,642 @@
+diff --git a/components/AuthPage.tsx b/components/AuthPage.tsx
+index 7817f46..85b21f4 100644
+--- a/components/AuthPage.tsx
++++ b/components/AuthPage.tsx
+@@ -279,7 +279,7 @@ export default function AuthPage({ onSignUp, onSignIn, error, clearError, loadin
+         {/* Bottom info */}
+         <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
+           <Lock className="w-3 h-3" />
+-          <span>Encrypted authentication • Works offline too</span>
++          <span>Encrypted authentication • Internet connection required</span>
+         </div>
+       </div>
+     </div>
+diff --git a/components/InstallBanner.tsx b/components/InstallBanner.tsx
+index 985f8d3..e7c166f 100644
+--- a/components/InstallBanner.tsx
++++ b/components/InstallBanner.tsx
+@@ -72,7 +72,7 @@ export default function InstallBanner({ show, isIOS, canInstallNatively, onInsta
+           <span>•</span>
+           <span>Under 1 MB</span>
+           <span>•</span>
+-          <span>Works offline</span>
++          <span>Offline guidance included</span>
+         </div>
+       </div>
+     </div>
+diff --git a/public/sw.js b/public/sw.js
+index ea6ee4a..7f32bd3 100644
+--- a/public/sw.js
++++ b/public/sw.js
+@@ -1,165 +1,187 @@
+-// Conferly Service Worker — enables PWA install + offline shell
+-// Phase 12D: PWA & Offline Resilience - Versioned cache strategy
++// Conferly Service Worker — install support with safe offline guidance only.
++// Authentication, dashboards, classrooms, and live meetings remain network-only.
+ 
+-const CACHE_VERSION = 'v2';
++const CACHE_VERSION = 'v3';
+ const CACHE_NAME = `conferly-${CACHE_VERSION}`;
+-const OFFLINE_URL = '/';
++const RUNTIME_CACHE = `conferly-runtime-${CACHE_VERSION}`;
++const OFFLINE_URL = '/offline';
+ 
+-// Assets to pre-cache on install
+ const PRE_CACHE = [
+-  '/',
++  OFFLINE_URL,
+   '/manifest.json',
+-  // Keep only essential PWA icon pre-cached (larger icons or mockups can be lazy-loaded)
+   '/icons/icon-512.png',
+ ];
+ 
+-// Runtime cache - dynamically cached resources
+-const RUNTIME_CACHE = `conferly-runtime-${CACHE_VERSION}`;
++const PROTECTED_PATH_PATTERNS = [
++  /^\/api(?:\/|$)/,
++  /^\/auth(?:\/|$)/,
++  /^\/signin(?:\/|$)/,
++  /^\/dashboard(?:\/|$)/,
++  /^\/meet(?:\/|$)/,
++  /^\/meeting(?:\/|$)/,
++  /^\/lobby(?:\/|$)/,
++  /^\/class(?:\/|$)/,
++  /^\/admin(?:\/|$)/,
++];
+ 
+-// Install: cache the app shell
+-self.addEventListener('install', (event) => {
+-  event.waitUntil(
+-    caches.open(CACHE_NAME).then((cache) => {
+-      return cache.addAll(PRE_CACHE);
+-    })
++const SAFE_STATIC_PATH_PATTERNS = [
++  /^\/_next\/static\//,
++  /^\/icons\//,
++  /^\/images\//,
++  /^\/(?:manifest\.json|favicon\.ico)$/,
++  /\.(?:css|js|mjs|woff2?|ttf|otf|eot)$/i,
++  /\.(?:png|jpe?g|gif|webp|svg|ico|avif)$/i,
++];
++
++function isProtectedPath(pathname) {
++  return PROTECTED_PATH_PATTERNS.some((pattern) => pattern.test(pathname));
++}
++
++function isNextDataRequest(request, url) {
++  return (
++    url.searchParams.has('_rsc') ||
++    request.headers.get('rsc') === '1' ||
++    request.headers.has('next-router-state-tree') ||
++    request.headers.has('next-url') ||
++    request.headers.has('next-router-prefetch')
+   );
+-  // Activate immediately
++}
++
++function isSafeStaticRequest(request) {
++  if (request.method !== 'GET') return false;
++
++  const url = new URL(request.url);
++  if (url.origin !== self.location.origin) return false;
++  if (request.mode === 'navigate' || request.destination === 'document') return false;
++  if (isProtectedPath(url.pathname) || isNextDataRequest(request, url)) return false;
++  if (request.headers.has('authorization')) return false;
++
++  return SAFE_STATIC_PATH_PATTERNS.some((pattern) => pattern.test(url.pathname));
++}
++
++function isSafeCacheResponse(response) {
++  if (!response || !response.ok || response.redirected) return false;
++  if (response.type === 'opaque' || response.type === 'opaqueredirect') return false;
++  if (response.headers.has('set-cookie')) return false;
++
++  const cacheControl = (response.headers.get('cache-control') || '').toLowerCase();
++  if (/\b(?:private|no-store)\b/.test(cacheControl)) return false;
++
++  const vary = (response.headers.get('vary') || '').toLowerCase();
++  if (/\b(?:cookie|authorization)\b/.test(vary)) return false;
++
++  return true;
++}
++
++async function cacheStaticResponse(request, response) {
++  if (!isSafeStaticRequest(request) || !isSafeCacheResponse(response)) return;
++
++  const cache = await caches.open(RUNTIME_CACHE);
++  await cache.put(request, response.clone());
++}
++
++async function precacheOfflineResources() {
++  const cache = await caches.open(CACHE_NAME);
++
++  await Promise.all(PRE_CACHE.map(async (url) => {
++    const request = new Request(new URL(url, self.location.origin), {
++      credentials: 'omit',
++      cache: 'reload',
++    });
++    const response = await fetch(request);
++    if (!isSafeCacheResponse(response)) {
++      throw new Error(`Refusing to pre-cache an ineligible response: ${url}`);
++    }
++    await cache.put(url, response);
++  }));
++}
++
++async function handleNavigation(request) {
++  try {
++    // Bypass the browser HTTP cache so an offline navigation cannot resolve to
++    // previously stored protected HTML or an authentication redirect.
++    return await fetch(new Request(request, { cache: 'no-store' }));
++  } catch {
++    const cache = await caches.open(CACHE_NAME);
++    const offlineResponse = await cache.match(OFFLINE_URL);
++    return offlineResponse || new Response('You are offline.', {
++      status: 503,
++      statusText: 'Offline',
++      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
++    });
++  }
++}
++
++async function handleStaticRequest(event) {
++  const cache = await caches.open(RUNTIME_CACHE);
++  const cached = await cache.match(event.request);
++  if (cached) return cached;
++
++  const anonymousRequest = new Request(event.request, { credentials: 'omit' });
++  const response = await fetch(anonymousRequest);
++  event.waitUntil(cacheStaticResponse(event.request, response));
++  return response;
++}
++
++self.addEventListener('install', (event) => {
++  event.waitUntil(precacheOfflineResources());
+   self.skipWaiting();
+ });
+ 
+-// Activate: clean old caches
+ self.addEventListener('activate', (event) => {
+   event.waitUntil(
+-    caches.keys().then((keys) => {
+-      return Promise.all(
+-        keys.filter((key) =>
+-          key !== CACHE_NAME &&
+-          key !== RUNTIME_CACHE &&
+-          key.startsWith('conferly-')
+-        ).map((key) => caches.delete(key))
+-      );
+-    })
++    caches.keys().then((keys) => Promise.all(
++      keys
++        .filter((key) => key.startsWith('conferly-') && key !== CACHE_NAME && key !== RUNTIME_CACHE)
++        .map((key) => caches.delete(key))
++    ))
+   );
+-  // Claim all clients so the SW is active right away
+   self.clients.claim();
+ });
+ 
+-// Fetch: network-first with cache fallback, versioned cache strategy
+ self.addEventListener('fetch', (event) => {
+   const { request } = event;
+ 
+-  // Skip non-GET requests
+   if (request.method !== 'GET') return;
+-
+-  // Skip cross-origin requests (API calls, translation, etc.)
+   if (!request.url.startsWith(self.location.origin)) return;
+ 
+-  // For navigation requests, use network-first with offline fallback
+   if (request.mode === 'navigate') {
+-    event.respondWith(
+-      fetch(request)
+-        .then((response) => {
+-          // Clone and cache the response
+-          const clone = response.clone();
+-          caches.open(CACHE_NAME).then((cache) => {
+-            cache.put(request, clone);
+-          });
+-          return response;
+-        })
+-        .catch(() => {
+-          // Network failed — serve from cache
+-          return caches.match(OFFLINE_URL);
+-        })
+-    );
++    // Navigation HTML is always network-only. This prevents account, meeting,
++    // authentication, and other dynamic pages from ever entering a SW cache.
++    event.respondWith(handleNavigation(request));
+     return;
+   }
+ 
+-  // For static assets (images, icons, etc.), use cache-first with network fallback
+-  if (request.url.match(/\.(png|jpg|jpeg|gif|webp|svg|ico)$/)) {
+-    event.respondWith(
+-      caches.match(request).then((cached) => {
+-        if (cached) {
+-          // Check if cache is stale (older than 24 hours)
+-          const cacheDate = cached.headers.get('date');
+-          if (cacheDate) {
+-            const cacheTime = new Date(cacheDate).getTime();
+-            const now = Date.now();
+-            const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+-            if (now - cacheTime > maxAge) {
+-              // Cache is stale, fetch from network
+-              return fetch(request).then((response) => {
+-                const clone = response.clone();
+-                caches.open(RUNTIME_CACHE).then((cache) => {
+-                  cache.put(request, clone);
+-                });
+-                return response;
+-              }).catch(() => cached);
+-            }
+-          }
+-          return cached;
+-        }
+-        // Not in cache, fetch from network
+-        return fetch(request).then((response) => {
+-          const clone = response.clone();
+-          caches.open(RUNTIME_CACHE).then((cache) => {
+-            cache.put(request, clone);
+-          });
+-          return response;
+-        });
+-      })
+-    );
+-    return;
++  // All non-navigation requests are network-owned unless they match the
++  // explicit static allowlist and pass response-level privacy checks.
++  if (isSafeStaticRequest(request)) {
++    event.respondWith(handleStaticRequest(event));
+   }
+-
+-  // For other requests, use network-first with cache fallback
+-  event.respondWith(
+-    fetch(request)
+-      .then((response) => {
+-        // Clone and cache the response
+-        const clone = response.clone();
+-        caches.open(RUNTIME_CACHE).then((cache) => {
+-          cache.put(request, clone);
+-        });
+-        return response;
+-      })
+-      .catch(() => {
+-        // Network failed — serve from cache
+-        return caches.match(request).then((cached) => {
+-          if (cached) return cached;
+-          return new Response('Offline', { status: 503, statusText: 'Offline' });
+-        });
+-      })
+-  );
+ });
+ 
+-// Handle message from client (for cache invalidation)
+ self.addEventListener('message', (event) => {
+   if (event.data && event.data.type === 'SKIP_WAITING') {
+     self.skipWaiting();
+   }
+ 
+   if (event.data && event.data.type === 'CACHE_INVALIDATE') {
+-    // Invalidate specific cache entries
+     const { urls } = event.data;
+     if (urls && Array.isArray(urls)) {
+       event.waitUntil(
+-        caches.open(RUNTIME_CACHE).then((cache) => {
+-          return Promise.all(
+-            urls.map(url => cache.delete(url))
+-          );
+-        })
++        caches.open(RUNTIME_CACHE).then((cache) => Promise.all(
++          urls.map((url) => cache.delete(url))
++        ))
+       );
+     }
+   }
+ 
+   if (event.data && event.data.type === 'CACHE_CLEAR') {
+-    // Clear all caches
+     event.waitUntil(
+-      caches.keys().then((keys) => {
+-        return Promise.all(
+-          keys.map((key) => caches.delete(key))
+-        );
+-      })
++      caches.keys().then((keys) => Promise.all(
++        keys
++          .filter((key) => key.startsWith('conferly-'))
++          .map((key) => caches.delete(key))
++      ))
+     );
+   }
+ });
+diff --git a/app/offline/page.tsx b/app/offline/page.tsx
+new file mode 100644
+index 0000000..762a49a
+--- /dev/null
++++ b/app/offline/page.tsx
+@@ -0,0 +1,37 @@
++import type { Metadata } from 'next';
++
++export const metadata: Metadata = {
++  title: 'Offline',
++  description: 'Conferly requires an internet connection for sign-in, dashboards, meetings, and live data.',
++};
++
++export default function OfflinePage() {
++  return (
++    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 py-16 text-white">
++      <section
++        aria-labelledby="offline-title"
++        className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center shadow-2xl"
++      >
++        <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-cyan-400">
++          Connection unavailable
++        </p>
++        <h1 id="offline-title" className="text-3xl font-bold">
++          You&apos;re offline
++        </h1>
++        <p className="mt-4 leading-7 text-slate-300">
++          Conferly can show this guidance while offline, but meetings, sign-in,
++          dashboards, and live data require an active internet connection.
++        </p>
++        <p className="mt-3 text-sm text-slate-400">
++          Reconnect to the internet, then try your request again.
++        </p>
++        <a
++          href=""
++          className="mt-7 inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
++        >
++          Retry connection
++        </a>
++      </section>
++    </main>
++  );
++}
+\ No newline at end of file
+diff --git a/tests/service-worker.test.mjs b/tests/service-worker.test.mjs
+new file mode 100644
+index 0000000..352e6d6
+--- /dev/null
++++ b/tests/service-worker.test.mjs
+@@ -0,0 +1,202 @@
++import assert from 'node:assert/strict';
++import { readFile } from 'node:fs/promises';
++import test from 'node:test';
++import vm from 'node:vm';
++
++const origin = 'https://conferly.site';
++const source = await readFile(new URL('../public/sw.js', import.meta.url), 'utf8');
++
++function createHarness({ fetchImpl } = {}) {
++  const listeners = new Map();
++  const stores = new Map();
++  const deleted = [];
++  const fetchCalls = [];
++
++  function cacheFor(name) {
++    if (!stores.has(name)) stores.set(name, new Map());
++    const store = stores.get(name);
++    return {
++      match: async (request) => {
++        const key = typeof request === 'string' ? new URL(request, origin).href : request.url;
++        return store.get(key);
++      },
++      put: async (request, response) => {
++        const key = typeof request === 'string' ? new URL(request, origin).href : request.url;
++        store.set(key, response);
++      },
++      delete: async (request) => {
++        const key = typeof request === 'string' ? new URL(request, origin).href : request.url;
++        return store.delete(key);
++      },
++    };
++  }
++
++  const caches = {
++    open: async (name) => cacheFor(name),
++    keys: async () => [...stores.keys()],
++    delete: async (name) => {
++      deleted.push(name);
++      return stores.delete(name);
++    },
++    match: async (request) => {
++      const key = typeof request === 'string' ? new URL(request, origin).href : request.url;
++      for (const store of stores.values()) {
++        if (store.has(key)) return store.get(key);
++      }
++      return undefined;
++    },
++  };
++
++  const self = {
++    location: { origin },
++    addEventListener: (type, listener) => listeners.set(type, listener),
++    skipWaiting: () => undefined,
++    clients: { claim: () => undefined },
++  };
++
++  const context = vm.createContext({
++    self,
++    caches,
++    Request,
++    Response,
++    URL,
++    console,
++    fetch: async (request) => {
++      fetchCalls.push(request);
++      if (fetchImpl) return fetchImpl(request);
++      return new Response(`network:${new URL(request.url).pathname}`);
++    },
++  });
++  vm.runInContext(source, context, { filename: 'public/sw.js' });
++
++  async function dispatchExtendable(type) {
++    const pending = [];
++    listeners.get(type)({ waitUntil: (promise) => pending.push(promise) });
++    await Promise.all(pending);
++  }
++
++  async function dispatchFetch(request) {
++    const pending = [];
++    let responsePromise;
++    listeners.get('fetch')({
++      request,
++      respondWith: (promise) => { responsePromise = Promise.resolve(promise); },
++      waitUntil: (promise) => pending.push(promise),
++    });
++    const response = responsePromise ? await responsePromise : undefined;
++    await Promise.all(pending);
++    return response;
++  }
++
++  return { stores, deleted, fetchCalls, dispatchExtendable, dispatchFetch };
++}
++
++function request(path, options = {}) {
++  const { navigation = false, ...requestOptions } = options;
++  const value = new Request(`${origin}${path}`, requestOptions);
++  if (!navigation) return value;
++
++  return new Proxy(value, {
++    get(target, property) {
++      if (property === 'mode') return 'navigate';
++      if (property === 'destination') return 'document';
++      const result = Reflect.get(target, property, target);
++      return typeof result === 'function' ? result.bind(target) : result;
++    },
++  });
++}
++
++test('/offline is pre-cached and the home page is not', async () => {
++  const harness = createHarness();
++  await harness.dispatchExtendable('install');
++
++  const precache = harness.stores.get('conferly-v3');
++  assert.ok(precache.has(`${origin}/offline`));
++  assert.equal(precache.has(`${origin}/`), false);
++});
++
++test('failed navigation returns /offline rather than /', async () => {
++  const harness = createHarness({
++    fetchImpl: async (value) => {
++      if (new URL(value.url).pathname === '/dashboard') throw new TypeError('offline');
++      return new Response(`network:${new URL(value.url).pathname}`);
++    },
++  });
++  await harness.dispatchExtendable('install');
++
++  const response = await harness.dispatchFetch(request('/dashboard', { navigation: true }));
++  assert.equal(await response.text(), 'network:/offline');
++});
++
++test('protected navigation HTML is never stored', async () => {
++  const harness = createHarness({ fetchImpl: async () => new Response('protected html') });
++
++  await harness.dispatchFetch(request('/dashboard', { navigation: true }));
++  await harness.dispatchFetch(request('/meet/rooms/test', { navigation: true }));
++
++  assert.equal(harness.stores.get('conferly-v3')?.size ?? 0, 0);
++  assert.equal(harness.stores.get('conferly-runtime-v3')?.size ?? 0, 0);
++});
++
++test('/api responses do not enter runtime cache', async () => {
++  const harness = createHarness({ fetchImpl: async () => new Response('{}') });
++  const response = await harness.dispatchFetch(request('/api/user/avatar.png'));
++
++  assert.equal(response, undefined);
++  assert.equal(harness.fetchCalls.length, 0);
++  assert.equal(harness.stores.size, 0);
++});
++
++test('/_next/static resources are eligible for safe runtime caching', async () => {
++  const harness = createHarness({
++    fetchImpl: async () => new Response('static', { headers: { 'Cache-Control': 'public, max-age=31536000' } }),
++  });
++  await harness.dispatchFetch(request('/_next/static/chunks/app.js'));
++
++  assert.ok(harness.stores.get('conferly-runtime-v3').has(`${origin}/_next/static/chunks/app.js`));
++  assert.equal(harness.fetchCalls[0].credentials, 'omit');
++});
++
++for (const [label, headers] of [
++  ['Set-Cookie', { 'Set-Cookie': 'session=secret' }],
++  ['private', { 'Cache-Control': 'private, max-age=60' }],
++  ['no-store', { 'Cache-Control': 'no-store' }],
++]) {
++  test(`responses marked ${label} are not cached`, async () => {
++    const harness = createHarness({ fetchImpl: async () => new Response('asset', { headers }) });
++    await harness.dispatchFetch(request(`/_next/static/${label}.js`));
++
++    assert.equal(harness.stores.get('conferly-runtime-v3')?.size ?? 0, 0);
++  });
++}
++
++test('activation removes old Conferly caches and preserves unrelated caches', async () => {
++  const harness = createHarness();
++  harness.stores.set('conferly-v2', new Map());
++  harness.stores.set('conferly-runtime-v2', new Map());
++  harness.stores.set('other-app-v1', new Map());
++  harness.stores.set('conferly-v3', new Map());
++
++  await harness.dispatchExtendable('activate');
++
++  assert.deepEqual(harness.deleted.sort(), ['conferly-runtime-v2', 'conferly-v2']);
++  assert.ok(harness.stores.has('other-app-v1'));
++  assert.ok(harness.stores.has('conferly-v3'));
++});
++
++test('the application registers /sw.js', async () => {
++  const registration = await readFile(new URL('../components/ServiceWorkerRegistration.tsx', import.meta.url), 'utf8');
++  assert.match(registration, /navigator\.serviceWorker\.register\(['"]\/sw\.js['"]\)/);
++});
++
++test('VR-002 /sw.js header contract remains unchanged', async () => {
++  const vercel = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
++  const swRule = vercel.headers.find((rule) => rule.source === '/sw.js');
++  assert.deepEqual(swRule, {
++    source: '/sw.js',
++    headers: [
++      { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
++      { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
++    ],
++  });
++});
+\ No newline at end of file
+diff --git a/tests/e2e/offline-fallback.spec.ts b/tests/e2e/offline-fallback.spec.ts
+new file mode 100644
+index 0000000..3881d81
+--- /dev/null
++++ b/tests/e2e/offline-fallback.spec.ts
+@@ -0,0 +1,49 @@
++import { expect, test } from '@playwright/test';
++
++test.use({ baseURL: process.env.BASE_URL ?? 'http://127.0.0.1:3000' });
++
++test('installs the worker and serves safe offline guidance without protected HTML caches', async ({ page, context, request }) => {
++  test.setTimeout(90_000);
++
++  const workerResponse = await request.get('/sw.js');
++  expect(workerResponse.status()).toBe(200);
++  expect(workerResponse.headers()['content-type'].toLowerCase()).toBe('application/javascript; charset=utf-8');
++
++  await page.goto('/offline', { waitUntil: 'domcontentloaded' });
++  await expect(page.getByRole('heading', { name: "You're offline" })).toBeVisible();
++  await expect(page.getByRole('link', { name: 'Retry connection' })).toBeVisible();
++
++  await page.evaluate(async () => {
++    const registration = await navigator.serviceWorker.register('/sw.js');
++    await navigator.serviceWorker.ready;
++    await registration.update();
++  });
++
++  await page.reload({ waitUntil: 'domcontentloaded' });
++  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
++
++  await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
++  await page.goto('/meet/rooms/test', { waitUntil: 'domcontentloaded' });
++
++  const cachedBeforeOffline = await page.evaluate(async () => {
++    const keys = await caches.keys();
++    const urls = (await Promise.all(keys.map(async (key) => {
++      const cache = await caches.open(key);
++      return (await cache.keys()).map((entry) => new URL(entry.url).pathname);
++    }))).flat();
++    return { keys, urls };
++  });
++
++  expect(cachedBeforeOffline.urls).toContain('/offline');
++  expect(cachedBeforeOffline.urls).not.toContain('/');
++  expect(cachedBeforeOffline.urls).not.toContain('/dashboard');
++  expect(cachedBeforeOffline.urls).not.toContain('/meet/rooms/test');
++  expect(cachedBeforeOffline.keys).not.toContain('conferly-v2');
++  expect(cachedBeforeOffline.keys).not.toContain('conferly-runtime-v2');
++
++  await context.setOffline(true);
++  await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
++  await expect(page.getByRole('heading', { name: "You're offline" })).toBeVisible();
++  await expect(page).not.toHaveURL(/\/offline$/);
++  await context.setOffline(false);
++});
+\ No newline at end of file

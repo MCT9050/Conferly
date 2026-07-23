@@ -279,7 +279,7 @@ export default function AuthPage({ onSignUp, onSignIn, error, clearError, loadin
         {/* Bottom info */}
         <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
           <Lock className="w-3 h-3" />
-          <span>Encrypted authentication • Works offline too</span>
+          <span>Encrypted authentication • Internet connection required</span>
         </div>
       </div>
     </div>
