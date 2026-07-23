@@ -73,11 +73,17 @@ function isSafeCacheResponse(response) {
   return true;
 }
 
-async function cacheStaticResponse(request, response) {
-  if (!isSafeStaticRequest(request) || !isSafeCacheResponse(response)) return;
+function cacheStaticResponse(event, request, response) {
+  if (!isSafeStaticRequest(request) || !isSafeCacheResponse(response)) return response;
 
-  const cache = await caches.open(RUNTIME_CACHE);
-  await cache.put(request, response.clone());
+  const responseForCache = response.clone();
+  event.waitUntil(
+    caches
+      .open(RUNTIME_CACHE)
+      .then((cache) => cache.put(request, responseForCache))
+  );
+
+  return response;
 }
 
 async function precacheOfflineResources() {
@@ -119,8 +125,7 @@ async function handleStaticRequest(event) {
 
   const anonymousRequest = new Request(event.request, { credentials: 'omit' });
   const response = await fetch(anonymousRequest);
-  event.waitUntil(cacheStaticResponse(event.request, response));
-  return response;
+  return cacheStaticResponse(event, event.request, response);
 }
 
 self.addEventListener('install', (event) => {
