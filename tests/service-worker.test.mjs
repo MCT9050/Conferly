@@ -6,7 +6,7 @@ import vm from 'node:vm';
 const origin = 'https://conferly.site';
 const source = await readFile(new URL('../public/sw.js', import.meta.url), 'utf8');
 
-function createHarness({ fetchImpl } = {}) {
+function createHarness({ fetchImpl, onCacheOpen } = {}) {
   const listeners = new Map();
   const stores = new Map();
   const deleted = [];
@@ -32,7 +32,10 @@ function createHarness({ fetchImpl } = {}) {
   }
 
   const caches = {
-    open: async (name) => cacheFor(name),
+    open: async (name) => {
+      onCacheOpen?.(name);
+      return cacheFor(name);
+    },
     keys: async () => [...stores.keys()],
     delete: async (name) => {
       deleted.push(name);
@@ -148,11 +151,29 @@ test('/api responses do not enter runtime cache', async () => {
 });
 
 test('/_next/static resources are eligible for safe runtime caching', async () => {
-  const harness = createHarness({
-    fetchImpl: async () => new Response('static', { headers: { 'Cache-Control': 'public, max-age=31536000' } }),
+  const operations = [];
+  const networkResponse = new Response('static', {
+    headers: { 'Cache-Control': 'public, max-age=31536000' },
   });
-  await harness.dispatchFetch(request('/_next/static/chunks/app.js'));
+  const originalClone = networkResponse.clone.bind(networkResponse);
+  networkResponse.clone = () => {
+    operations.push('clone');
+    return originalClone();
+  };
+  const harness = createHarness({
+    fetchImpl: async () => {
+      // Ignore the cache lookup open; only compare clone timing with the write open.
+      operations.length = 0;
+      return networkResponse;
+    },
+    onCacheOpen: (name) => {
+      if (name === 'conferly-runtime-v3') operations.push('open');
+    },
+  });
+  const response = await harness.dispatchFetch(request('/_next/static/chunks/app.js'));
 
+  assert.equal(response, networkResponse);
+  assert.deepEqual(operations, ['clone', 'open']);
   assert.ok(harness.stores.get('conferly-runtime-v3').has(`${origin}/_next/static/chunks/app.js`));
   assert.equal(harness.fetchCalls[0].credentials, 'omit');
 });
@@ -169,6 +190,40 @@ for (const [label, headers] of [
     assert.equal(harness.stores.get('conferly-runtime-v3')?.size ?? 0, 0);
   });
 }
+
+for (const [label, response] of [
+  ['redirect', Response.redirect(`${origin}/icons/redirected.png`, 302)],
+  ['non-OK', new Response('missing', { status: 404 })],
+  ['opaque', new Proxy(new Response('opaque'), {
+    get(target, property) {
+      if (property === 'type') return 'opaque';
+      const result = Reflect.get(target, property, target);
+      return typeof result === 'function' ? result.bind(target) : result;
+    },
+  })],
+]) {
+  test(`${label} responses are not cached`, async () => {
+    const harness = createHarness({ fetchImpl: async () => response });
+    await harness.dispatchFetch(request(`/_next/static/${label}.js`));
+
+    assert.equal(harness.stores.get('conferly-runtime-v3')?.size ?? 0, 0);
+  });
+}
+
+test('RSC and Next.js data requests do not enter runtime cache', async () => {
+  for (const value of [
+    request('/_next/static/chunks/app.js?_rsc=unique'),
+    request('/_next/static/chunks/app.js', { headers: { RSC: '1' } }),
+    request('/_next/static/chunks/app.js', { headers: { 'Next-Router-State-Tree': 'state' } }),
+  ]) {
+    const harness = createHarness({ fetchImpl: async () => new Response('private data') });
+    const response = await harness.dispatchFetch(value);
+
+    assert.equal(response, undefined);
+    assert.equal(harness.fetchCalls.length, 0);
+    assert.equal(harness.stores.size, 0);
+  }
+});
 
 test('activation removes old Conferly caches and preserves unrelated caches', async () => {
   const harness = createHarness();
