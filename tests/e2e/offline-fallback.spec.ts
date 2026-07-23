@@ -7,7 +7,25 @@ const externalBaseURL = process.env.BASE_URL;
 const baseURL = externalBaseURL ?? 'http://127.0.0.1:4319';
 let fixtureServer: Server | undefined;
 
+const v2Worker = Buffer.from(`
+const CACHE_NAME = 'conferly-v2';
+const RUNTIME_CACHE = 'conferly-runtime-v2';
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(Promise.all([
+    caches.open(CACHE_NAME).then((cache) => cache.put('/v2-shell', new Response('v2 shell'))),
+    caches.open(RUNTIME_CACHE).then((cache) => cache.put('/v2-runtime', new Response('v2 runtime'))),
+  ]));
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+`);
+
 test.use({ baseURL });
+test.setTimeout(90_000);
 
 test.beforeAll(async () => {
   if (externalBaseURL) return;
@@ -23,12 +41,21 @@ test.beforeAll(async () => {
   fixtureServer = createServer((request, response) => {
     const pathname = new URL(request.url ?? '/', baseURL).pathname;
 
-    if (pathname === '/sw.js') {
+    if (pathname === '/sw.js' || pathname === '/sw-v3.js') {
       response.writeHead(200, {
         'Content-Type': 'application/javascript; charset=utf-8',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
       });
       response.end(worker);
+      return;
+    }
+
+    if (pathname === '/sw-v2.js') {
+      response.writeHead(200, {
+        'Content-Type': 'application/javascript; charset=utf-8',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      });
+      response.end(v2Worker);
       return;
     }
 
@@ -71,8 +98,6 @@ test.afterAll(async () => {
 });
 
 test('installs the worker and serves safe offline guidance without protected HTML caches', async ({ page, context, request }) => {
-  test.setTimeout(90_000);
-
   const workerResponse = await request.get('/sw.js');
   expect(workerResponse.status()).toBe(200);
   expect(workerResponse.headers()['content-type'].toLowerCase()).toBe('application/javascript; charset=utf-8');
@@ -162,4 +187,126 @@ test('installs the worker and serves safe offline guidance without protected HTM
   await expect(page.getByRole('heading', { name: "You're offline" })).toBeVisible();
   await expect(page).not.toHaveURL(/\/offline$/);
   await context.setOffline(false);
+});
+
+test('upgrades an existing v2 worker and removes every obsolete Conferly cache', async ({ page }) => {
+  test.skip(Boolean(externalBaseURL), 'The upgrade regression requires the deterministic local v2 and reviewed v3 fixtures.');
+
+  await page.goto('/offline', { waitUntil: 'domcontentloaded' });
+  await page.evaluate(async () => {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((registration) => registration.unregister()));
+    await Promise.all((await caches.keys()).map((key) => caches.delete(key)));
+  });
+
+  const expectedV2ScriptURL = new URL('/sw-v2.js', page.url()).href;
+  const expectedV3ScriptURL = new URL('/sw-v3.js', page.url()).href;
+
+  await page.evaluate(() => navigator.serviceWorker.register('/sw-v2.js', { scope: '/' }));
+  await expect.poll(() => page.evaluate((expectedScriptURL) => {
+    const controller = navigator.serviceWorker.controller;
+    return controller?.scriptURL === expectedScriptURL && controller.state === 'activated';
+  }, expectedV2ScriptURL), { timeout: 15_000 }).toBe(true);
+
+  const seededKeys = await page.evaluate(async () => {
+    const v1 = await caches.open('conferly-v1');
+    await v1.put('/v1-sentinel', new Response('v1 sentinel'));
+    const unrelated = await caches.open('unrelated-sentinel-cache');
+    await unrelated.put('/sentinel', new Response('preserve me'));
+    return (await caches.keys()).sort();
+  });
+  expect(seededKeys).toEqual(expect.arrayContaining([
+    'conferly-v1',
+    'conferly-v2',
+    'conferly-runtime-v2',
+    'unrelated-sentinel-cache',
+  ]));
+
+  await page.evaluate(() => navigator.serviceWorker.register('/sw-v3.js', { scope: '/' }));
+
+  await expect.poll(() => page.evaluate(async (expectedScriptURL) => {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    const registration = registrations[0];
+    const active = registration?.active;
+
+    return {
+      registrationCount: registrations.length,
+      scope: registration?.scope ?? null,
+      activeScriptURL: active?.scriptURL ?? null,
+      activeState: active?.state ?? null,
+      hasInstallingWorker: registration?.installing !== null,
+      hasWaitingWorker: registration?.waiting !== null,
+      activationComplete:
+        registrations.length === 1 &&
+        registration?.scope === new URL('/', location.href).href &&
+        active?.scriptURL === expectedScriptURL &&
+        active.state === 'activated' &&
+        registration.installing === null &&
+        registration.waiting === null,
+    };
+  }, expectedV3ScriptURL), { timeout: 15_000 }).toMatchObject({ activationComplete: true });
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect.poll(() => page.evaluate(async (expectedScriptURL) => {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    const registration = registrations[0];
+    const active = registration?.active;
+    const controller = navigator.serviceWorker.controller;
+
+    return {
+      complete:
+        registrations.length === 1 &&
+        registration?.scope === new URL('/', location.href).href &&
+        active?.scriptURL === expectedScriptURL &&
+        active.state === 'activated' &&
+        registration.installing === null &&
+        registration.waiting === null &&
+        controller?.scriptURL === expectedScriptURL &&
+        controller.state === 'activated',
+    };
+  }, expectedV3ScriptURL), { timeout: 15_000 }).toMatchObject({ complete: true });
+
+  const runtimeAssetUrl = new URL(`/icons/icon-512.png?ir003c=${Date.now()}`, page.url()).href;
+  await page.evaluate(async (url) => {
+    const response = await fetch(url, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`Unable to populate v3 runtime cache: ${response.status}`);
+    await response.arrayBuffer();
+  }, runtimeAssetUrl);
+  await expect.poll(() => page.evaluate(async (url) => {
+    const cache = await caches.open('conferly-runtime-v3');
+    return (await cache.keys()).some((entry) => entry.url === url);
+  }, runtimeAssetUrl)).toBe(true);
+
+  const postActivation = await page.evaluate(async () => {
+    const keys = (await caches.keys()).sort();
+    const sentinel = await (await caches.open('unrelated-sentinel-cache')).match('/sentinel');
+    return { keys, sentinelBody: await sentinel?.text() };
+  });
+  expect(postActivation.keys).not.toContain('conferly-v1');
+  expect(postActivation.keys).not.toContain('conferly-v2');
+  expect(postActivation.keys).not.toContain('conferly-runtime-v2');
+  expect(postActivation.keys).toContain('conferly-v3');
+  expect(postActivation.keys).toContain('conferly-runtime-v3');
+  expect(postActivation.keys).toContain('unrelated-sentinel-cache');
+  expect(postActivation.sentinelBody).toBe('preserve me');
+
+  const v1RecreationSamples = await page.evaluate(async () => {
+    const samples: Array<{ elapsedMs: number; present: boolean }> = [];
+    const startedAt = performance.now();
+    while (performance.now() - startedAt < 5_000) {
+      samples.push({
+        elapsedMs: Math.round(performance.now() - startedAt),
+        present: (await caches.keys()).includes('conferly-v1'),
+      });
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    samples.push({
+      elapsedMs: Math.round(performance.now() - startedAt),
+      present: (await caches.keys()).includes('conferly-v1'),
+    });
+    return samples;
+  });
+  expect(v1RecreationSamples.length).toBeGreaterThan(1);
+  expect(v1RecreationSamples.at(-1)?.elapsedMs).toBeGreaterThanOrEqual(5_000);
+  expect(v1RecreationSamples.every((sample) => !sample.present)).toBe(true);
 });
