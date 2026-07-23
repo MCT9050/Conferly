@@ -72,7 +72,7 @@ export default function InstallBanner({ show, isIOS, canInstallNatively, onInsta
           <span>•</span>
           <span>Under 1 MB</span>
           <span>•</span>
-          <span>Offline guidance included</span>
+          <span>Works offline</span>
         </div>
       </div>
     </div>

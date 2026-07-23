@@ -1,192 +1,165 @@
-// Conferly Service Worker — install support with safe offline guidance only.
-// Authentication, dashboards, classrooms, and live meetings remain network-only.
+// Conferly Service Worker — enables PWA install + offline shell
+// Phase 12D: PWA & Offline Resilience - Versioned cache strategy
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `conferly-${CACHE_VERSION}`;
-const RUNTIME_CACHE = `conferly-runtime-${CACHE_VERSION}`;
-const OFFLINE_URL = '/offline';
+const OFFLINE_URL = '/';
 
+// Assets to pre-cache on install
 const PRE_CACHE = [
-  OFFLINE_URL,
+  '/',
   '/manifest.json',
+  // Keep only essential PWA icon pre-cached (larger icons or mockups can be lazy-loaded)
   '/icons/icon-512.png',
 ];
 
-const PROTECTED_PATH_PATTERNS = [
-  /^\/api(?:\/|$)/,
-  /^\/auth(?:\/|$)/,
-  /^\/signin(?:\/|$)/,
-  /^\/dashboard(?:\/|$)/,
-  /^\/meet(?:\/|$)/,
-  /^\/meeting(?:\/|$)/,
-  /^\/lobby(?:\/|$)/,
-  /^\/class(?:\/|$)/,
-  /^\/admin(?:\/|$)/,
-];
+// Runtime cache - dynamically cached resources
+const RUNTIME_CACHE = `conferly-runtime-${CACHE_VERSION}`;
 
-const SAFE_STATIC_PATH_PATTERNS = [
-  /^\/_next\/static\//,
-  /^\/icons\//,
-  /^\/images\//,
-  /^\/(?:manifest\.json|favicon\.ico)$/,
-  /\.(?:css|js|mjs|woff2?|ttf|otf|eot)$/i,
-  /\.(?:png|jpe?g|gif|webp|svg|ico|avif)$/i,
-];
-
-function isProtectedPath(pathname) {
-  return PROTECTED_PATH_PATTERNS.some((pattern) => pattern.test(pathname));
-}
-
-function isNextDataRequest(request, url) {
-  return (
-    url.searchParams.has('_rsc') ||
-    request.headers.get('rsc') === '1' ||
-    request.headers.has('next-router-state-tree') ||
-    request.headers.has('next-url') ||
-    request.headers.has('next-router-prefetch')
-  );
-}
-
-function isSafeStaticRequest(request) {
-  if (request.method !== 'GET') return false;
-
-  const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return false;
-  if (request.mode === 'navigate' || request.destination === 'document') return false;
-  if (isProtectedPath(url.pathname) || isNextDataRequest(request, url)) return false;
-  if (request.headers.has('authorization')) return false;
-
-  return SAFE_STATIC_PATH_PATTERNS.some((pattern) => pattern.test(url.pathname));
-}
-
-function isSafeCacheResponse(response) {
-  if (!response || !response.ok || response.redirected) return false;
-  if (response.type === 'opaque' || response.type === 'opaqueredirect') return false;
-  if (response.headers.has('set-cookie')) return false;
-
-  const cacheControl = (response.headers.get('cache-control') || '').toLowerCase();
-  if (/\b(?:private|no-store)\b/.test(cacheControl)) return false;
-
-  const vary = (response.headers.get('vary') || '').toLowerCase();
-  if (/\b(?:cookie|authorization)\b/.test(vary)) return false;
-
-  return true;
-}
-
-function cacheStaticResponse(event, request, response) {
-  if (!isSafeStaticRequest(request) || !isSafeCacheResponse(response)) return response;
-
-  const responseForCache = response.clone();
-  event.waitUntil(
-    caches
-      .open(RUNTIME_CACHE)
-      .then((cache) => cache.put(request, responseForCache))
-  );
-
-  return response;
-}
-
-async function precacheOfflineResources() {
-  const cache = await caches.open(CACHE_NAME);
-
-  await Promise.all(PRE_CACHE.map(async (url) => {
-    const request = new Request(new URL(url, self.location.origin), {
-      credentials: 'omit',
-      cache: 'reload',
-    });
-    const response = await fetch(request);
-    if (!isSafeCacheResponse(response)) {
-      throw new Error(`Refusing to pre-cache an ineligible response: ${url}`);
-    }
-    await cache.put(url, response);
-  }));
-}
-
-async function handleNavigation(request) {
-  try {
-    // Bypass the browser HTTP cache so an offline navigation cannot resolve to
-    // previously stored protected HTML or an authentication redirect.
-    return await fetch(new Request(request, { cache: 'no-store' }));
-  } catch {
-    const cache = await caches.open(CACHE_NAME);
-    const offlineResponse = await cache.match(OFFLINE_URL);
-    return offlineResponse || new Response('You are offline.', {
-      status: 503,
-      statusText: 'Offline',
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    });
-  }
-}
-
-async function handleStaticRequest(event) {
-  const cache = await caches.open(RUNTIME_CACHE);
-  const cached = await cache.match(event.request);
-  if (cached) return cached;
-
-  const anonymousRequest = new Request(event.request, { credentials: 'omit' });
-  const response = await fetch(anonymousRequest);
-  return cacheStaticResponse(event, event.request, response);
-}
-
+// Install: cache the app shell
 self.addEventListener('install', (event) => {
-  event.waitUntil(precacheOfflineResources());
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(PRE_CACHE);
+    })
+  );
+  // Activate immediately
   self.skipWaiting();
 });
 
+// Activate: clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(
-      keys
-        .filter((key) => key.startsWith('conferly-') && key !== CACHE_NAME && key !== RUNTIME_CACHE)
-        .map((key) => caches.delete(key))
-    ))
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.filter((key) =>
+          key !== CACHE_NAME &&
+          key !== RUNTIME_CACHE &&
+          key.startsWith('conferly-')
+        ).map((key) => caches.delete(key))
+      );
+    })
   );
+  // Claim all clients so the SW is active right away
   self.clients.claim();
 });
 
+// Fetch: network-first with cache fallback, versioned cache strategy
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
+  // Skip non-GET requests
   if (request.method !== 'GET') return;
+
+  // Skip cross-origin requests (API calls, translation, etc.)
   if (!request.url.startsWith(self.location.origin)) return;
 
+  // For navigation requests, use network-first with offline fallback
   if (request.mode === 'navigate') {
-    // Navigation HTML is always network-only. This prevents account, meeting,
-    // authentication, and other dynamic pages from ever entering a SW cache.
-    event.respondWith(handleNavigation(request));
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          // Clone and cache the response
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, clone);
+          });
+          return response;
+        })
+        .catch(() => {
+          // Network failed — serve from cache
+          return caches.match(OFFLINE_URL);
+        })
+    );
     return;
   }
 
-  // All non-navigation requests are network-owned unless they match the
-  // explicit static allowlist and pass response-level privacy checks.
-  if (isSafeStaticRequest(request)) {
-    event.respondWith(handleStaticRequest(event));
+  // For static assets (images, icons, etc.), use cache-first with network fallback
+  if (request.url.match(/\.(png|jpg|jpeg|gif|webp|svg|ico)$/)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) {
+          // Check if cache is stale (older than 24 hours)
+          const cacheDate = cached.headers.get('date');
+          if (cacheDate) {
+            const cacheTime = new Date(cacheDate).getTime();
+            const now = Date.now();
+            const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+            if (now - cacheTime > maxAge) {
+              // Cache is stale, fetch from network
+              return fetch(request).then((response) => {
+                const clone = response.clone();
+                caches.open(RUNTIME_CACHE).then((cache) => {
+                  cache.put(request, clone);
+                });
+                return response;
+              }).catch(() => cached);
+            }
+          }
+          return cached;
+        }
+        // Not in cache, fetch from network
+        return fetch(request).then((response) => {
+          const clone = response.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => {
+            cache.put(request, clone);
+          });
+          return response;
+        });
+      })
+    );
+    return;
   }
+
+  // For other requests, use network-first with cache fallback
+  event.respondWith(
+    fetch(request)
+      .then((response) => {
+        // Clone and cache the response
+        const clone = response.clone();
+        caches.open(RUNTIME_CACHE).then((cache) => {
+          cache.put(request, clone);
+        });
+        return response;
+      })
+      .catch(() => {
+        // Network failed — serve from cache
+        return caches.match(request).then((cached) => {
+          if (cached) return cached;
+          return new Response('Offline', { status: 503, statusText: 'Offline' });
+        });
+      })
+  );
 });
 
+// Handle message from client (for cache invalidation)
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 
   if (event.data && event.data.type === 'CACHE_INVALIDATE') {
+    // Invalidate specific cache entries
     const { urls } = event.data;
     if (urls && Array.isArray(urls)) {
       event.waitUntil(
-        caches.open(RUNTIME_CACHE).then((cache) => Promise.all(
-          urls.map((url) => cache.delete(url))
-        ))
+        caches.open(RUNTIME_CACHE).then((cache) => {
+          return Promise.all(
+            urls.map(url => cache.delete(url))
+          );
+        })
       );
     }
   }
 
   if (event.data && event.data.type === 'CACHE_CLEAR') {
+    // Clear all caches
     event.waitUntil(
-      caches.keys().then((keys) => Promise.all(
-        keys
-          .filter((key) => key.startsWith('conferly-'))
-          .map((key) => caches.delete(key))
-      ))
+      caches.keys().then((keys) => {
+        return Promise.all(
+          keys.map((key) => caches.delete(key))
+        );
+      })
     );
   }
 });
