@@ -19,6 +19,8 @@ export default function ClientDashboard() {
   const router = useRouter();
   const [joinCode, setJoinCode] = useState("");
   const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const stats = useMemo(
     () => [
@@ -29,10 +31,34 @@ export default function ClientDashboard() {
     [],
   );
 
-  const startMeeting = useCallback(() => {
-    const code = generateRoomCode();
-    router.push(`/lobby?room=${encodeURIComponent(code)}`);
-  }, [router]);
+  const startMeeting = useCallback(async () => {
+    if (createLoading) return;
+
+    setCreateLoading(true);
+    setCreateError(null);
+
+    try {
+      const response = await fetch('/api/meetings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug: generateRoomCode() }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        meeting?: { slug?: string };
+      };
+
+      if (!response.ok || !payload.ok || !payload.meeting?.slug) {
+        throw new Error(payload.error ?? 'Unable to create meeting. Please try again.');
+      }
+
+      router.push(`/lobby?room=${encodeURIComponent(payload.meeting.slug)}`);
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Unable to create meeting. Please try again.');
+      setCreateLoading(false);
+    }
+  }, [createLoading, router]);
 
   const joinMeeting = useCallback(() => {
     const code = joinCode.trim().toUpperCase();
@@ -64,7 +90,7 @@ export default function ClientDashboard() {
                       } else if (result.error) {
                         alert(result.error);
                       }
-                    } catch (err) {
+                    } catch {
                       router.push('/pricing');
                     } finally {
                       setUpgradeLoading(false);
@@ -103,14 +129,17 @@ export default function ClientDashboard() {
               <button
                 type="button"
                 onClick={startMeeting}
-                className="w-full flex items-center justify-between px-6 py-5 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 text-slate-950 font-semibold text-base hover:from-amber-300 hover:to-orange-300 transition-all shadow-lg shadow-amber-400/20 group"
+                disabled={createLoading}
+                aria-busy={createLoading}
+                data-testid="new-meeting-btn"
+                className="w-full flex items-center justify-between px-6 py-5 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 text-slate-950 font-semibold text-base hover:from-amber-300 hover:to-orange-300 transition-all shadow-lg shadow-amber-400/20 group disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-slate-950/10 flex items-center justify-center">
                     <Video className="w-6 h-6" />
                   </div>
                   <div className="text-left">
-                    <p className="text-lg font-bold">Start new meeting</p>
+                    <p className="text-lg font-bold">{createLoading ? 'Creating meeting…' : 'Start new meeting'}</p>
                     <p className="text-sm text-slate-950/60">
                       Create an instant room and invite others
                     </p>
@@ -118,6 +147,7 @@ export default function ClientDashboard() {
                 </div>
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
+              {createError && <p className="mt-3 text-sm text-red-400">{createError}</p>}
             </div>
 
             {/* Join existing meeting */}
