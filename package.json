@@ -26,7 +26,7 @@
     "livekit-server-sdk": "^2.15.3",
     "lucide-react": "^1.16.0",
     "monaco-editor": "^0.53.0",
-    "next": "^16.2.6",
+    "next": "^16.2.12",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "tldraw": "^5.1.0",
@@ -41,13 +41,14 @@
     "@types/react-dom": "^19",
     "escape-string-regexp": "^5.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "16.2.12",
     "playwright": "^1.60.0",
-    "postcss": "^8.5.15",
+    "postcss": "^8.5.24",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
   "overrides": {
-    "postcss": "^8.5.15"
+    "postcss": "$postcss",
+    "sharp": "0.35.3"
   }
 }
