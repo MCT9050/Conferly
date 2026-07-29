@@ -3,7 +3,7 @@ import Logo from "../../components/Logo";
 import LobbyPreJoin from "../../components/LobbyPreJoin";
 
 interface LobbyPageProps {
-  searchParams?: Promise<{ room?: string; roomId?: string; domain?: string; lessonId?: string }>;
+  searchParams?: Promise<{ room?: string; roomId?: string; domain?: string; lessonId?: string; intent?: string; invite?: string }>;
 }
 
 export default async function LobbyPage({ searchParams }: LobbyPageProps) {
@@ -11,6 +11,8 @@ export default async function LobbyPage({ searchParams }: LobbyPageProps) {
   const roomId = params?.roomId || params?.room || "—";
   const domain = params?.domain || "meet";
   const lessonId = params?.lessonId;
+  const intent = params?.intent;
+  const invite = params?.invite;
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -33,7 +35,7 @@ export default async function LobbyPage({ searchParams }: LobbyPageProps) {
           </p>
 
           <div className="mt-10">
-            <LobbyPreJoin roomId={roomId} domain={domain} lessonId={lessonId} />
+            <LobbyPreJoin roomId={roomId} domain={domain} lessonId={lessonId} intent={intent} invite={invite} />
           </div>
         </section>
       </div>
