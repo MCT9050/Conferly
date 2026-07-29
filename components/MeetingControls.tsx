@@ -1,14 +1,20 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   Mic, MicOff, Video, VideoOff, Monitor, MonitorOff,
   PhoneOff, MessageSquare, Users,
   Hand, PanelRightOpen, PanelRightClose,
-  Circle, Square, Download, MoreHorizontal
+  Circle, Square, Download, MoreHorizontal, Share2, Copy
 } from 'lucide-react';
 import type { SidebarTab, Reaction } from '../types';
 import { useClickOutside } from '../hooks/useClickOutside';
+import {
+  buildCanonicalMeetingUrl,
+  copyMeetingInviteText,
+  shareMeetingInvite,
+  type MeetingInviteResult,
+} from '../lib/meetingInvite';
 
 interface MeetingControlsProps {
   isMuted: boolean;
@@ -34,6 +40,7 @@ interface MeetingControlsProps {
   toggleHandRaise: () => void;
   stopMedia: () => void;
   stopListening: () => void;
+  roomId?: string;
 }
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '🤔', '👏'];
@@ -56,15 +63,24 @@ export default function MeetingControls({
   reactions, addReaction,
   handRaised, toggleHandRaise,
   stopMedia, stopListening,
+  roomId,
 }: MeetingControlsProps) {
   const [showReactions, setShowReactions] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  const [inviteFeedback, setInviteFeedback] = useState<string>('');
   const reactionsRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Close pickers on outside click
   useClickOutside(reactionsRef, () => showReactions && setShowReactions(false));
   useClickOutside(moreRef, () => showMore && setShowMore(false));
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    };
+  }, []);
 
   const openSidebarTab = (tab: SidebarTab) => {
     if (sidebarOpen && sidebarTab === tab) setSidebarOpen(false);
@@ -72,6 +88,54 @@ export default function MeetingControls({
   };
 
   const handleLeave = () => { stopMedia(); stopListening(); onLeave(); };
+
+  const meetingCode = roomId?.trim() || '';
+  const canInvite = Boolean(meetingCode);
+
+  const setTransientInviteFeedback = (message: string) => {
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    setInviteFeedback(message);
+    if (message) {
+      feedbackTimerRef.current = setTimeout(() => setInviteFeedback(''), 3000);
+    }
+  };
+
+  const handleInviteResult = (result: MeetingInviteResult) => {
+    if (result.status === 'cancelled') return;
+    if (result.status === 'shared') {
+      setTransientInviteFeedback('Share sheet opened');
+      return;
+    }
+    if (result.status === 'copied') {
+      setTransientInviteFeedback(result.kind === 'code' ? 'Code copied' : 'Link copied');
+      return;
+    }
+    setTransientInviteFeedback('Copy failed');
+  };
+
+  const getMeetingUrl = () => buildCanonicalMeetingUrl(window.location.origin, meetingCode);
+
+  const copyMeetingLink = async () => {
+    if (!canInvite) return;
+    const result = await copyMeetingInviteText(navigator, getMeetingUrl(), 'link');
+    handleInviteResult(result);
+  };
+
+  const copyMeetingCode = async () => {
+    if (!canInvite) return;
+    const result = await copyMeetingInviteText(navigator, meetingCode, 'code');
+    handleInviteResult(result);
+  };
+
+  const shareMeeting = async () => {
+    if (!canInvite) return;
+    const result = await shareMeetingInvite(navigator, {
+      title: 'Join my Conferly meeting',
+      text: `Meeting code: ${meetingCode}`,
+      url: getMeetingUrl(),
+    });
+    handleInviteResult(result);
+  };
 
   const btnBase = "p-3 min-w-[44px] min-h-[44px] rounded-xl transition-all flex items-center justify-center";
   const btnOff = `${btnBase} bg-slate-700/60 text-white active:bg-slate-600/60`;
@@ -99,6 +163,26 @@ export default function MeetingControls({
       {/* More menu (mobile overflow) */}
       {showMore && (
         <div ref={moreRef} className="absolute bottom-full right-2 mb-2 glass rounded-xl p-2 z-20 space-y-1 min-w-[180px]">
+          {canInvite && (
+            <>
+              <div className="px-3 py-2 border-b border-white/5 mb-1">
+                <div className="text-[10px] uppercase tracking-wide text-slate-500">Meeting code</div>
+                <div className="font-mono text-xs text-slate-300 truncate">{meetingCode}</div>
+              </div>
+              <button onClick={() => { void copyMeetingLink(); setShowMore(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 active:bg-slate-800/40" aria-label="Copy meeting link">
+                <Copy className="w-4 h-4" />
+                Copy meeting link
+              </button>
+              <button onClick={() => { void copyMeetingCode(); setShowMore(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 active:bg-slate-800/40" aria-label="Copy meeting code">
+                <Copy className="w-4 h-4" />
+                Copy meeting code
+              </button>
+              <button onClick={() => { void shareMeeting(); setShowMore(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 active:bg-slate-800/40" aria-label="Share using device">
+                <Share2 className="w-4 h-4" />
+                Share using device
+              </button>
+            </>
+          )}
           <button onClick={() => { toggleScreenShare(); setShowMore(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 active:bg-slate-800/40">
             {isScreenSharing ? <MonitorOff className="w-4 h-4 text-blue-400" /> : <Monitor className="w-4 h-4" />}
             {isScreenSharing ? 'Stop Sharing' : 'Share Screen'}
@@ -166,6 +250,22 @@ export default function MeetingControls({
             <Hand className="w-5 h-5" />
           </button>
 
+          {/* Invite — desktop/tablet */}
+          {canInvite && (
+            <div className="hidden sm:flex items-center gap-1 rounded-xl bg-slate-700/40 p-1">
+              <button onClick={() => void copyMeetingLink()} className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-lg text-sm text-white hover:bg-slate-600/60 transition-all" aria-label="Invite participants: copy meeting link" title="Copy meeting link">
+                <Share2 className="w-4 h-4" />
+                <span className="hidden lg:inline">Invite</span>
+              </button>
+              <button onClick={() => void copyMeetingCode()} className="hidden lg:flex px-2 py-2 min-h-[40px] rounded-lg font-mono text-xs text-slate-300 hover:bg-slate-600/60 transition-all" aria-label={`Copy meeting code ${meetingCode}`} title="Copy meeting code">
+                {meetingCode}
+              </button>
+              <button onClick={() => void shareMeeting()} className="hidden md:flex p-2 min-w-[40px] min-h-[40px] rounded-lg text-slate-300 hover:bg-slate-600/60 transition-all" aria-label="Share using device" title="Share using device">
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {/* More menu — mobile only, shows hidden controls */}
           <button onClick={() => setShowMore(!showMore)} className={`sm:hidden ${btnOff}`} title="More options">
             <MoreHorizontal className="w-5 h-5" />
@@ -191,6 +291,12 @@ export default function MeetingControls({
           </button>
         </div>
       </div>
+      <div className="sr-only" aria-live="polite" aria-atomic="true">{inviteFeedback}</div>
+      {inviteFeedback && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 rounded-full border border-white/10 bg-slate-900/95 px-3 py-1.5 text-xs text-slate-200 shadow-lg" role="status">
+          {inviteFeedback}
+        </div>
+      )}
     </div>
   );
 }
