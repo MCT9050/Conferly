@@ -1213,6 +1213,7 @@ export default function MeetLiveSession({
           toggleHandRaise={() => setHandRaised((h) => !h)}
           stopMedia={stopMedia}
           stopListening={stopListening}
+          roomId={roomId}
         />
       </ErrorBoundary>
 
