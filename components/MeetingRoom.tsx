@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from 'react';
-import { Shield, Zap, Wifi, Users, Lock, ShieldCheck, AlertTriangle, Clock } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Shield, Zap, Wifi, Users, Lock, ShieldCheck, AlertTriangle, Clock, Share2, Check } from 'lucide-react';
 import VideoGrid from './VideoGrid';
 import MeetingControls from './MeetingControls';
 import Sidebar from './Sidebar';
@@ -85,7 +85,11 @@ interface MeetingRoomProps {
   presentation: usePresentation;
 }
 
+type ShareState = "idle" | "copied" | "error";
+
 export default function MeetingRoom(props: MeetingRoomProps) {
+  const [shareState, setShareState] = useState<ShareState>("idle");
+
   useEffect(() => {
     if (!props.stream) {
       props.startMedia();
@@ -106,6 +110,40 @@ export default function MeetingRoom(props: MeetingRoomProps) {
     }, 1000);
     return () => clearInterval(interval);
   }, [props.setMeetingDuration]);
+
+  const handleShareMeeting = async () => {
+    const meetingUrl = `${window.location.origin}/meet/rooms/${encodeURIComponent(
+      props.roomId,
+    )}`;
+
+    try {
+      if (
+        typeof navigator.share === "function" &&
+        (!navigator.canShare ||
+          navigator.canShare({
+            title: "Join my Conferly meeting",
+            url: meetingUrl,
+          }))
+      ) {
+        await navigator.share({
+          title: "Join my Conferly meeting",
+          text: "Join my Conferly meeting",
+          url: meetingUrl,
+        });
+
+        return;
+      }
+
+      await navigator.clipboard.writeText(meetingUrl);
+      setShareState("copied");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+
+      setShareState("error");
+    }
+  };
 
   return (
     <div className="h-screen h-[100dvh] flex flex-col">
@@ -131,6 +169,21 @@ export default function MeetingRoom(props: MeetingRoomProps) {
             <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-blue-400" />{props.participants.length}</span>
           </div>
           <code className="text-[10px] sm:text-xs text-slate-400 font-mono bg-slate-800/40 px-2 sm:px-3 py-1 rounded-lg hidden sm:block">{props.roomId}</code>
+          {props.isHost && (
+            <button
+              type="button"
+              onClick={handleShareMeeting}
+              aria-label="Invite participants to this meeting"
+              className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-300 bg-slate-800/40 hover:bg-slate-700/60 px-2 sm:px-3 py-1 rounded-lg transition-colors"
+            >
+              {shareState === "copied" ? (
+                <Check className="w-3.5 h-3.5 text-green-400" />
+              ) : (
+                <Share2 className="w-3.5 h-3.5 text-blue-400" />
+              )}
+              <span>{shareState === "copied" ? "Link copied" : shareState === "error" ? "Copy failed" : "Invite"}</span>
+            </button>
+          )}
         </div>
       </div>
 
