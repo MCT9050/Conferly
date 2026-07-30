@@ -15,9 +15,11 @@ interface LobbyPreJoinProps {
   roomId: string;
   domain?: string;
   lessonId?: string;
+  intent?: string;
+  invite?: string;
 }
 
-export default function LobbyPreJoin({ roomId, domain = "meet", lessonId }: LobbyPreJoinProps) {
+export default function LobbyPreJoin({ roomId, domain = "meet", lessonId, intent, invite }: LobbyPreJoinProps) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -30,6 +32,45 @@ export default function LobbyPreJoin({ roomId, domain = "meet", lessonId }: Lobb
   const [selectedCamera, setSelectedCamera] = useState<string>("");
   const [selectedMic, setSelectedMic] = useState<string>("");
   const [showSettings, setShowSettings] = useState(false);
+  const [acceptanceStatus, setAcceptanceStatus] = useState<'idle' | 'accepted' | 'failed'>(invite ? 'idle' : 'accepted');
+  const [acceptanceError, setAcceptanceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !invite) return;
+
+    const params = new URLSearchParams(window.location.search);
+    params.delete('invite');
+    const nextQuery = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}`);
+  }, [invite]);
+
+  const acceptInvitation = useCallback(async (): Promise<boolean> => {
+    if (!invite || intent !== 'join' || domain !== 'meet') return true;
+
+    try {
+      const response = await fetch('/api/meeting-invitations/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ room: roomId, invite }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string; room?: string };
+
+      if (!response.ok) {
+        setAcceptanceStatus('failed');
+        setAcceptanceError(payload.error ?? 'Unable to join right now');
+        return false;
+      }
+
+      setAcceptanceStatus('accepted');
+      setAcceptanceError(null);
+      return true;
+    } catch {
+      setAcceptanceStatus('failed');
+      setAcceptanceError('Unable to join right now');
+      return false;
+    }
+  }, [domain, intent, invite, roomId]);
 
   // Enumerate devices
   useEffect(() => {
@@ -111,10 +152,13 @@ export default function LobbyPreJoin({ roomId, domain = "meet", lessonId }: Lobb
     setIsVideoOn(next);
   }, [isVideoOn]);
 
-  const joinMeeting = useCallback(() => {
+  const joinMeeting = useCallback(async () => {
     // Stop preview stream — the meeting page will start its own
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+
+    const accepted = await acceptInvitation();
+    if (!accepted) return;
 
     if (domain === "class") {
       if (lessonId) {
@@ -127,7 +171,7 @@ export default function LobbyPreJoin({ roomId, domain = "meet", lessonId }: Lobb
     } else {
       router.push(`/meet/rooms/${encodeURIComponent(roomId)}`);
     }
-  }, [router, roomId, domain, lessonId]);
+  }, [router, roomId, domain, lessonId, acceptInvitation]);
 
   const videoDevices = devices.filter((d) => d.kind === "videoinput");
   const audioDevices = devices.filter((d) => d.kind === "audioinput");
@@ -244,13 +288,19 @@ export default function LobbyPreJoin({ roomId, domain = "meet", lessonId }: Lobb
         </div>
       )}
 
+      {acceptanceError && (
+        <div className="w-full max-w-lg rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400" role="alert">
+          {acceptanceError}
+        </div>
+      )}
+
       {/* Join button */}
       <button
         type="button"
-        onClick={joinMeeting}
+        onClick={() => void joinMeeting()}
         className="flex items-center gap-3 px-8 py-4 rounded-full bg-amber-400 text-slate-950 font-semibold text-base hover:bg-amber-300 transition-all shadow-lg shadow-amber-400/20"
       >
-        Join meeting
+        {acceptanceStatus === 'idle' && invite ? 'Accept invite and join' : 'Join meeting'}
         <ArrowRight className="w-5 h-5" />
       </button>
 

@@ -3,10 +3,11 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import CreateMeetingButton from '@/components/CreateMeetingButton';
+import JoinExistingMeeting from '@/components/meet/JoinExistingMeeting';
 
 export default async function MeetDashboardPage() {
   const supabase = createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  await supabase.auth.getUser();
 
   return (
     <div className="space-y-6">
@@ -21,6 +22,8 @@ export default async function MeetDashboardPage() {
       <div className="rounded-2xl border border-white/10 bg-slate-900/40 p-6">
         <p className="text-sm text-slate-400">No upcoming meetings. Schedule one to get started.</p>
       </div>
+
+      <JoinExistingMeeting />
     </div>
   );
 }

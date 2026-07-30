@@ -852,6 +852,7 @@ function formatDuration(seconds: number): string {
 
 type MeetLiveSessionProps = {
   roomId?: string;
+  meetingId?: string;
   userId?: string;
   role?: string;
   userName?: string;
@@ -859,6 +860,7 @@ type MeetLiveSessionProps = {
 
 export default function MeetLiveSession({
   roomId = "—",
+  meetingId,
   userId,
   role,
   userName,
@@ -1214,6 +1216,8 @@ export default function MeetLiveSession({
           stopMedia={stopMedia}
           stopListening={stopListening}
           roomId={roomId}
+          meetingId={meetingId}
+          isOwner={isOwner}
         />
       </ErrorBoundary>
 

@@ -2,8 +2,15 @@ import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import {
+  getRecentWorkspaceHref,
+  type RecentWorkspaceItem,
+} from '../../lib/recentWorkspace';
+import {
+  buildCanonicalLobbyInviteUrl,
   buildCanonicalMeetingUrl,
   copyMeetingInviteText,
+  normalizeMeetingJoinTarget,
+  requestSecureMeetingInvitation,
   shareMeetingInvite,
 } from '../../lib/meetingInvite';
 
@@ -14,6 +21,74 @@ test.describe('meeting invite runtime helpers', () => {
     expect(url).toBe('https://conferly.site/meet/rooms/team%20weekly%2Fabc123');
     expect(url).toContain('/meet/rooms/');
     expect(url).not.toContain('00000000-0000-0000-0000-000000000000');
+  });
+
+  test('secure invite lobby URL uses room plus raw invite token', () => {
+    const url = buildCanonicalLobbyInviteUrl(
+      'https://conferly.site/',
+      'team-weekly',
+      'rawToken_123',
+    );
+
+    expect(url).toBe(
+      'https://conferly.site/lobby?room=team-weekly&intent=join&invite=rawToken_123',
+    );
+  });
+
+  test('join target normalization accepts lobby invite URLs, room URLs, and raw codes', () => {
+    expect(
+      normalizeMeetingJoinTarget(
+        'https://conferly.site/lobby?room=alpha-room&intent=join&invite=token_123',
+      ),
+    ).toEqual({
+      ok: true,
+      room: 'alpha-room',
+      invite: 'token_123',
+      href: '/lobby?room=alpha-room&intent=join&invite=token_123',
+    });
+
+    expect(normalizeMeetingJoinTarget('/meet/rooms/team%20weekly')).toEqual({
+      ok: true,
+      room: 'team weekly',
+      href: '/lobby?room=team%20weekly&intent=join',
+    });
+
+    expect(normalizeMeetingJoinTarget('ABC123')).toEqual({
+      ok: true,
+      room: 'ABC123',
+      href: '/lobby?room=ABC123&intent=join',
+    });
+  });
+
+  test('persisted UUID selects the invitation endpoint while the generated URL retains the route slug', async () => {
+    const persistedMeetingId = '8f267b18-e11c-47db-9729-53af8087f908';
+    const routeSlug = 'weekly-product-sync';
+    const requests: Array<{ input: string; init: RequestInit }> = [];
+
+    const invitationUrl = await requestSecureMeetingInvitation(
+      async (input, init) => {
+        requests.push({ input, init });
+        return {
+          ok: true,
+          json: async () => ({
+            url: `/lobby?room=${routeSlug}&intent=join&invite=server-token`,
+          }),
+        };
+      },
+      'https://conferly.site/',
+      persistedMeetingId,
+    );
+
+    expect(routeSlug).not.toBe(persistedMeetingId);
+    expect(requests).toHaveLength(1);
+    expect(requests[0].input).toBe(
+      `/api/meetings/${persistedMeetingId}/invitations`,
+    );
+    expect(requests[0].input).not.toContain(routeSlug);
+    expect(requests[0].init.method).toBe('POST');
+    expect(invitationUrl).toBe(
+      `https://conferly.site/lobby?room=${routeSlug}&intent=join&invite=server-token`,
+    );
   });
 
   test('native share is preferred when available', async () => {
@@ -165,7 +240,91 @@ test.describe('meeting invite runtime helpers', () => {
 });
 
 test.describe('meeting invite active runtime wiring', () => {
-  test('Invite renders in active controls and is available independent of owner role', async () => {
+  test('active general dashboard loads canonical meeting slug and room code for recent items', async () => {
+    const dashboardPage = await readFile(
+      path.join(process.cwd(), 'app', '(platform)', 'dashboard', 'page.tsx'),
+      'utf8',
+    );
+
+    expect(dashboardPage).toContain(".select('id, slug, room_code, title, created_at')");
+    expect(dashboardPage).toContain('resourceId: item.id');
+    expect(dashboardPage).toContain('routeSlug: item.slug?.trim() || item.room_code?.trim() || null');
+  });
+
+  test('recent Meet item with distinct UUID and slug routes with slug only', () => {
+    const item: RecentWorkspaceItem = {
+      resourceId: '4cb56adc-cdb8-4e03-9bd7-f87262c545e0',
+      routeSlug: 'z3ioe6563x2i',
+      title: 'Room z3ioe6563x2i',
+      displayLabel: 'Room z3ioe6563x2i',
+      type: 'meet',
+      createdAt: '2026-07-30T10:00:00.000Z',
+    };
+
+    const href = getRecentWorkspaceHref(item);
+
+    expect(href).toBe('/meet/rooms/z3ioe6563x2i');
+    expect(href).not.toContain('4cb56adc-cdb8-4e03-9bd7-f87262c545e0');
+  });
+
+  test('recent Meet item uses legacy room_code route slug only when slug is missing', () => {
+    const item: RecentWorkspaceItem = {
+      resourceId: '4cb56adc-cdb8-4e03-9bd7-f87262c545e0',
+      routeSlug: 'legacy-room-code',
+      title: 'Legacy room',
+      displayLabel: 'Legacy room',
+      type: 'meet',
+    };
+
+    expect(getRecentWorkspaceHref(item)).toBe('/meet/rooms/legacy-room-code');
+  });
+
+  test('recent Meet item never falls back to UUID when no slug or room_code is available', () => {
+    const item: RecentWorkspaceItem = {
+      resourceId: '4cb56adc-cdb8-4e03-9bd7-f87262c545e0',
+      routeSlug: null,
+      title: 'Missing slug',
+      displayLabel: 'Missing slug',
+      type: 'meet',
+    };
+
+    const href = getRecentWorkspaceHref(item);
+
+    expect(href).toBe('/meet/dashboard');
+    expect(href).not.toContain('4cb56adc-cdb8-4e03-9bd7-f87262c545e0');
+  });
+
+  test('recent classroom routing still uses the classroom resource id', () => {
+    expect(
+      getRecentWorkspaceHref({
+        resourceId: 'classroom-123',
+        routeSlug: 'ignored-for-classrooms',
+        title: 'Classroom',
+        displayLabel: 'Classroom',
+        type: 'classroom',
+      }),
+    ).toBe('/class/classrooms/classroom-123');
+  });
+
+  test('active Meet dashboard renders the Join Existing Meeting input', async () => {
+    const dashboardPage = await readFile(
+      path.join(process.cwd(), 'app', 'meet', 'dashboard', 'page.tsx'),
+      'utf8',
+    );
+    const joinComponent = await readFile(
+      path.join(process.cwd(), 'components', 'meet', 'JoinExistingMeeting.tsx'),
+      'utf8',
+    );
+
+    expect(dashboardPage).toContain("import JoinExistingMeeting from '@/components/meet/JoinExistingMeeting'");
+    expect(dashboardPage).toContain('<JoinExistingMeeting />');
+    expect(joinComponent).toContain('Meeting link or code');
+    expect(joinComponent).toContain('Join meeting');
+    expect(joinComponent).toContain('normalizeMeetingJoinTarget');
+    expect(joinComponent).not.toContain("fetch('/api/meetings'");
+  });
+
+  test('Invite renders in active controls and only owners can generate secure invitation credentials', async () => {
     const controls = await readFile(path.join(process.cwd(), 'components', 'MeetingControls.tsx'), 'utf8');
     const liveSession = await readFile(
       path.join(process.cwd(), 'components', 'meet', 'MeetLiveSession.tsx'),
@@ -173,27 +332,98 @@ test.describe('meeting invite active runtime wiring', () => {
     );
 
     expect(liveSession).toContain('roomId={roomId}');
-    expect(controls).toContain('Invite participants: copy meeting link');
-    expect(controls).toContain('Copy meeting link');
+    expect(liveSession).toContain('meetingId={meetingId}');
+    expect(liveSession).toContain('isOwner={isOwner}');
+    expect(controls).toContain('Invite participants: copy secure meeting invitation');
+    expect(controls).toContain('Copy secure invite link');
     expect(controls).toContain('Copy meeting code');
     expect(controls).toContain('Share using device');
     expect(controls).toContain('Meeting code');
-    expect(controls).not.toContain('role ===');
-    expect(controls).not.toContain('isOwner');
+    expect(controls).toContain('if (!isOwner)');
   });
 
-  test('Invite implementation does not call meeting creation or leak LiveKit room UUIDs into shared URLs', async () => {
+  test('Invite implementation creates secure invitations without calling generic meeting creation', async () => {
     const controls = await readFile(path.join(process.cwd(), 'components', 'MeetingControls.tsx'), 'utf8');
     const helper = await readFile(path.join(process.cwd(), 'lib', 'meetingInvite.ts'), 'utf8');
+    const inviteRoute = await readFile(
+      path.join(process.cwd(), 'app', 'api', 'meetings', '[meetingId]', 'invitations', 'route.ts'),
+      'utf8',
+    );
 
-    expect(controls).not.toContain('/api/meetings');
+    expect(controls).toContain('requestSecureMeetingInvitation(fetch, window.location.origin, meetingId)');
     expect(controls).not.toContain('createExplicitMeeting');
-    expect(helper).not.toContain('/api/meetings');
+    expect(inviteRoute).toContain('token_hash');
+    expect(inviteRoute).not.toContain('console.log');
     expect(helper).toContain("/meet/rooms/${encodeURIComponent(roomId)}");
-    expect(helper).not.toContain('meetingId');
+    expect(helper).toContain("/lobby?");
   });
 
-  test('active controls preserve critical meeting controls while adding Invite', async () => {
+  test('lobby acceptance removes invite token from the visible URL and uses the acceptance endpoint', async () => {
+    const lobby = await readFile(path.join(process.cwd(), 'components', 'LobbyPreJoin.tsx'), 'utf8');
+    const joinComponent = await readFile(
+      path.join(process.cwd(), 'components', 'meet', 'JoinExistingMeeting.tsx'),
+      'utf8',
+    );
+    const acceptRoute = await readFile(
+      path.join(process.cwd(), 'app', 'api', 'meeting-invitations', 'accept', 'route.ts'),
+      'utf8',
+    );
+
+    expect(lobby).toContain("params.delete('invite')");
+    expect(lobby).toContain("window.history.replaceState");
+    expect(lobby).toContain('/api/meeting-invitations/accept');
+    expect(lobby).not.toContain('/api/meetings');
+    expect(joinComponent).toContain('Meeting link or code');
+    expect(joinComponent).toContain('normalizeMeetingJoinTarget');
+    expect(acceptRoute).toContain("rpc('accept_meeting_invitation'");
+  });
+
+  test('private slug alone does not grant membership and invalid invites do not navigate to meeting creation', async () => {
+    const meetingAuth = await readFile(path.join(process.cwd(), 'lib', 'meetingAuth.ts'), 'utf8');
+    const lobby = await readFile(path.join(process.cwd(), 'components', 'LobbyPreJoin.tsx'), 'utf8');
+
+    expect(meetingAuth).toContain("if (meeting.is_public)");
+    expect(meetingAuth).toMatch(/if \(meeting\.is_public\)[\s\S]*return null;/);
+    expect(lobby).toContain('const accepted = await acceptInvitation();');
+    expect(lobby).toContain('if (!accepted) return;');
+    expect(lobby.indexOf('const accepted = await acceptInvitation();')).toBeLessThan(
+      lobby.indexOf('router.push(`/meet/rooms/${encodeURIComponent(roomId)}`)'),
+    );
+    expect(lobby).not.toContain("router.push('/meeting')");
+    expect(lobby).not.toContain('/api/meetings');
+  });
+
+  test('creation authorization is server authoritative and LiveKit uses the route slug consistently', async () => {
+    const inviteRoute = await readFile(
+      path.join(process.cwd(), 'app', 'api', 'meetings', '[meetingId]', 'invitations', 'route.ts'),
+      'utf8',
+    );
+    const liveSession = await readFile(
+      path.join(process.cwd(), 'components', 'meet', 'MeetLiveSession.tsx'),
+      'utf8',
+    );
+
+    expect(inviteRoute).toContain(".eq('id', meetingId)");
+    expect(inviteRoute).toContain('if (meeting.owner !== session.userId)');
+    expect(inviteRoute).toContain("{ status: 403 }");
+    expect(liveSession).toContain('const joined = await connectToRoom(roomId);');
+    expect(liveSession).toContain('body: JSON.stringify({ roomId, role: "participant" })');
+  });
+
+  test('secure invitation boundaries keep UUID for creation and slug for invite URL', async () => {
+    const helper = await readFile(path.join(process.cwd(), 'lib', 'meetingInvite.ts'), 'utf8');
+    const inviteRoute = await readFile(
+      path.join(process.cwd(), 'app', 'api', 'meetings', '[meetingId]', 'invitations', 'route.ts'),
+      'utf8',
+    );
+
+    expect(helper).toContain('persistedMeetingId: string');
+    expect(helper).toContain('`/api/meetings/${encodeURIComponent(persistedMeetingId)}/invitations`');
+    expect(inviteRoute).toContain(".eq('id', meetingId)");
+    expect(inviteRoute).toContain('const url = `/lobby?room=${encodeURIComponent(meeting.slug)}&intent=join&invite=${encodeURIComponent(rawToken)}`;');
+  });
+
+  test('active controls preserve critical meeting controls while adding secure Invite', async () => {
     const controls = await readFile(path.join(process.cwd(), 'components', 'MeetingControls.tsx'), 'utf8');
 
     expect(controls).toContain('toggleMute');

@@ -3,7 +3,7 @@ import { getSupabaseServerClient } from './supabaseServerClient';
 
 export type MeetingAccess = {
   meetingId: string;
-  accessRole: 'owner' | 'participant' | 'spectator';
+  accessRole: 'owner' | 'presenter' | 'participant' | 'spectator';
   source: 'owner' | 'participant' | 'public';
 };
 
@@ -55,7 +55,11 @@ export async function verifyRoomAccess(userId: string, roomId: string): Promise<
   }
 
   if (participant?.role) {
-    const accessRole = participant.role === 'spectator' ? 'spectator' : 'participant';
+    const accessRole = participant.role === 'presenter'
+      ? 'presenter'
+      : participant.role === 'spectator'
+        ? 'spectator'
+        : 'participant';
     return { meetingId: meeting.id, accessRole, source: 'participant' };
   }
 

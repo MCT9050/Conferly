@@ -10,8 +10,8 @@ import {
 import type { SidebarTab, Reaction } from '../types';
 import { useClickOutside } from '../hooks/useClickOutside';
 import {
-  buildCanonicalMeetingUrl,
   copyMeetingInviteText,
+  requestSecureMeetingInvitation,
   shareMeetingInvite,
   type MeetingInviteResult,
 } from '../lib/meetingInvite';
@@ -41,6 +41,8 @@ interface MeetingControlsProps {
   stopMedia: () => void;
   stopListening: () => void;
   roomId?: string;
+  meetingId?: string;
+  isOwner?: boolean;
 }
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '🤔', '👏'];
@@ -64,10 +66,13 @@ export default function MeetingControls({
   handRaised, toggleHandRaise,
   stopMedia, stopListening,
   roomId,
+  meetingId,
+  isOwner = false,
 }: MeetingControlsProps) {
   const [showReactions, setShowReactions] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [inviteFeedback, setInviteFeedback] = useState<string>('');
+  const [isCreatingInvite, setIsCreatingInvite] = useState(false);
   const reactionsRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -113,12 +118,28 @@ export default function MeetingControls({
     setTransientInviteFeedback('Copy failed');
   };
 
-  const getMeetingUrl = () => buildCanonicalMeetingUrl(window.location.origin, meetingCode);
+  const createOwnerInvite = async (): Promise<string> => {
+    if (!meetingId) throw new Error('Meeting ID unavailable');
+    return requestSecureMeetingInvitation(fetch, window.location.origin, meetingId);
+  };
 
   const copyMeetingLink = async () => {
     if (!canInvite) return;
-    const result = await copyMeetingInviteText(navigator, getMeetingUrl(), 'link');
-    handleInviteResult(result);
+    if (!isOwner) {
+      const result = await copyMeetingInviteText(navigator, meetingCode, 'code');
+      handleInviteResult(result);
+      return;
+    }
+
+    setIsCreatingInvite(true);
+    try {
+      const result = await copyMeetingInviteText(navigator, await createOwnerInvite(), 'link');
+      handleInviteResult(result);
+    } catch {
+      setTransientInviteFeedback('Unable to create invite');
+    } finally {
+      setIsCreatingInvite(false);
+    }
   };
 
   const copyMeetingCode = async () => {
@@ -129,10 +150,27 @@ export default function MeetingControls({
 
   const shareMeeting = async () => {
     if (!canInvite) return;
+    if (!isOwner) {
+      const result = await copyMeetingInviteText(navigator, meetingCode, 'code');
+      handleInviteResult(result);
+      return;
+    }
+
+    setIsCreatingInvite(true);
+    let inviteUrl: string;
+    try {
+      inviteUrl = await createOwnerInvite();
+    } catch {
+      setTransientInviteFeedback('Unable to create invite');
+      setIsCreatingInvite(false);
+      return;
+    }
+    setIsCreatingInvite(false);
+
     const result = await shareMeetingInvite(navigator, {
       title: 'Join my Conferly meeting',
       text: `Meeting code: ${meetingCode}`,
-      url: getMeetingUrl(),
+      url: inviteUrl,
     });
     handleInviteResult(result);
   };
@@ -169,9 +207,9 @@ export default function MeetingControls({
                 <div className="text-[10px] uppercase tracking-wide text-slate-500">Meeting code</div>
                 <div className="font-mono text-xs text-slate-300 truncate">{meetingCode}</div>
               </div>
-              <button onClick={() => { void copyMeetingLink(); setShowMore(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 active:bg-slate-800/40" aria-label="Copy meeting link">
+              <button onClick={() => { void copyMeetingLink(); setShowMore(false); }} disabled={isCreatingInvite} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 active:bg-slate-800/40 disabled:opacity-50" aria-label="Copy secure meeting invitation">
                 <Copy className="w-4 h-4" />
-                Copy meeting link
+                {isOwner ? 'Copy secure invite link' : 'Copy room code'}
               </button>
               <button onClick={() => { void copyMeetingCode(); setShowMore(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 active:bg-slate-800/40" aria-label="Copy meeting code">
                 <Copy className="w-4 h-4" />
@@ -253,9 +291,9 @@ export default function MeetingControls({
           {/* Invite — desktop/tablet */}
           {canInvite && (
             <div className="hidden sm:flex items-center gap-1 rounded-xl bg-slate-700/40 p-1">
-              <button onClick={() => void copyMeetingLink()} className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-lg text-sm text-white hover:bg-slate-600/60 transition-all" aria-label="Invite participants: copy meeting link" title="Copy meeting link">
+              <button onClick={() => void copyMeetingLink()} disabled={isCreatingInvite} className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-lg text-sm text-white hover:bg-slate-600/60 transition-all disabled:opacity-50" aria-label="Invite participants: copy secure meeting invitation" title={isOwner ? 'Copy secure invite link' : 'Copy room code'}>
                 <Share2 className="w-4 h-4" />
-                <span className="hidden lg:inline">Invite</span>
+                <span className="hidden lg:inline">{isCreatingInvite ? 'Creating…' : 'Invite'}</span>
               </button>
               <button onClick={() => void copyMeetingCode()} className="hidden lg:flex px-2 py-2 min-h-[40px] rounded-lg font-mono text-xs text-slate-300 hover:bg-slate-600/60 transition-all" aria-label={`Copy meeting code ${meetingCode}`} title="Copy meeting code">
                 {meetingCode}

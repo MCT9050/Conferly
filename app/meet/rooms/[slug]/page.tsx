@@ -14,6 +14,7 @@ export default async function MeetRoomPage({ params }: { params: Promise<{ slug:
   return (
     <MeetLiveSession
       roomId={slug}
+      meetingId={access.roomId}
       userId={session.userId}
       role={access.role}
       userName={session.email}

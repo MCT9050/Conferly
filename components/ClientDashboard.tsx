@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { Video, Users, FileText, ArrowRight, LogIn, Crown, Loader2 } from "lucide-react";
 import Logo from "./Logo";
+import { normalizeMeetingJoinTarget } from "../lib/meetingInvite";
 
 function generateRoomCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -21,6 +22,7 @@ export default function ClientDashboard() {
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   const stats = useMemo(
     () => [
@@ -61,9 +63,13 @@ export default function ClientDashboard() {
   }, [createLoading, router]);
 
   const joinMeeting = useCallback(() => {
-    const code = joinCode.trim().toUpperCase();
-    if (!code) return;
-    router.push(`/lobby?room=${encodeURIComponent(code)}`);
+    setJoinError(null);
+    const target = normalizeMeetingJoinTarget(joinCode, window.location.origin);
+    if (!target.ok) {
+      setJoinError(target.error);
+      return;
+    }
+    router.push(target.href);
   }, [joinCode, router]);
 
   return (
@@ -157,13 +163,14 @@ export default function ClientDashboard() {
                   <input
                     type="text"
                     value={joinCode}
-                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                    onChange={(e) => setJoinCode(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") joinMeeting();
                     }}
-                    placeholder="Enter room code"
-                    maxLength={8}
-                    className="w-full px-4 py-3.5 rounded-xl bg-slate-800/60 border border-slate-700/30 text-white placeholder-slate-500 font-mono tracking-widest text-center text-sm focus:outline-none focus:border-blue-500/40 uppercase"
+                    placeholder="Meeting link or code"
+                    maxLength={512}
+                    aria-label="Meeting link or code"
+                    className="w-full px-4 py-3.5 rounded-xl bg-slate-800/60 border border-slate-700/30 text-white placeholder-slate-500 text-center text-sm focus:outline-none focus:border-blue-500/40"
                   />
                 </div>
                 <button
@@ -173,9 +180,10 @@ export default function ClientDashboard() {
                   className="px-5 py-3.5 rounded-xl bg-slate-700/60 text-white font-medium text-sm flex items-center gap-2 hover:bg-slate-600/60 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                 >
                   <LogIn className="w-4 h-4" />
-                  Join
+                  Join meeting
                 </button>
               </div>
+              {joinError && <p className="mt-3 text-sm text-red-400">{joinError}</p>}
             </div>
           </div>
 
@@ -223,8 +231,8 @@ export default function ClientDashboard() {
                 Pro tip
               </p>
               <p className="text-sm text-slate-300 mt-2">
-                Share a room code with participants to let them join directly
-                without creating an account.
+                Private rooms require a secure invitation link. A room code is
+                only a locator and does not grant private access by itself.
               </p>
             </div>
           </aside>
