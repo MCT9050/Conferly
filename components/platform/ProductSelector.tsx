@@ -4,10 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Video, BookOpen, Clock } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
+import { getRecentWorkspaceHref, type RecentWorkspaceItem } from '@/lib/recentWorkspace';
 
-export type RecentActivityItem = { id: string; title: string; type: 'meeting' | 'classroom'; created_at: string };
-
-type ProductSelectorProps = { user: User | null; recentActivity?: RecentActivityItem[] };
+type ProductSelectorProps = { user: User | null; recentActivity?: RecentWorkspaceItem[] };
 
 function timeAgo(dateString: string) {
   const now = new Date();
@@ -93,16 +92,16 @@ export function ProductSelector({ user, recentActivity = [] }: ProductSelectorPr
           <div className="space-y-2 max-w-2xl">
             {recentActivity.map((item) => (
               <button
-                key={`${item.type}-${item.id}`}
+                key={`${item.type}-${item.resourceId}`}
                 type="button"
-                onClick={() => router.push(item.type === 'meeting' ? `/meet/rooms/${item.id}` : `/class/classrooms/${item.id}`)}
+                onClick={() => router.push(getRecentWorkspaceHref(item))}
                 className="w-full flex items-center justify-between rounded-xl border border-white/5 bg-slate-900/30 px-4 py-3 text-left hover:border-white/10 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <span className={`inline-flex h-2 w-2 rounded-full ${item.type === 'meeting' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
-                  <span className="text-sm text-slate-200">{item.title}</span>
+                  <span className={`inline-flex h-2 w-2 rounded-full ${item.type === 'meet' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
+                  <span className="text-sm text-slate-200">{item.displayLabel}</span>
                 </div>
-                <span className="text-xs text-muted-foreground">{timeAgo(item.created_at)}</span>
+                <span className="text-xs text-muted-foreground">{item.createdAt ? timeAgo(item.createdAt) : ''}</span>
               </button>
             ))}
           </div>
