@@ -7,9 +7,10 @@
 import { useEffect, useState, useRef, useCallback, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { MeetingErrorFallback } from "@/components/MeetingErrorFallback";
 import VideoGrid from "@/components/VideoGrid";
 import CaptionsOverlay from "@/components/meeting/CaptionsOverlay";
+import RemoteAudioRenderer from "@/components/meeting/RemoteAudioRenderer";
+import type { RemoteAudioTrackReference, RemoteTrackPublicationLike } from "@/components/meeting/RemoteAudioRenderer";
 import MeetingControls from "@/components/MeetingControls";
 import { useSpeechTranscript } from "@/hooks/useSpeechTranscript";
 import { summarizeAction, assistantAction } from "@/app/actions/ai-actions";
@@ -119,15 +120,22 @@ function stopMedia() {
 }
 
 function toggleMute() {
-  if (!streamRef) {
-    void startMedia();
+  if (!liveKitRoom?.localParticipant) {
     return;
   }
+
   const nextMuted = !mediaState.isMuted;
-  streamRef.getAudioTracks().forEach((track) => {
-    track.enabled = !nextMuted;
-  });
-  setMediaState((s) => ({ ...s, isMuted: nextMuted }));
+  void liveKitRoom.localParticipant
+    .setMicrophoneEnabled(!nextMuted)
+    .then(() => {
+      streamRef?.getAudioTracks().forEach((track) => {
+        track.enabled = !nextMuted;
+      });
+      setMediaState((s) => ({ ...s, isMuted: nextMuted }));
+    })
+    .catch((error) => {
+      console.error("Unable to toggle microphone", error);
+    });
 }
 
 function toggleVideo() {
@@ -191,18 +199,114 @@ async function toggleScreenShare() {
 type LiveKitState = {
   connected: boolean;
   participants: Participant[];
+  remoteAudioTracks: RemoteAudioTrackReference[];
+  playbackBlocked: boolean;
   connectionError: string | null;
 };
 
 const initialLiveKitState: LiveKitState = {
   connected: false,
   participants: [],
+  remoteAudioTracks: [],
+  playbackBlocked: false,
   connectionError: null,
 };
 
 let liveKitState: LiveKitState = { ...initialLiveKitState };
 const liveKitListeners = new Set<() => void>();
-let liveKitRoom: any = null;
+const remoteVideoStreams = new Map<string, MediaStream>();
+type LiveKitTrackLike = {
+  mediaStreamTrack?: MediaStreamTrack;
+  attach?: (element?: HTMLMediaElement) => HTMLMediaElement | MediaStream | MediaStreamTrack | void;
+  detach?: (element?: HTMLMediaElement) => HTMLMediaElement[] | void;
+};
+
+type LiveKitPublicationLike = RemoteTrackPublicationLike & {
+  videoTrack?: LiveKitTrackLike;
+  audioTrack?: LiveKitTrackLike;
+  track?: LiveKitTrackLike;
+};
+
+type LiveKitParticipantLike = {
+  sid?: string;
+  identity?: string;
+  name?: string;
+  isSpeaking?: boolean;
+  getTrackPublication?: (source: string) => LiveKitPublicationLike | undefined;
+  getTrackPublications?: () => Map<string, LiveKitPublicationLike>;
+  trackPublications?: Map<string, LiveKitPublicationLike>;
+};
+
+type LiveKitRoomLike = {
+  remoteParticipants: Map<string, LiveKitParticipantLike>;
+  localParticipant: {
+    publishTrack: (track: MediaStreamTrack, options?: Record<string, unknown>) => Promise<unknown>;
+    setMicrophoneEnabled: (enabled: boolean) => Promise<unknown>;
+  };
+  connect: (url: string, token: string, options?: Record<string, unknown>) => Promise<void>;
+  disconnect: () => Promise<void>;
+  startAudio: () => Promise<void>;
+  canPlaybackAudio?: boolean;
+  on: (event: string, listener: (...args: unknown[]) => void) => void;
+  off: (event: string, listener: (...args: unknown[]) => void) => void;
+};
+
+let liveKitRoom: LiveKitRoomLike | null = null;
+let liveKitRoomCleanup: (() => void) | null = null;
+
+function collectRemoteAudioTracks(participants: LiveKitParticipantLike[]) {
+  const tracks: RemoteAudioTrackReference[] = [];
+
+  participants.forEach((participant) => {
+    const participantId = participant.identity ?? participant.sid ?? Math.random().toString(36).slice(2);
+    const participantName = participant.name ?? participant.identity ?? "Guest";
+    const publications = participant.getTrackPublications?.() ?? participant.trackPublications ?? new Map<string, LiveKitPublicationLike>();
+
+    publications.forEach((publication, key) => {
+      const source = publication.source?.toLowerCase();
+      const kind = publication.kind?.toLowerCase();
+      if (publication.isSubscribed === false || kind !== "audio" || (source !== "microphone" && source !== "mic")) {
+        return;
+      }
+
+      tracks.push({
+        participantId,
+        participantName,
+        publicationId: publication.trackSid ?? publication.sid ?? `${participantId}:${key}`,
+        publication,
+      });
+    });
+  });
+
+  return tracks;
+}
+
+function getParticipantVideoStream(participantId: string, videoTrack?: MediaStreamTrack) {
+  const existing = remoteVideoStreams.get(participantId);
+
+  if (!videoTrack) {
+    if (existing) {
+      existing.getTracks().forEach((track) => existing.removeTrack(track));
+      remoteVideoStreams.delete(participantId);
+    }
+    return null;
+  }
+
+  if (existing) {
+    const currentTrack = existing.getVideoTracks()[0];
+    if (currentTrack === videoTrack) {
+      return existing;
+    }
+
+    existing.getTracks().forEach((track) => existing.removeTrack(track));
+    existing.addTrack(videoTrack);
+    return existing;
+  }
+
+  const stream = new MediaStream([videoTrack]);
+  remoteVideoStreams.set(participantId, stream);
+  return stream;
+}
 
 function emitLiveKitChange() {
   for (const listener of liveKitListeners) listener();
@@ -254,7 +358,7 @@ async function connectToRoom(roomId: string): Promise<boolean> {
   try {
     const { Room, Track, RoomEvent } = await import("livekit-client");
 
-    const room = new Room({ adaptiveStream: true, dynacast: true });
+    const room = new Room({ adaptiveStream: true, dynacast: true }) as unknown as LiveKitRoomLike;
     liveKitRoom = room;
 
     const response = await fetch("/api/lk-token", {
@@ -290,44 +394,116 @@ async function connectToRoom(roomId: string): Promise<boolean> {
       }
     }
 
-    const updateParticipants = () => {
-      const remoteParticipants: Participant[] = Array.from(
-        room.remoteParticipants.values(),
-      ).map((p: any) => {
-        const cameraPub = p.getTrackPublication(Track.Source.Camera);
-        const micPub = p.getTrackPublication(Track.Source.Microphone);
+    const syncParticipantState = () => {
+      const participantEntries = Array.from(room.remoteParticipants.values());
+      const remoteParticipants: Participant[] = participantEntries.map((participant) => {
+        const participantId = participant.identity ?? participant.sid ?? Math.random().toString(36).slice(2);
+        const cameraPub = participant.getTrackPublication?.(Track.Source.Camera);
+        const micPub = participant.getTrackPublication?.(Track.Source.Microphone);
 
-        const tracks: MediaStreamTrack[] = [];
-        if (cameraPub?.isSubscribed && cameraPub.videoTrack?.mediaStreamTrack) {
-          tracks.push(cameraPub.videoTrack.mediaStreamTrack);
-        }
-        if (micPub?.isSubscribed && micPub.audioTrack?.mediaStreamTrack) {
-          tracks.push(micPub.audioTrack.mediaStreamTrack);
-        }
-        const stream = tracks.length > 0 ? new MediaStream(tracks) : null;
+        const videoTrack = cameraPub?.isSubscribed ? cameraPub.videoTrack?.mediaStreamTrack : undefined;
+        const stream = getParticipantVideoStream(participantId, videoTrack);
+        const name = participant.name ?? participant.identity ?? "Guest";
 
-        const name = p.name ?? p.identity ?? "Guest";
         return {
-          id: p.identity ?? p.sid ?? Math.random().toString(36).slice(2),
+          id: participantId,
           name,
           avatar: getAvatar(name),
           stream,
-          isSpeaking: Boolean(p.isSpeaking),
-          isVideoOn: Boolean(cameraPub?.isSubscribed),
-          isMuted: micPub?.muted ?? true,
-          audioLevel: 0,
-        } as Participant;
+          isSpeaking: Boolean(participant.isSpeaking),
+          isVideoOn: Boolean(videoTrack),
+          isMuted: micPub?.isMuted ?? true,
+          audioLevel: participant.isSpeaking ? 0.08 : 0,
+        } satisfies Participant;
       });
 
-      setLiveKitState((s) => ({ ...s, participants: remoteParticipants }));
+      setLiveKitState((s) => ({
+        ...s,
+        connected: true,
+        participants: remoteParticipants,
+        remoteAudioTracks: collectRemoteAudioTracks(participantEntries),
+        playbackBlocked: room.canPlaybackAudio === false,
+      }));
     };
 
-    room.on(RoomEvent.ParticipantConnected, updateParticipants);
-    room.on(RoomEvent.ParticipantDisconnected, updateParticipants);
-    room.on(RoomEvent.TrackSubscribed, updateParticipants);
-    room.on(RoomEvent.TrackUnsubscribed, updateParticipants);
-    room.on(RoomEvent.ActiveSpeakersChanged, updateParticipants);
-    updateParticipants();
+    const handlePlaybackStatusChanged = (playing: boolean) => {
+      setLiveKitState((s) => ({ ...s, playbackBlocked: !playing }));
+    };
+
+    const handleTrackMuted = (publication: LiveKitPublicationLike, participant?: LiveKitParticipantLike) => {
+      if (participant?.identity === undefined && participant?.sid === undefined) {
+        setMediaState((s) => ({ ...s, isMuted: true }));
+        return;
+      }
+
+      syncParticipantState();
+    };
+
+    const handleTrackUnmuted = (publication: LiveKitPublicationLike, participant?: LiveKitParticipantLike) => {
+      if (participant?.identity === undefined && participant?.sid === undefined) {
+        setMediaState((s) => ({ ...s, isMuted: false }));
+        return;
+      }
+
+      syncParticipantState();
+    };
+
+    const handleReconnecting = () => {
+      setLiveKitState((s) => ({ ...s, connected: false }));
+    };
+
+    const handleReconnected = () => {
+      syncParticipantState();
+      setLiveKitState((s) => ({ ...s, connected: true }));
+    };
+
+    const handleDisconnected = () => {
+      remoteVideoStreams.clear();
+      setLiveKitState((s) => ({
+        ...s,
+        connected: false,
+        participants: [],
+        remoteAudioTracks: [],
+      }));
+    };
+
+    const handleSubscriptionFailure = () => {
+      syncParticipantState();
+    };
+
+    const handleTrackMutedEvent = (...args: unknown[]) => {
+      handleTrackMuted(args[0] as LiveKitPublicationLike, args[1] as LiveKitParticipantLike | undefined);
+    };
+
+    const handleTrackUnmutedEvent = (...args: unknown[]) => {
+      handleTrackUnmuted(args[0] as LiveKitPublicationLike, args[1] as LiveKitParticipantLike | undefined);
+    };
+
+    const handlePlaybackStatusChangedEvent = (...args: unknown[]) => {
+      handlePlaybackStatusChanged(Boolean(args[0]));
+    };
+
+    const listeners: Array<[string, (...args: unknown[]) => void]> = [
+      [RoomEvent.ParticipantConnected, syncParticipantState],
+      [RoomEvent.ParticipantDisconnected, syncParticipantState],
+      [RoomEvent.TrackSubscribed, syncParticipantState],
+      [RoomEvent.TrackUnsubscribed, syncParticipantState],
+      [RoomEvent.TrackMuted, handleTrackMutedEvent],
+      [RoomEvent.TrackUnmuted, handleTrackUnmutedEvent],
+      [RoomEvent.TrackSubscriptionFailed, handleSubscriptionFailure],
+      [RoomEvent.ActiveSpeakersChanged, syncParticipantState],
+      [RoomEvent.AudioPlaybackStatusChanged, handlePlaybackStatusChangedEvent],
+      [RoomEvent.Reconnecting, handleReconnecting],
+      [RoomEvent.Reconnected, handleReconnected],
+      [RoomEvent.Disconnected, handleDisconnected],
+    ];
+
+    listeners.forEach(([event, listener]) => room.on(event, listener));
+    liveKitRoomCleanup = () => {
+      listeners.forEach(([event, listener]) => room.off(event, listener));
+    };
+
+    syncParticipantState();
     return true;
   } catch (error) {
     console.error("LiveKit connection failed:", error);
@@ -345,6 +521,9 @@ async function connectToRoom(roomId: string): Promise<boolean> {
 }
 
 function disconnectFromRoom() {
+  liveKitRoomCleanup?.();
+  liveKitRoomCleanup = null;
+  remoteVideoStreams.clear();
   if (liveKitRoom) {
     liveKitRoom.disconnect().catch(() => {});
     liveKitRoom = null;
@@ -837,15 +1016,6 @@ function PanelError() {
 // Duration formatter
 // ----------------------------------------------------------------------------
 
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0)
-    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
 // ----------------------------------------------------------------------------
 // Main meet content
 // ----------------------------------------------------------------------------
@@ -861,7 +1031,7 @@ type MeetLiveSessionProps = {
 export default function MeetLiveSession({
   roomId = "—",
   meetingId,
-  userId,
+  userId: _userId,
   role,
   userName,
 }: MeetLiveSessionProps) {
@@ -880,19 +1050,7 @@ export default function MeetLiveSession({
   } = useSpeechTranscript();
 
   // Chat state for "Send to Chat" from AI Assistant
-  const [chatMessages, setChatMessages] = useState<
-    { id: string; sender: string; message: string; timestamp: string }[]
-  >([]);
-
-  const sendChatMessage = useCallback((text: string) => {
-    const msg = {
-      id: Math.random().toString(36).slice(2, 10),
-      sender: "AI Assistant",
-      message: text,
-      timestamp: new Date().toISOString(),
-    };
-    setChatMessages((prev) => [...prev, msg]);
-  }, []);
+  const sendChatMessage = useCallback((_text: string) => {}, []);
 
   // UI state
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1188,6 +1346,18 @@ export default function MeetLiveSession({
 
       {/* Diagnostic overlay */}
       <DiagnosticOverlay />
+
+      <RemoteAudioRenderer
+        room={liveKitRoom}
+        tracks={liveKit.remoteAudioTracks}
+        playbackBlocked={liveKit.playbackBlocked}
+        onPlaybackBlocked={() => {
+          setLiveKitState((s) => ({ ...s, playbackBlocked: true }));
+        }}
+        onPlaybackRecovered={() => {
+          setLiveKitState((s) => ({ ...s, playbackBlocked: false }));
+        }}
+      />
 
       {/* Controls bar */}
       <ErrorBoundary name="ControlsBar" fallback={() => <PanelError />}>
