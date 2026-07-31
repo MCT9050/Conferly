@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "type-check": "tsc --noEmit",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:e2e": "node ./node_modules/@playwright/test/cli.js test"
   },
   "dependencies": {
     "@supabase/ssr": "0.10.3",
@@ -34,7 +35,7 @@
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^13.5.11",
-    "@playwright/test": "^1.61.1",
+    "@playwright/test": "1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20.19.43",
     "@types/react": "^19",
@@ -42,7 +43,6 @@
     "escape-string-regexp": "^5.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
-    "playwright": "^1.60.0",
     "postcss": "^8.5.24",
     "tailwindcss": "^4",
     "typescript": "^5"
