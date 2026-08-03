@@ -12,10 +12,14 @@ import CaptionsOverlay from "@/components/meeting/CaptionsOverlay";
 import RemoteAudioRenderer from "@/components/meeting/RemoteAudioRenderer";
 import type { RemoteAudioTrackReference, RemoteTrackPublicationLike } from "@/components/meeting/RemoteAudioRenderer";
 import MeetingControls from "@/components/MeetingControls";
+import PresentationStage from "@/components/presentation/PresentationStage";
 import { useSpeechTranscript } from "@/hooks/useSpeechTranscript";
+import { useRemotePresentations } from "@/hooks/useRemotePresentations";
+import { useScreenShare } from "@/hooks/useScreenShare";
 import { summarizeAction, assistantAction } from "@/app/actions/ai-actions";
 import type { Participant, SidebarTab, Reaction } from "@/types";
 import DiagnosticOverlay from "@/components/DiagnosticOverlay";
+import { Room } from "livekit-client";
 
 // ----------------------------------------------------------------------------
 // Media store — useSyncExternalStore, no context tree.
@@ -23,20 +27,16 @@ import DiagnosticOverlay from "@/components/DiagnosticOverlay";
 
 type MediaState = {
   stream: MediaStream | null;
-  screenStream: MediaStream | null;
   isMuted: boolean;
   isVideoOn: boolean;
-  isScreenSharing: boolean;
   isSupported: boolean;
   mediaError: string | null;
 };
 
 const initialMediaState: MediaState = {
   stream: null,
-  screenStream: null,
   isMuted: true,
   isVideoOn: true,
-  isScreenSharing: false,
   isSupported: false,
   mediaError: null,
 };
@@ -44,7 +44,6 @@ const initialMediaState: MediaState = {
 let mediaState: MediaState = { ...initialMediaState };
 const mediaListeners = new Set<() => void>();
 let streamRef: MediaStream | null = null;
-let screenStreamRef: MediaStream | null = null;
 
 function emitMediaChange() {
   for (const listener of mediaListeners) listener();
@@ -148,48 +147,6 @@ function toggleVideo() {
     track.enabled = nextVideo;
   });
   setMediaState((s) => ({ ...s, isVideoOn: nextVideo }));
-}
-
-async function toggleScreenShare() {
-  if (mediaState.isScreenSharing) {
-    screenStreamRef?.getTracks().forEach((track) => track.stop());
-    screenStreamRef = null;
-    setMediaState((s) => ({
-      ...s,
-      isScreenSharing: false,
-      screenStream: null,
-    }));
-    return;
-  }
-  if (
-    typeof window === "undefined" ||
-    !navigator?.mediaDevices?.getDisplayMedia
-  ) {
-    setMediaState((s) => ({
-      ...s,
-      mediaError: "Screen sharing is not available in this browser.",
-    }));
-    return;
-  }
-  try {
-    const display = await navigator.mediaDevices.getDisplayMedia({ video: true });
-    screenStreamRef = display;
-    display.getVideoTracks()[0]?.addEventListener("ended", () => {
-      screenStreamRef = null;
-      setMediaState((s) => ({
-        ...s,
-        isScreenSharing: false,
-        screenStream: null,
-      }));
-    });
-    setMediaState((s) => ({
-      ...s,
-      isScreenSharing: true,
-      screenStream: display,
-    }));
-  } catch {
-    setMediaState((s) => ({ ...s, mediaError: "Could not start screen sharing." }));
-  }
 }
 
 // ----------------------------------------------------------------------------
@@ -529,22 +486,6 @@ function disconnectFromRoom() {
     liveKitRoom = null;
   }
   setLiveKitState(() => ({ ...initialLiveKitState }));
-}
-
-async function publishScreenShareTrack(screenStream: MediaStream | null) {
-  if (!liveKitRoom || !screenStream) return;
-  try {
-    const { Track } = await import("livekit-client");
-    const screenTrack = screenStream.getVideoTracks()[0];
-    if (screenTrack) {
-      await liveKitRoom.localParticipant.publishTrack(screenTrack, {
-        source: Track.Source.ScreenShare,
-        name: "screen-share",
-      });
-    }
-  } catch (error) {
-    console.error("Screen share publish failed:", error);
-  }
 }
 
 // ----------------------------------------------------------------------------
@@ -1038,6 +979,20 @@ export default function MeetLiveSession({
   const router = useRouter();
   const media = useMediaStore((s) => s);
   const liveKit = useLiveKitStore((s) => s);
+  const presentationRoom =
+    liveKitRoom instanceof Room ? liveKitRoom : null;
+  const { focusedPresentation } =
+    useRemotePresentations(presentationRoom);
+  const {
+    screenStream,
+    isScreenSharing,
+    status: screenShareStatus,
+    error: screenShareError,
+    toggleScreenShare,
+    stopScreenShare,
+  } = useScreenShare({
+    room: presentationRoom,
+  });
 
   // Speech transcript (browser SpeechRecognition)
   const {
@@ -1095,13 +1050,6 @@ export default function MeetLiveSession({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasJoined, media.stream]);
-
-  // Publish screen share track when it changes
-  useEffect(() => {
-    if (media.screenStream) {
-      void publishScreenShareTrack(media.screenStream);
-    }
-  }, [media.screenStream]);
 
   // Build full participants list (self + remote)
   const allParticipants: Participant[] = [
@@ -1168,11 +1116,12 @@ export default function MeetLiveSession({
   }, []);
 
   // Leave — generates AI summary from transcript before navigating away
-  const handleLeave = useCallback(() => {
+  const handleLeave = useCallback(async () => {
     if (isLeavingRef.current) return;
     isLeavingRef.current = true;
 
     stopListening();
+    await stopScreenShare();
     stopMedia();
     disconnectFromRoom();
 
@@ -1203,7 +1152,7 @@ export default function MeetLiveSession({
     } else {
       router.push("/dashboard");
     }
-  }, [router, speechTranscript, stopListening]);
+  }, [router, speechTranscript, stopListening, stopScreenShare]);
 
   // Sidebar helpers
   const handleSidebarTab = useCallback(
@@ -1272,6 +1221,12 @@ export default function MeetLiveSession({
         </div>
       )}
 
+      {screenShareError && screenShareStatus === "error" && (
+        <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-300">
+          ⚠️ {screenShareError}
+        </div>
+      )}
+
       {/* Video grid + sidebar */}
       <div className="grid gap-6 xl:grid-cols-[1.55fr,0.95fr]">
         <ErrorBoundary name="VideoGrid" fallback={() => <PanelError />}>
@@ -1311,10 +1266,11 @@ export default function MeetLiveSession({
                 </div>
               </div>
             </div>
-            <div className="h-full min-h-[28rem]">
+            <div className="flex min-h-0 flex-col gap-4 p-3 sm:p-4">
+              <PresentationStage presentation={focusedPresentation} />
               <VideoGrid
                 participants={allParticipants}
-                screenStream={media.screenStream}
+                screenStream={screenStream}
                 handRaised={handRaised}
               />
             </div>
@@ -1366,7 +1322,7 @@ export default function MeetLiveSession({
           toggleMute={toggleMute}
           isVideoOn={media.isVideoOn}
           toggleVideo={toggleVideo}
-          isScreenSharing={media.isScreenSharing}
+          isScreenSharing={isScreenSharing}
           toggleScreenShare={() => void toggleScreenShare()}
           isRecording={isRecording}
           toggleRecording={toggleRecording}
