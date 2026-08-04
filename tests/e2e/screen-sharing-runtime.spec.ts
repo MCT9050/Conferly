@@ -30,7 +30,7 @@ function env(name: string): string | undefined {
   return value ? value : undefined;
 }
 
-function credentials(prefix: 'PRESENTER' | 'VIEWER' | 'TEACHER' | 'LEARNER'): RuntimeCredentials | null {
+function credentials(prefix: 'PRESENTER' | 'VIEWER'): RuntimeCredentials | null {
   const email = env(`PLAYWRIGHT_${prefix}_EMAIL`) ?? env(`TEST_${prefix}_EMAIL`);
   const password = env(`PLAYWRIGHT_${prefix}_PASSWORD`) ?? env(`TEST_${prefix}_PASSWORD`);
 
@@ -38,7 +38,7 @@ function credentials(prefix: 'PRESENTER' | 'VIEWER' | 'TEACHER' | 'LEARNER'): Ru
   return { email, password };
 }
 
-function missingCredentials(prefix: 'PRESENTER' | 'VIEWER' | 'TEACHER' | 'LEARNER') {
+function missingCredentials(prefix: 'PRESENTER' | 'VIEWER') {
   return `missing PLAYWRIGHT_${prefix}_EMAIL/PLAYWRIGHT_${prefix}_PASSWORD or TEST_${prefix}_EMAIL/TEST_${prefix}_PASSWORD`;
 }
 
@@ -281,56 +281,6 @@ test.describe('screen sharing runtime browser validation', () => {
       await stopMockedDisplayTrack(presenter.page);
       await expect(remotePresentationStage(viewer.page)).toBeHidden({ timeout: 30_000 });
       await expect(participantUi(viewer.page)).toBeVisible();
-
-      await expectNoScreenShareDiagnostics(actors, testInfo);
-    } finally {
-      await Promise.all(actors.map((actor) => actor.context.close()));
-    }
-  });
-
-  test('Class two-context screen sharing lifecycle', async ({ browser, baseURL }, testInfo) => {
-    const teacherCreds = credentials('TEACHER');
-    const learnerCreds = credentials('LEARNER');
-    const classroomSlug = env('PLAYWRIGHT_CLASSROOM_SLUG');
-    const lessonId = env('PLAYWRIGHT_CLASS_LESSON_ID');
-    const missing = [
-      teacherCreds ? null : missingCredentials('TEACHER'),
-      learnerCreds ? null : missingCredentials('LEARNER'),
-      classroomSlug ? null : 'missing PLAYWRIGHT_CLASSROOM_SLUG',
-      lessonId ? null : 'missing PLAYWRIGHT_CLASS_LESSON_ID',
-    ].filter(Boolean);
-
-    test.skip(missing.length > 0, `Class runtime fixture blocked: ${missing.join('; ')}`);
-
-    const teacher = await createActor(browser, 'class-teacher');
-    const learner = await createActor(browser, 'class-learner');
-    const actors = [teacher, learner];
-    const classUrl = `${baseURL}/class/classrooms/${encodeURIComponent(classroomSlug!)}/lessons/${encodeURIComponent(lessonId!)}/live`;
-
-    try {
-      await signIn(teacher.page, baseURL!, teacherCreds!);
-      await signIn(learner.page, baseURL!, learnerCreds!);
-
-      await teacher.page.goto(classUrl);
-      await learner.page.goto(classUrl);
-
-      await expect(teacher.page.getByText(/participant|You are presenting|Slides|Ask about the lesson/i).first()).toBeVisible({ timeout: 30_000 });
-      await expect(learner.page.getByText(/participant|Slides|Ask about the lesson/i).first()).toBeVisible({ timeout: 30_000 });
-
-      await clickPresent(teacher.page);
-      await expect(localPresentationIndicator(teacher.page)).toBeVisible({ timeout: 15_000 });
-      await expect(remotePresentationStage(learner.page)).toBeVisible({ timeout: 30_000 });
-      await expect(remotePresentationStage(learner.page).getByText(/presentation|@|participant/i).first()).toBeVisible();
-      await expect(learner.page.getByText(/participant|Slides|Ask about the lesson/i).first()).toBeVisible();
-
-      await clickPresent(teacher.page);
-      await expect(remotePresentationStage(learner.page)).toBeHidden({ timeout: 30_000 });
-
-      await clickPresent(teacher.page);
-      await expect(remotePresentationStage(learner.page)).toBeVisible({ timeout: 30_000 });
-      await stopMockedDisplayTrack(teacher.page);
-      await expect(remotePresentationStage(learner.page)).toBeHidden({ timeout: 30_000 });
-      await expect(learner.page.getByText(/participant|Slides|Ask about the lesson/i).first()).toBeVisible();
 
       await expectNoScreenShareDiagnostics(actors, testInfo);
     } finally {

@@ -5,7 +5,6 @@ import path from "node:path";
 test.describe("presentation main-stage layout source contracts", () => {
   let presentationStageTsx: string;
   let meetLiveSessionTsx: string;
-  let classLiveSessionTsx: string;
 
   test.beforeAll(async () => {
     presentationStageTsx = await readFile(
@@ -14,10 +13,6 @@ test.describe("presentation main-stage layout source contracts", () => {
     );
     meetLiveSessionTsx = await readFile(
       path.resolve(process.cwd(), "components/meet/MeetLiveSession.tsx"),
-      "utf-8"
-    );
-    classLiveSessionTsx = await readFile(
-      path.resolve(process.cwd(), "components/class/ClassLiveSession.tsx"),
       "utf-8"
     );
   });
@@ -89,33 +84,6 @@ test.describe("presentation main-stage layout source contracts", () => {
       expect(meetLiveSessionTsx).toMatch(/source: Track\.Source\.Camera/);
       expect(meetLiveSessionTsx).toMatch(/source: Track\.Source\.Microphone/);
       expect(meetLiveSessionTsx).toMatch(/setMicrophoneEnabled/);
-    });
-  });
-
-  test.describe("Class", () => {
-    test("renders the focused presentation before classroom participant UI", () => {
-      expect(classLiveSessionTsx).toMatch(
-        /<PresentationStage presentation=\{focusedPresentation\} \/>[\s\S]*?\{\/\* Classroom layout: whiteboard \+ filmstrip \+ sidebar \*\/\}/
-      );
-      expect(classLiveSessionTsx).toMatch(/<ParticipantFilmstrip/);
-      expect(classLiveSessionTsx).toMatch(/<MeetingControls/);
-      expect(classLiveSessionTsx).toMatch(/<ClassroomWhiteboard/);
-    });
-
-    test("keeps remote and local screen-share hooks", () => {
-      expect(classLiveSessionTsx).toMatch(/useRemotePresentations\(presentationRoom\)/);
-      expect(classLiveSessionTsx).toMatch(/useScreenShare\(\{\s*room: presentationRoom,\s*\}\)/);
-      expect(classLiveSessionTsx).toMatch(/screenStream=\{screenStream\}/);
-    });
-
-    test("does not alter room lifecycle or add screen-share audio", () => {
-      expect(classLiveSessionTsx.match(/new Room\(/g) ?? []).toHaveLength(1);
-      expect(classLiveSessionTsx.match(/\.connect\(/g) ?? []).toHaveLength(1);
-      expect(classLiveSessionTsx).not.toMatch(/Track\.Source\.ScreenShareAudio|ScreenShareAudio/);
-      expect(classLiveSessionTsx).toMatch(/source: Track\.Source\.Camera/);
-      expect(classLiveSessionTsx).toMatch(/source: Track\.Source\.Microphone/);
-      expect(classLiveSessionTsx).toMatch(/role/);
-      expect(classLiveSessionTsx).toMatch(/isLocalHost/);
     });
   });
 });

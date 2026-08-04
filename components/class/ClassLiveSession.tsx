@@ -12,13 +12,10 @@ import VideoGrid from "@/components/VideoGrid";
 import { ClassroomWhiteboard } from "@/components/meeting/ClassroomWhiteboard";
 import CaptionsOverlay from "@/components/meeting/CaptionsOverlay";
 import MeetingControls from "@/components/MeetingControls";
-import PresentationStage from "@/components/presentation/PresentationStage";
 import { useSpeechTranscript } from "@/hooks/useSpeechTranscript";
-import { useRemotePresentations } from "@/hooks/useRemotePresentations";
-import { useScreenShare } from "@/hooks/useScreenShare";
 import { summarizeAction, assistantAction } from "@/app/actions/ai-actions";
 import type { Participant, SidebarTab, Reaction } from "@/types";
-import { Room } from "livekit-client";
+import type { Room } from "livekit-client";
 import DiagnosticOverlay from "@/components/DiagnosticOverlay";
 
 // ----------------------------------------------------------------------------
@@ -27,16 +24,20 @@ import DiagnosticOverlay from "@/components/DiagnosticOverlay";
 
 type MediaState = {
   stream: MediaStream | null;
+  screenStream: MediaStream | null;
   isMuted: boolean;
   isVideoOn: boolean;
+  isScreenSharing: boolean;
   isSupported: boolean;
   mediaError: string | null;
 };
 
 const initialMediaState: MediaState = {
   stream: null,
+  screenStream: null,
   isMuted: true,
   isVideoOn: true,
+  isScreenSharing: false,
   isSupported: false,
   mediaError: null,
 };
@@ -44,6 +45,7 @@ const initialMediaState: MediaState = {
 let mediaState: MediaState = { ...initialMediaState };
 const mediaListeners = new Set<() => void>();
 let streamRef: MediaStream | null = null;
+let screenStreamRef: MediaStream | null = null;
 
 function emitMediaChange() {
   for (const listener of mediaListeners) listener();
@@ -138,6 +140,48 @@ function toggleVideo() {
     track.enabled = nextVideo;
   });
   setMediaState((s) => ({ ...s, isVideoOn: nextVideo }));
+}
+
+async function toggleScreenShare() {
+  if (mediaState.isScreenSharing) {
+    screenStreamRef?.getTracks().forEach((track) => track.stop());
+    screenStreamRef = null;
+    setMediaState((s) => ({
+      ...s,
+      isScreenSharing: false,
+      screenStream: null,
+    }));
+    return;
+  }
+  if (
+    typeof window === "undefined" ||
+    !navigator?.mediaDevices?.getDisplayMedia
+  ) {
+    setMediaState((s) => ({
+      ...s,
+      mediaError: "Screen sharing is not available in this browser.",
+    }));
+    return;
+  }
+  try {
+    const display = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    screenStreamRef = display;
+    display.getVideoTracks()[0]?.addEventListener("ended", () => {
+      screenStreamRef = null;
+      setMediaState((s) => ({
+        ...s,
+        isScreenSharing: false,
+        screenStream: null,
+      }));
+    });
+    setMediaState((s) => ({
+      ...s,
+      isScreenSharing: true,
+      screenStream: display,
+    }));
+  } catch {
+    setMediaState((s) => ({ ...s, mediaError: "Could not start screen sharing." }));
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -299,6 +343,22 @@ function disconnectFromRoom() {
     liveKitRoom = null;
   }
   setLiveKitState(() => ({ ...initialLiveKitState }));
+}
+
+async function publishScreenShareTrack(screenStream: MediaStream | null) {
+  if (!liveKitRoom || !screenStream) return;
+  try {
+    const { Track } = await import("livekit-client");
+    const screenTrack = screenStream.getVideoTracks()[0];
+    if (screenTrack) {
+      await liveKitRoom.localParticipant.publishTrack(screenTrack, {
+        source: Track.Source.ScreenShare,
+        name: "screen-share",
+      });
+    }
+  } catch (error) {
+    console.error("Screen share publish failed:", error);
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -832,18 +892,11 @@ function TutorDashboard({
 
 function ParticipantFilmstrip({
   participants,
-  screenStream,
 }: {
   participants: Participant[];
-  screenStream: MediaStream | null;
 }) {
   return (
     <div className="flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-14rem)] pr-2">
-      {screenStream && (
-        <div className="relative w-28 h-20 rounded-xl overflow-hidden bg-slate-800/60 border border-cyan-400/30 shrink-0 flex items-center justify-center text-center px-2">
-          <p className="text-[10px] font-medium text-cyan-200">You are presenting</p>
-        </div>
-      )}
       {participants.map((p) => (
         <div
           key={p.id}
@@ -903,18 +956,6 @@ export default function ClassLiveSession({
   const liveKit = useLiveKitStore((s) => s);
   const [isLocalHost, setIsLocalHost] = useState(false);
   const editorMountRef = useRef(false);
-  const presentationRoom = liveKitRoom instanceof Room ? liveKitRoom : null;
-  const { focusedPresentation } = useRemotePresentations(presentationRoom);
-  const {
-    screenStream,
-    isScreenSharing,
-    status: screenShareStatus,
-    error: screenShareError,
-    toggleScreenShare,
-    stopScreenShare,
-  } = useScreenShare({
-    room: presentationRoom,
-  });
 
   // Speech transcript (browser SpeechRecognition)
   const {
@@ -995,6 +1036,13 @@ export default function ClassLiveSession({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [media.stream]);
 
+  // Publish screen share track when it changes
+  useEffect(() => {
+    if (media.screenStream) {
+      void publishScreenShareTrack(media.screenStream);
+    }
+  }, [media.screenStream]);
+
   // Build full participants list (self + remote)
   const allParticipants: Participant[] = [
     {
@@ -1056,12 +1104,10 @@ export default function ClassLiveSession({
     isLeavingRef.current = true;
 
     stopListening();
-    void stopScreenShare().finally(() => {
-      stopMedia();
-      disconnectFromRoom();
-      router.push("/class/dashboard");
-    });
-  }, [router, stopListening, stopScreenShare]);
+    stopMedia();
+    disconnectFromRoom();
+    router.push("/class/dashboard");
+  }, [router, stopListening]);
 
   // Sidebar helpers
   const handleSidebarTab = useCallback(
@@ -1110,25 +1156,17 @@ export default function ClassLiveSession({
         </div>
       )}
 
-      {screenShareError && screenShareStatus === "error" && (
-        <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-300">
-          ⚠️ {screenShareError}
-        </div>
-      )}
-
-      <PresentationStage presentation={focusedPresentation} />
-
       {/* Classroom layout: whiteboard + filmstrip + sidebar */}
       <div className="grid gap-4 xl:grid-cols-[1fr,auto]">
-        <div className="flex flex-col gap-4 lg:flex-row">
+        <div className="flex gap-4">
           {/* Whiteboard area */}
           <div className="flex-1 rounded-3xl border border-white/10 bg-slate-900/85 shadow-xl shadow-black/20 overflow-hidden min-h-[30rem] relative">
             <ClassroomWhiteboard onMount={handleWhiteboardMount} />
           </div>
 
           {/* Filmstrip sidebar */}
-          <div className="w-full shrink-0 lg:w-32">
-            <ParticipantFilmstrip participants={allParticipants} screenStream={screenStream} />
+          <div className="w-32 shrink-0">
+            <ParticipantFilmstrip participants={allParticipants} />
           </div>
         </div>
 
@@ -1161,7 +1199,7 @@ export default function ClassLiveSession({
           toggleMute={toggleMute}
           isVideoOn={media.isVideoOn}
           toggleVideo={toggleVideo}
-          isScreenSharing={isScreenSharing}
+          isScreenSharing={media.isScreenSharing}
           toggleScreenShare={() => void toggleScreenShare()}
           isRecording={isRecording}
           toggleRecording={toggleRecording}
