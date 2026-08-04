@@ -8,7 +8,7 @@ export default defineConfig({
   reporter: 'html',
   timeout: 60000,
   use: {
-    baseURL: 'https://conferly.site',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://conferly.site',
     headless: true,
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
