@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { createLiveKitToken, LiveKitRole } from '@/lib/livekit';
 import { verifyAccess, verifyClassLessonAccess } from '@/lib/accessControl';
+import { enforceClassCapacity } from '@/lib/classEntitlements';
 
 const VALID_ROLES = new Set<LiveKitRole>(['participant', 'spectator']);
 
@@ -93,6 +94,7 @@ export async function POST(request: Request) {
   let role: LiveKitRole;
 
   if (domain === 'class') {
+    // Class authorization is server-controlled — the client may not supply role/room.
     if (payload.role !== undefined || payload.roomId !== undefined || payload.room !== undefined) {
       return NextResponse.json({ error: 'Class authorization is server controlled' }, { status: 400 });
     }
@@ -106,6 +108,35 @@ export async function POST(request: Request) {
     if (!classAccess.lesson.livekit_room_id?.trim()) {
       return NextResponse.json({ error: 'Live lesson room is unavailable' }, { status: 409 });
     }
+
+    // ── Server-side Class capacity enforcement ───────────────────────────────
+    // The classroom owner's entitlement is resolved from the subscriptions DB.
+    // Roles are counted from server-side enrollment data — never from the client.
+    const classroom = classAccess.classroom;
+    if (!classroom) {
+      return NextResponse.json({ error: 'Classroom not found' }, { status: 404 });
+    }
+
+    // After `granted === true`, the access role is one of the four concrete
+    // roles (spectator is only returned when access is denied).
+    const accessRole = classAccess.accessRole;
+    if (accessRole === 'spectator') {
+      return NextResponse.json({ error: 'Access denied to this lesson' }, { status: 403 });
+    }
+
+    const capacity = await enforceClassCapacity(
+      classroom.id,
+      classroom.owner_id,
+      accessRole
+    );
+
+    if (!capacity.allowed) {
+      return NextResponse.json(
+        { error: capacity.reason ?? 'Class capacity limit reached' },
+        { status: 403 }
+      );
+    }
+
     effectiveRoomId = classAccess.lesson.livekit_room_id;
     role = classAccess.liveKitRole;
   } else {

@@ -17,7 +17,7 @@ export default function CheckoutButton({
   color, 
   productType,
   isEnterprise = false,
-  enterpriseEmail = 'sales@conferly.app'
+  enterpriseEmail = 'info@conferly.site'
 }: CheckoutButtonProps) {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);

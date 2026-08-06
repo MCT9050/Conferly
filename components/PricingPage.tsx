@@ -22,12 +22,12 @@ interface PricingPageProps {
 
 const PLAN_META: Record<PlanTier, { name: string; tagline: string; icon: typeof Zap; color: string; gradient: string }> = {
   trial: { name: '14-Day Trial', tagline: 'Try everything free', icon: Zap, color: 'text-amber-400', gradient: 'from-amber-500 to-orange-400' },
-  classroom: { name: 'Classroom', tagline: 'For tutors and trainers', icon: Users, color: 'text-emerald-400', gradient: 'from-emerald-600 to-teal-500' },
-  classroom_plus: { name: 'Classroom Plus', tagline: 'High-capacity learning (R220/mo)', icon: Users, color: 'text-emerald-300', gradient: 'from-emerald-700 to-teal-600' },
+  classroom: { name: 'Class 10', tagline: '10 student seats + 2 teachers (R89/mo)', icon: Users, color: 'text-emerald-400', gradient: 'from-emerald-600 to-teal-500' },
+  classroom_plus: { name: 'Class 30', tagline: '30 student seats + 2 teachers (R140/mo)', icon: Users, color: 'text-emerald-300', gradient: 'from-emerald-700 to-teal-600' },
   individual: { name: 'Individual', tagline: 'Solo professionals (R110/mo)', icon: Video, color: 'text-cyan-400', gradient: 'from-cyan-500 to-sky-400' },
   pro: { name: 'Pro', tagline: 'For small teams', icon: Crown, color: 'text-blue-400', gradient: 'from-blue-600 to-cyan-500' },
   business: { name: 'Business', tagline: 'For growing companies', icon: Building2, color: 'text-purple-400', gradient: 'from-purple-600 to-pink-500' },
-  enterprise: { name: 'Enterprise', tagline: 'For large organizations', icon: Globe, color: 'text-amber-400', gradient: 'from-amber-500 to-orange-500' },
+  enterprise: { name: 'Meet Enterprise', tagline: 'For large organizations', icon: Globe, color: 'text-amber-400', gradient: 'from-amber-500 to-orange-500' },
   unlimited: { name: 'Unlimited', tagline: 'No limits. No boundaries. (R389/mo)', icon: Crown, color: 'text-slate-100', gradient: 'from-slate-700 via-zinc-800 to-slate-900' },
 };
 
@@ -59,9 +59,9 @@ export default function PricingPage({
   const tiers: PlanTier[] = ['classroom', 'classroom_plus', 'individual', 'pro', 'business'];
 
   const handleUpgrade = useCallback(async (tier: PlanTier) => {
-    // Enterprise goes to contact sales
+    // Meet Enterprise goes to contact sales via info@conferly.site
     if (tier === 'enterprise') {
-      window.open('mailto:sales@conferly.app', '_blank');
+      window.open('mailto:info@conferly.site?subject=Meet%20Enterprise%20Enquiry', '_blank');
       return;
     }
 
@@ -73,10 +73,10 @@ export default function PricingPage({
 
       switch (tier) {
         case 'classroom':
-          checkoutFn = async () => (await import('../app/actions/checkout-actions')).createClassroomCheckout();
+          checkoutFn = async () => (await import('../app/actions/checkout-actions')).createClass10Checkout();
           break;
         case 'classroom_plus':
-          checkoutFn = async () => (await import('../app/actions/checkout-actions')).createClassroomPlusCheckout();
+          checkoutFn = async () => (await import('../app/actions/checkout-actions')).createClass30Checkout();
           break;
         case 'individual':
           checkoutFn = async () => (await import('../app/actions/checkout-actions')).createIndividualCheckout();

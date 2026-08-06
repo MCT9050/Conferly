@@ -11,20 +11,28 @@ export type LemonSqueezyConfig = {
 };
 
 /**
- * The 5 commercial tiers exposed in Conferly's checkout.
- * The `enterprise` tier is contact-sales only and has no Lemon Squeezy variant.
- * Business was merged into Pro (same variant, same pricing) — removed to avoid collision.
+ * The commercial tiers exposed in Conferly's checkout.
+ *
+ * NEW product-scoped plan keys (Phase 2):
+ *   class_10, class_20, class_30  — Class product line
+ *
+ * LEGACY tiers preserved for backward compatibility with existing
+ * subscribers and checkouts. They map to the new product-scoped
+ * plan keys on the webhook side (see mapPlanFromProduct).
  */
 export type SupportedPlanTier =
-  | 'classroom'
-  | 'classroom_plus'
+  | 'class_10'
+  | 'class_20'
+  | 'class_30'
+  | 'classroom' // legacy — maps to class_10
+  | 'classroom_plus' // legacy — UNVERIFIED treatment (deployment decision required)
   | 'individual'
   | 'pro'
   | 'unlimited';
 
 export type CheckoutOptions = {
   userId: string;
-  roomType: 'meeting' | 'classroom';
+  roomType: 'meeting' | 'class';
   planTier: SupportedPlanTier;
   variantId: number;
   successUrl: string;
@@ -42,6 +50,10 @@ export type LemonSqueezyEvent =
   | 'subscription_created'
   | 'subscription_updated'
   | 'subscription_cancelled'
+  | 'subscription_expired'
+  | 'subscription_paused'
+  | 'subscription_resumed'
+  | 'subscription_payment_failed'
   | 'order_created'
   | 'order_refunded';
 
@@ -116,7 +128,9 @@ export async function generateCheckoutUrl(options: CheckoutOptions): Promise<Che
           },
         },
         receipt_button_text: "Go to Dashboard",
-        receipt_link_url: "https://conferly.site/dashboard",
+        receipt_link_url: process.env.NEXT_PUBLIC_APP_URL
+          ? `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?checkout=success`
+          : 'https://conferly.site/dashboard',
         receipt_thank_you_note: "Thank you for choosing Conferly! Your subscription is now active, and your workspace has been successfully upgraded. You can start your first session right away from your dashboard.",
         checkout_options: {
           embed: false,
@@ -168,13 +182,20 @@ export async function generateCheckoutUrl(options: CheckoutOptions): Promise<Che
 /**
  * Map from each commercial plan to the env-var name holding its Lemon Squeezy variant ID.
  * Keeping this as the single source of truth avoids stringly-typed lookups elsewhere.
+ *
+ * Class 20 and Class 30 variant IDs are UNVERIFIED until the Lemon Squeezy
+ * dashboard confirms the R120/R140 variants exist. The env vars are prepared
+ * here so a deployment checklist item can fill them in once proven.
  */
 const PLAN_TO_VARIANT_ENV: Record<SupportedPlanTier, string> = {
-  classroom:      'NEXT_PUBLIC_VARIANT_ID_CLASSROOM',
-  classroom_plus: 'NEXT_PUBLIC_VARIANT_ID_CLASSROOM_PLUS',
-  individual:     'NEXT_PUBLIC_VARIANT_ID_INDIVIDUAL',
-  pro:            'NEXT_PUBLIC_VARIANT_ID_PRO',
-  unlimited:      'NEXT_PUBLIC_VARIANT_ID_UNLIMITED',
+  class_10:         'NEXT_PUBLIC_VARIANT_ID_CLASSROOM',
+  class_20:         'NEXT_PUBLIC_VARIANT_ID_CLASS_20',
+  class_30:         'NEXT_PUBLIC_VARIANT_ID_CLASS_30',
+  classroom:        'NEXT_PUBLIC_VARIANT_ID_CLASSROOM',
+  classroom_plus:   'NEXT_PUBLIC_VARIANT_ID_CLASSROOM_PLUS',
+  individual:       'NEXT_PUBLIC_VARIANT_ID_INDIVIDUAL',
+  pro:              'NEXT_PUBLIC_VARIANT_ID_PRO',
+  unlimited:        'NEXT_PUBLIC_VARIANT_ID_UNLIMITED',
 };
 
 /**
@@ -201,26 +222,32 @@ function resolveVariantId(plan: SupportedPlanTier): number {
 }
 
 /**
- * Room type implied by a given plan. Both classroom tiers host on a classroom
- * room (whiteboard + tutor AI). All other tiers host on a business meeting.
+ * Room type implied by a given plan. Class plans host on a class room
+ * (whiteboard + tutor AI). All other plans host on a business meeting.
  */
-function resolveRoomType(plan: SupportedPlanTier): 'meeting' | 'classroom' {
-  return plan === 'classroom' || plan === 'classroom_plus' ? 'classroom' : 'meeting';
+function resolveRoomType(plan: SupportedPlanTier): 'meeting' | 'class' {
+  if (
+    plan === 'class_10' ||
+    plan === 'class_20' ||
+    plan === 'class_30' ||
+    plan === 'classroom' ||
+    plan === 'classroom_plus'
+  ) {
+    return 'class';
+  }
+  return 'meeting';
 }
 
 /**
- * Create a Lemon Squeezy checkout URL for any of the 5 commercial tiers.
- *
- * The single-argument form (`createCheckout(userId)`) is preserved for
- * back-compat and defaults to the original Classroom (R89) tier.
+ * Create a Lemon Squeezy checkout URL for a supported commercial tier.
  *
  * @param userId  - The authenticated user's ID (passed as custom_data for the webhook).
- * @param plan    - Which tier to mint a checkout for. Defaults to 'classroom'.
+ * @param plan    - Which tier to mint a checkout for.
  * @returns A Lemon Squeezy checkout URL.
  */
 export async function createCheckout(
   userId: string,
-  plan: SupportedPlanTier = 'classroom'
+  plan: SupportedPlanTier
 ): Promise<CheckoutResult> {
   const variantId = resolveVariantId(plan);
   const roomType = resolveRoomType(plan);

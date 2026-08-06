@@ -8,25 +8,30 @@ export const revalidate = 86400; // ISR: revalidate daily
 
 export const metadata = {
   title: "Conferly Class Pricing — Tutoring Plans Starting at R89/mo",
-  description: "Choose the perfect plan for your tutoring business. Free trial, no credit card required.",
+  description: "Choose the perfect plan for your tutoring business. Class 10, Class 20, Class 30, or Custom Class.",
 };
 
 const PLAN_ICONS: Record<string, string> = {
-  class_free: "Users",
-  class_room: "BookOpen",
-  class_room_plus: "GraduationCap",
-  class_unlimited: "ShieldCheck",
+  class_10: "Users",
+  class_20: "BookOpen",
+  class_30: "GraduationCap",
+  class_custom: "ShieldCheck",
 };
 
 const PLAN_COLORS: Record<string, string> = {
-  class_free: "from-slate-500 to-slate-400",
-  class_room: "from-emerald-600 to-teal-500",
-  class_room_plus: "from-emerald-700 to-teal-600",
-  class_unlimited: "from-purple-600 to-pink-500",
+  class_10: "from-emerald-600 to-teal-500",
+  class_20: "from-emerald-700 to-teal-600",
+  class_30: "from-emerald-700 to-teal-600",
+  class_custom: "from-amber-500 to-orange-500",
 };
 
+// Custom Class is contact-sales only and is shown separately.
+const PAID_PLAN_IDS: ClassPlanId[] = ["class_10", "class_20", "class_30"];
+const CUSTOM_CLASS_ID: ClassPlanId = "class_custom";
+
 export default function ClassPricingPage() {
-  const visiblePlans = CLASS_PLANS.filter(p => p.id !== 'class_free');
+  const visiblePlans = CLASS_PLANS.filter(p => PAID_PLAN_IDS.includes(p.id));
+  const customPlan = CLASS_PLANS.find(p => p.id === CUSTOM_CLASS_ID);
 
   return (
     <div className="min-h-screen pb-20 bg-slate-950">
@@ -55,7 +60,7 @@ export default function ClassPricingPage() {
           The complete classroom for <span className="text-emerald-400">tutors and trainers</span>
         </h1>
         <p className="text-lg text-slate-400 max-w-2xl mx-auto mb-8">
-          For tutors, coaches, and training businesses. Whiteboard, lesson plans, student rosters, assignments, and payments.
+          Every plan includes student seats plus up to two collaborating teachers. Start at R89/month.
         </p>
 
         <BillingCycleToggle defaultCycle="annual" />
@@ -95,14 +100,8 @@ export default function ClassPricingPage() {
                   </div>
 
                   <div className="flex items-baseline gap-1">
-                    {plan.annualPrice === null ? (
-                      <span className="text-4xl font-extrabold text-white">Custom</span>
-                    ) : (
-                      <>
-                        <span className="text-4xl font-extrabold text-white">R{plan.annualPrice}</span>
-                        <span className="text-slate-500 text-sm">/user/month</span>
-                      </>
-                    )}
+                    <span className="text-4xl font-extrabold text-white">R{plan.monthlyPrice}</span>
+                    <span className="text-slate-500 text-sm">/month</span>
                   </div>
 
                   <div className="space-y-2.5 flex-1">
@@ -121,7 +120,6 @@ export default function ClassPricingPage() {
                     cta={plan.cta}
                     color={color}
                     productType="class"
-                    isEnterprise={plan.id === 'class_unlimited'}
                   />
                 </div>
               </div>
@@ -129,27 +127,29 @@ export default function ClassPricingPage() {
           })}
         </div>
 
-        {/* Enterprise CTA */}
-        <div className="rounded-2xl p-8 lg:p-12 text-center bg-slate-900/60 border border-slate-800/50">
-          <div className="max-w-2xl mx-auto space-y-4">
-            <svg className="w-12 h-12 text-amber-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-            <h2 className="text-3xl font-bold text-white">Need an Institutional Plan?</h2>
-            <p className="text-slate-400 leading-relaxed">
-              Unlimited classrooms, white-label branding, API access, dedicated success manager, 
-              and custom integrations for schools and training organizations.
-            </p>
-            <a 
-              href="mailto:sales@conferly.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block px-8 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg"
-            >
-              Contact Sales
-            </a>
+        {/* Custom Class CTA */}
+        {customPlan && (
+          <div className="rounded-2xl p-8 lg:p-12 text-center bg-slate-900/60 border border-slate-800/50">
+            <div className="max-w-2xl mx-auto space-y-4">
+              <svg className="w-12 h-12 text-amber-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <h2 className="text-3xl font-bold text-white">Need a Custom Class?</h2>
+              <p className="text-slate-400 leading-relaxed">
+                More than 30 student seats or more than two teachers? Contact our sales team
+                for a contract-defined arrangement.
+              </p>
+              <a
+                href="mailto:info@conferly.site?subject=Custom%20Class%20Enquiry"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block px-8 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg"
+              >
+                Contact Sales
+              </a>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
