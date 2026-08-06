@@ -1,5 +1,5 @@
 import { verifyRoomAccess } from './meetingAuth';
-import { verifyClassroomAccess } from './classroomAuth';
+import { verifyClassLessonAccess, verifyClassroomAccess } from './classroomAuth';
 
 export type Domain = 'meet' | 'class';
 
@@ -45,3 +45,5 @@ export async function verifyAccess(
     domain: 'class',
   };
 }
+
+export { verifyClassLessonAccess };

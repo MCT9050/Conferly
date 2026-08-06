@@ -16,9 +16,16 @@ export default function QuickStartButton({ product = 'class', label }: QuickStar
     try {
       const session = await getSession();
       if (!session?.user) {
-        router.push(`/auth?product=${product}`);
+        const redirect = product === 'class' ? encodeURIComponent('/class/dashboard?create=1') : '';
+        router.push(redirect ? `/auth?product=class&redirect=${redirect}` : `/auth?product=${product}`);
         return;
       }
+
+      if (product === 'class') {
+        router.push('/class/dashboard?create=1');
+        return;
+      }
+
       // Generate room ID and redirect
       const chars = 'abcdefghijklmnopqrstuvwxyz';
       const segments = [];
@@ -31,7 +38,8 @@ export default function QuickStartButton({ product = 'class', label }: QuickStar
       }
       router.push(`/${product}/classrooms/${segments.join('-')}`);
     } catch {
-      router.push(`/auth?product=${product}`);
+      const redirect = product === 'class' ? encodeURIComponent('/class/dashboard?create=1') : '';
+      router.push(redirect ? `/auth?product=class&redirect=${redirect}` : `/auth?product=${product}`);
     }
   }, [product, router]);
 

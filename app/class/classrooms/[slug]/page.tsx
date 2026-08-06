@@ -1,6 +1,14 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
+import LaunchLessonButton from '@/components/class/LaunchLessonButton';
+import { verifyClassroomAccess, isTeachingRole } from '@/lib/classroomAuth';
+
+function formatDateTime(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toLocaleString();
+}
 
 export default async function ClassroomDetailPage({
   params,
@@ -15,11 +23,21 @@ export default async function ClassroomDetailPage({
     redirect('/auth');
   }
 
-  // Fetch classroom by slug or ID
+  const access = await verifyClassroomAccess(user.id, slug);
+  if (!access.classroom) {
+    notFound();
+  }
+  if (!access.granted) {
+    redirect('/class/dashboard');
+  }
+
+  const resolvedClassroom = access.classroom;
+  const canonicalSlug = resolvedClassroom.slug;
+
   const { data: classroom, error } = await supabase
     .from('classrooms')
     .select('id, owner_id, slug, title, description, subject, status, enrollment_type, settings')
-    .or(`slug.eq.${slug},id.eq.${slug}`)
+    .eq('id', resolvedClassroom.id)
     .single();
 
   if (error || !classroom) {
@@ -39,7 +57,7 @@ export default async function ClassroomDetailPage({
     .select('id, student_id, role, enrollment_status, enrolled_at')
     .eq('classroom_id', classroom.id);
 
-  const isOwner = classroom.owner_id === user.id;
+  const canTeach = access.source === 'owner' || isTeachingRole(access.accessRole);
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -64,16 +82,16 @@ export default async function ClassroomDetailPage({
       </div>
 
       {/* Quick Actions */}
-      {isOwner && (
+      {canTeach && (
         <div className="mb-8 flex gap-3">
           <Link
-            href={`/class/classrooms/${slug}/lessons`}
+            href={`/class/classrooms/${canonicalSlug}/lessons`}
             className="rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700 transition-colors"
           >
             Manage Lessons
           </Link>
           <Link
-            href={`/class/classrooms/${slug}/students`}
+            href={`/class/classrooms/${canonicalSlug}/students`}
             className="rounded-lg border border-emerald-200 px-4 py-2 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-950"
           >
             View Roster
@@ -101,28 +119,19 @@ export default async function ClassroomDetailPage({
                     }`}>
                       {lesson.status}
                     </span>
-                    {lesson.scheduled_at && (
-                      <span>{new Date(lesson.scheduled_at).toLocaleString()}</span>
-                    )}
+                    {formatDateTime(lesson.scheduled_at) && <span>{formatDateTime(lesson.scheduled_at)}</span>}
                   </div>
                 </div>
                 {lesson.status === 'live' && (
                   <Link
-                    href={`/class/classrooms/${slug}/lessons/${lesson.id}/live`}
+                    href={`/class/classrooms/${canonicalSlug}/lessons/${lesson.id}/live`}
                     className="rounded-lg bg-red-600 px-4 py-2 text-white text-sm hover:bg-red-700 transition-colors"
                   >
                     Join Live
                   </Link>
                 )}
-                {isOwner && lesson.status === 'scheduled' && (
-                  <form action={`/api/class/lessons/${lesson.id}/launch`} method="POST">
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-emerald-600 px-4 py-2 text-white text-sm hover:bg-emerald-700 transition-colors"
-                    >
-                      Launch Lesson
-                    </button>
-                  </form>
+                {canTeach && lesson.status === 'scheduled' && (
+                  <LaunchLessonButton lessonId={lesson.id} />
                 )}
               </div>
             ))}
@@ -130,9 +139,9 @@ export default async function ClassroomDetailPage({
         ) : (
           <div className="rounded-lg border border-dashed p-8 text-center">
             <p className="text-muted-foreground mb-4">No lessons yet</p>
-            {isOwner && (
+            {canTeach && (
               <Link
-                href={`/class/classrooms/${slug}/lessons`}
+                href={`/class/classrooms/${canonicalSlug}/lessons`}
                 className="inline-block rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700 transition-colors"
               >
                 Create First Lesson
@@ -142,22 +151,23 @@ export default async function ClassroomDetailPage({
         )}
       </div>
 
-      {/* Student Roster Preview */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Students</h2>
-        {enrollments && enrollments.length > 0 ? (
-          <div className="space-y-2">
-            {enrollments.map((enrollment) => (
-              <div key={enrollment.id} className="flex items-center justify-between rounded-lg border p-3">
-                <span className="font-medium">Student {enrollment.student_id.substring(0, 8)}...</span>
-                <span className="text-sm text-muted-foreground">{enrollment.role}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground">No students enrolled yet</p>
-        )}
-      </div>
+      {canTeach ? (
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Students</h2>
+          {enrollments && enrollments.length > 0 ? (
+            <div className="space-y-2">
+              {enrollments.map((enrollment) => (
+                <div key={enrollment.id} className="flex items-center justify-between rounded-lg border p-3">
+                  <span className="font-medium">Student {enrollment.student_id.substring(0, 8)}...</span>
+                  <span className="text-sm text-muted-foreground">{enrollment.role}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground">No students enrolled yet</p>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
