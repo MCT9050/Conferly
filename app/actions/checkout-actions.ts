@@ -147,13 +147,12 @@ export async function createClassroomCheckout(): Promise<CheckoutActionResult> {
 }
 
 /**
- * Legacy checkout for the Classroom+ tier (R220/month ZAR).
- * UNVERIFIED — existing subscribers keep their records but no new public
- * checkout should target this variant before the Lemon Squeezy dashboard
- * is verified against the Phase 2 contract.
+ * Legacy Classroom+ is intentionally not available for new public checkout.
+ * Existing subscribers must be handled by verified webhook/back-office evidence
+ * only; do not mint new checkout URLs for the UNVERIFIED legacy variant.
  */
 export async function createClassroomPlusCheckout(): Promise<CheckoutActionResult> {
-  return createPlanCheckoutInternal('classroom_plus');
+  return { error: 'Classroom+ is a legacy plan. Please contact sales at info@conferly.site.' };
 }
 
 /**

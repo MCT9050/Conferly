@@ -92,7 +92,7 @@ export async function countClassroomRoles(
 
   const { data: enrollments, error } = await supabase
     .from('classroom_enrollments')
-    .select('role, enrollment_status')
+    .select('student_id, role, enrollment_status')
     .eq('classroom_id', classroomId)
     .eq('enrollment_status', 'active');
 
@@ -104,6 +104,13 @@ export async function countClassroomRoles(
   let studentCount = 0;
 
   for (const enrollment of enrollments ?? []) {
+    // The owner is already counted as the first teacher. If an owner row exists
+    // in classroom_enrollments, do not count it again as either a teacher or a
+    // student seat.
+    if (enrollment.student_id === ownerId) {
+      continue;
+    }
+
     const role = enrollment.role;
     if (role === 'instructor' || role === 'ta') {
       teacherCount += 1;

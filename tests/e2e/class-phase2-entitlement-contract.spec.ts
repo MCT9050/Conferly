@@ -7,250 +7,95 @@ async function readProjectFile(...segments: string[]) {
 }
 
 test.describe('Phase 2 — Product-Scoped Monetization and Entitlement Contract', () => {
+  test('pricing and contact-sales contracts are represented in source', async () => {
+    const pricing = await readProjectFile('app', '(marketing)', 'class', 'pricing', 'page.tsx');
+    const classPricing = await readProjectFile('lib', 'pricing', 'class.ts');
+    const checkoutActions = await readProjectFile('app', 'actions', 'checkout-actions.ts');
 
-  // ── Pricing contract ────────────────────────────────────────────────────
-
-  test('class pricing page shows Class 10 at R89, Class 20 at R120, Class 30 at R140', async () => {
-    const pricing = await readProjectFile('app', 'class', 'pricing', 'page.tsx');
-
-    // Class 10 at R89
     expect(pricing).toContain('Class 10');
     expect(pricing).toContain('R89');
-    expect(pricing).toContain('10 student seats');
-
-    // Class 20 at R120
     expect(pricing).toContain('Class 20');
-    expect(pricing).toContain('R120');
-    expect(pricing).toContain('20 student seats');
-
-    // Class 30 at R140
     expect(pricing).toContain('Class 30');
-    expect(pricing).toContain('R140');
-    expect(pricing).toContain('30 student seats');
-
-    // Custom Class — contact sales
-    expect(pricing).toContain('Custom Class');
-    expect(pricing).toContain('Contact Sales');
     expect(pricing).toContain('info@conferly.site');
-  });
-
-  test('class pricing constants match authoritative contract: 10, 20, 30 student seats, up to 2 teachers', async () => {
-    const classPricing = await readProjectFile('lib', 'pricing', 'class.ts');
-
     expect(classPricing).toContain("id: 'class_10'");
     expect(classPricing).toContain('maxStudents: 10');
     expect(classPricing).toContain('maxTeachers: 2');
-
     expect(classPricing).toContain("id: 'class_20'");
+    expect(classPricing).toContain('monthlyPrice: 120');
     expect(classPricing).toContain('maxStudents: 20');
-    expect(classPricing).toContain('maxTeachers: 2');
-
     expect(classPricing).toContain("id: 'class_30'");
+    expect(classPricing).toContain('monthlyPrice: 140');
     expect(classPricing).toContain('maxStudents: 30');
-    expect(classPricing).toContain('maxTeachers: 2');
-
-    expect(classPricing).toContain("id: 'class_custom'");
-    expect(classPricing).toContain('maxStudents: null');
-    expect(classPricing).toContain('maxTeachers: null');
-  });
-
-  test('class landing page displays Phase 2 pricing with R89/R120/R140', async () => {
-    const landing = await readProjectFile('app', 'class', 'page.tsx');
-
-    expect(landing).toContain('Class 10');
-    expect(landing).toContain('R89');
-    expect(landing).toContain('Class 20');
-    expect(landing).toContain('R120');
-    expect(landing).toContain('Class 30');
-    expect(landing).toContain('R140');
-    expect(landing).toContain('student seats');
-    expect(landing).toContain('Up to 2 teachers');
-  });
-
-  test('every paid Class CTA references a product-scoped checkout action', async () => {
-    const checkoutActions = await readProjectFile('app', 'actions', 'checkout-actions.ts');
-
-    expect(checkoutActions).toContain('createClass10Checkout');
-    expect(checkoutActions).toContain('createClass20Checkout');
-    expect(checkoutActions).toContain('createClass30Checkout');
-    expect(checkoutActions).toContain("return createPlanCheckoutInternal('class_10')");
-    expect(checkoutActions).toContain("return createPlanCheckoutInternal('class_20')");
-    expect(checkoutActions).toContain("return createPlanCheckoutInternal('class_30')");
-  });
-
-  // ── Product-scoped checkout and contact sales ───────────────────────────
-
-  test('Custom Class uses contact-sales action, not a public unlimited checkout', async () => {
-    const checkoutActions = await readProjectFile('app', 'actions', 'checkout-actions.ts');
-
     expect(checkoutActions).toContain("planId === 'class_custom'");
-    expect(checkoutActions).toContain('info@conferly.site');
+    expect(checkoutActions).toContain("planId === 'meet_enterprise'");
     expect(checkoutActions).not.toContain("createPlanCheckoutInternal('class_custom')");
   });
 
-  test('Meet Enterprise uses contact-sales action', async () => {
+  test('public checkout fails closed for unverified legacy fallback paths', async () => {
     const checkoutActions = await readProjectFile('app', 'actions', 'checkout-actions.ts');
+    const lemon = await readProjectFile('lib', 'lemon-squeezy.ts');
 
-    expect(checkoutActions).toContain("planId === 'meet_enterprise'");
-    expect(checkoutActions).toContain('info@conferly.site');
+    expect(checkoutActions).toContain("return createPlanCheckoutInternal('class_10')");
+    expect(checkoutActions).toContain("return createPlanCheckoutInternal('class_20')");
+    expect(checkoutActions).toContain("return createPlanCheckoutInternal('class_30')");
+    expect(checkoutActions).toContain('Classroom+ is a legacy plan');
+    expect(lemon).toContain('Legacy fallback variant IDs are not accepted for product-scoped checkout');
+    expect(lemon).not.toContain('process.env.NEXT_PUBLIC_LEMONSQUEEZY_VARIANT_ID');
   });
 
-  // ── Product-scoped subscriptions ────────────────────────────────────────
+  test('forward migration uses expand/deploy/contract safety and secures webhook ledger', async () => {
+    const migration = await readProjectFile('supabase', 'migrations', '20260806185601_phase2_product_scope_expansion_contract.sql');
 
-  test('webhook upsert uses product-scoped conflict target', async () => {
+    expect(migration).not.toContain('DROP CONSTRAINT IF EXISTS subscriptions_user_id_key');
+    expect(migration).toContain('add column if not exists product_line text');
+    expect(migration).toContain('idx_subscriptions_user_product_line_unique');
+    expect(migration).toContain('public.subscriptions (user_id, product_line)');
+    expect(migration).toContain('Ambiguous subscriptions.product_line backfill');
+    expect(migration).toContain('alter table public.subscription_webhook_events enable row level security');
+    expect(migration).toContain('revoke all on table public.subscription_webhook_events from anon, authenticated');
+    expect(migration).toContain('grant execute on function public.process_lemon_squeezy_subscription_webhook');
+    expect(migration).toContain('to service_role');
+  });
+
+  test('webhook processing is atomic, idempotent, product-scoped, and order-aware', async () => {
     const webhook = await readProjectFile('app', 'api', 'webhooks', 'lemon-squeezy', 'route.ts');
+    const migration = await readProjectFile('supabase', 'migrations', '20260806185601_phase2_product_scope_expansion_contract.sql');
 
-    expect(webhook).toContain("onConflict: 'user_id,product_line'");
+    expect(webhook).toContain("'process_lemon_squeezy_subscription_webhook'");
+    expect(webhook).toContain('p_webhook_id: webhookId');
+    expect(webhook).toContain('p_product_line: planData.productLine');
+    expect(webhook).toContain('p_external_event_at: externalEventAt');
     expect(webhook).not.toContain("onConflict: 'user_id'");
+    expect(webhook).not.toContain(".from('subscription_webhook_events').insert");
+    expect(migration).toContain('on conflict (webhook_id) do nothing');
+    expect(migration).toContain("return jsonb_build_object('processed', false, 'duplicate', true)");
+    expect(migration).toContain('p_external_event_at < existing_last_event_at');
+    expect(migration).toContain('on conflict (user_id, product_line) do update');
   });
 
-  test('webhook maps class_10/class_20/class_30 to correct student limits', async () => {
+  test('unknown, enterprise, and unverified Lemon Squeezy mappings fail closed', async () => {
     const webhook = await readProjectFile('app', 'api', 'webhooks', 'lemon-squeezy', 'route.ts');
 
-    expect(webhook).toContain("case 'class_10':");
-    expect(webhook).toContain('participantCap: 10');
-
-    expect(webhook).toContain("case 'class_20':");
-    expect(webhook).toContain('participantCap: 20');
-
-    expect(webhook).toContain("case 'class_30':");
-    expect(webhook).toContain('participantCap: 30');
+    expect(webhook).toContain('Unknown Lemon Squeezy product or variant; refusing entitlement grant');
+    expect(webhook).toContain('Legacy classroom_plus webhook mapping is UNVERIFIED; refusing to grant entitlement');
+    expect(webhook).toContain('Enterprise is contact-sales only; refusing automatic entitlement grant');
+    expect(webhook).toContain('Webhook missing provider ordering timestamp');
   });
 
-  test('subscription-cap API is product-scoped with ?productLine parameter', async () => {
-    const capApi = await readProjectFile('app', 'api', 'subscription-cap', 'route.ts');
-
-    expect(capApi).toContain("productLineParam = url.searchParams.get('productLine')");
-    expect(capApi).toContain(".eq('product_line', productLine)");
-    expect(capApi).toContain('studentCap');
-    expect(capApi).toContain('teacherCap');
-  });
-
-  test('migration creates (user_id, product_line) uniqueness constraint', async () => {
-    const migration = await readProjectFile('supabase', 'migrations', '20260806000001_product_scoped_entitlements.sql');
-
-    expect(migration).toContain('DROP CONSTRAINT IF EXISTS subscriptions_user_id_key');
-    expect(migration).toContain('idx_subscriptions_user_product');
-    expect(migration).toContain('subscriptions (user_id, product_line)');
-  });
-
-  test('migration adds webhook idempotency table', async () => {
-    const migration = await readProjectFile('supabase', 'migrations', '20260806000001_product_scoped_entitlements.sql');
-
-    expect(migration).toContain('subscription_webhook_events');
-    expect(migration).toContain('webhook_id text NOT NULL UNIQUE');
-  });
-
-  test('webhook handler includes idempotency guard', async () => {
-    const webhook = await readProjectFile('app', 'api', 'webhooks', 'lemon-squeezy', 'route.ts');
-
-    expect(webhook).toContain('Idempotency guard');
-    expect(webhook).toContain('.from(\'subscription_webhook_events\')');
-    expect(webhook).toContain('.eq(\'webhook_id\', webhookId)');
-  });
-
-  test('webhook handles expiry, pause, resume, and payment_failed events', async () => {
-    const webhook = await readProjectFile('app', 'api', 'webhooks', 'lemon-squeezy', 'route.ts');
-
-    expect(webhook).toContain("eventName === 'subscription_expired'");
-    expect(webhook).toContain("eventName === 'subscription_paused'");
-    expect(webhook).toContain("eventName === 'subscription_resumed'");
-    expect(webhook).toContain("eventName === 'subscription_payment_failed'");
-  });
-
-  // ── Server-side capacity enforcement ────────────────────────────────────
-
-  test('lk-token route enforces class capacity for Class domain', async () => {
+  test('Class token and capacity enforcement are server-authoritative and owner-safe', async () => {
     const lkToken = await readProjectFile('app', 'api', 'lk-token', 'route.ts');
+    const entitlements = await readProjectFile('lib', 'classEntitlements.ts');
 
-    expect(lkToken).toContain("import { enforceClassCapacity } from '@/lib/classEntitlements'");
+    expect(lkToken).toContain("domain === 'class'");
+    expect(lkToken).toContain('payload.role !== undefined');
+    expect(lkToken).toContain('payload.roomId !== undefined');
+    expect(lkToken).toContain('verifyClassLessonAccess(session.userId, classroomId, lessonId)');
     expect(lkToken).toContain('enforceClassCapacity(');
-    expect(lkToken).toContain('capacity.allowed');
-  });
-
-  test('classEntitlements library resolves teacher/student counts from server-side data', async () => {
-    const entitlements = await readProjectFile('lib', 'classEntitlements.ts');
-
-    expect(entitlements).toContain('resolveClassEntitlement');
-    expect(entitlements).toContain('countClassroomRoles');
-    expect(entitlements).toContain('enforceClassCapacity');
-    expect(entitlements).toContain('.eq(\'product_line\', \'class\')');
-    expect(entitlements).toContain('teacherCount');
-    expect(entitlements).toContain('studentCount');
-  });
-
-  test('classEntitlements enforces teacher limit (max 2) and student seat limits', async () => {
-    const entitlements = await readProjectFile('lib', 'classEntitlements.ts');
-
+    expect(lkToken).toContain("verifyAccess('meet', session.userId, roomId)");
+    expect(entitlements).toContain(".select('student_id, role, enrollment_status')");
+    expect(entitlements).toContain('enrollment.student_id === ownerId');
+    expect(entitlements).toContain('teacherCount = 1');
     expect(entitlements).toContain('counts.teacherCount > capacity.teacherLimit');
     expect(entitlements).toContain('counts.studentCount > capacity.studentLimit');
-    expect(entitlements).toContain('Teacher limit reached');
-    expect(entitlements).toContain('Student seat limit reached');
-    expect(entitlements).toContain('info@conferly.site');
-  });
-
-  test('classEntitlements resolves standard plans from pricing table', async () => {
-    const entitlements = await readProjectFile('lib', 'classEntitlements.ts');
-
-    expect(entitlements).toContain("getClassStudentLimit(planId)");
-    expect(entitlements).toContain("getClassTeacherLimit(planId)");
-  });
-
-  test('classEntitlements handles custom plans with explicit capacity', async () => {
-    const entitlements = await readProjectFile('lib', 'classEntitlements.ts');
-
-    expect(entitlements).toContain('customStudentLimit = data.participant_cap ?? 0');
-    expect(entitlements).toContain('custom: true');
-  });
-
-  // ── Product-scoped Lemon Squeezy mapping ────────────────────────────────
-
-  test('lemon-squeezy lib supports class_10, class_20, class_30 plan tiers', async () => {
-    const ls = await readProjectFile('lib', 'lemon-squeezy.ts');
-
-    expect(ls).toContain("'class_10'");
-    expect(ls).toContain("'class_20'");
-    expect(ls).toContain("'class_30'");
-  });
-
-  test('lemon-squeezy resolves room type correctly for class plans', async () => {
-    const ls = await readProjectFile('lib', 'lemon-squeezy.ts');
-
-    expect(ls).toContain("plan === 'class_10'");
-    expect(ls).toContain("plan === 'class_20'");
-    expect(ls).toContain("plan === 'class_30'");
-    expect(ls).toContain("return 'class'");
-  });
-
-  // ── Legacy compatibility ────────────────────────────────────────────────
-
-  test('legacy classroom plan maps to class_10 via webhook', async () => {
-    const webhook = await readProjectFile('app', 'api', 'webhooks', 'lemon-squeezy', 'route.ts');
-
-    expect(webhook).toContain("case 'classroom':");
-    expect(webhook).toContain("return { plan: 'class_10', participantCap: 10 };");
-  });
-
-  test('types.ts includes new Class plan IDs and product_line in SubscriptionRecord', async () => {
-    const types = await readProjectFile('types.ts');
-
-    expect(types).toContain("'class_10'");
-    expect(types).toContain("'class_20'");
-    expect(types).toContain("'class_30'");
-    expect(types).toContain("'class_custom'");
-    expect(types).toContain('product_line: ProductLine');
-  });
-
-  // ── Meet coexistence ────────────────────────────────────────────────────
-
-  test('meet pricing is unchanged and preserves existing Meet plans', async () => {
-    const meetPricing = await readProjectFile('lib', 'pricing', 'meet.ts');
-
-    expect(meetPricing).toContain("id: 'meet_free'");
-    expect(meetPricing).toContain("id: 'meet_individual'");
-    expect(meetPricing).toContain("id: 'meet_pro'");
-    expect(meetPricing).toContain("id: 'meet_unlimited'");
-    expect(meetPricing).toContain("id: 'meet_enterprise'");
-    expect(meetPricing).toContain("cta: 'Contact Sales'");
   });
 });

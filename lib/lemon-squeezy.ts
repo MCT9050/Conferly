@@ -25,7 +25,6 @@ export type SupportedPlanTier =
   | 'class_20'
   | 'class_30'
   | 'classroom' // legacy — maps to class_10
-  | 'classroom_plus' // legacy — UNVERIFIED treatment (deployment decision required)
   | 'individual'
   | 'pro'
   | 'unlimited';
@@ -192,7 +191,6 @@ const PLAN_TO_VARIANT_ENV: Record<SupportedPlanTier, string> = {
   class_20:         'NEXT_PUBLIC_VARIANT_ID_CLASS_20',
   class_30:         'NEXT_PUBLIC_VARIANT_ID_CLASS_30',
   classroom:        'NEXT_PUBLIC_VARIANT_ID_CLASSROOM',
-  classroom_plus:   'NEXT_PUBLIC_VARIANT_ID_CLASSROOM_PLUS',
   individual:       'NEXT_PUBLIC_VARIANT_ID_INDIVIDUAL',
   pro:              'NEXT_PUBLIC_VARIANT_ID_PRO',
   unlimited:        'NEXT_PUBLIC_VARIANT_ID_UNLIMITED',
@@ -205,12 +203,12 @@ const PLAN_TO_VARIANT_ENV: Record<SupportedPlanTier, string> = {
  */
 function resolveVariantId(plan: SupportedPlanTier): number {
   const envName = PLAN_TO_VARIANT_ENV[plan];
-  const raw = process.env[envName] || process.env.NEXT_PUBLIC_LEMONSQUEEZY_VARIANT_ID;
+  const raw = process.env[envName];
 
   if (!raw) {
     throw new Error(
       `Missing Lemon Squeezy variant ID for plan "${plan}". ` +
-      `Set ${envName} (or NEXT_PUBLIC_LEMONSQUEEZY_VARIANT_ID as a legacy fallback).`
+      `Set ${envName}. Legacy fallback variant IDs are not accepted for product-scoped checkout.`
     );
   }
 
@@ -230,8 +228,7 @@ function resolveRoomType(plan: SupportedPlanTier): 'meeting' | 'class' {
     plan === 'class_10' ||
     plan === 'class_20' ||
     plan === 'class_30' ||
-    plan === 'classroom' ||
-    plan === 'classroom_plus'
+    plan === 'classroom'
   ) {
     return 'class';
   }
