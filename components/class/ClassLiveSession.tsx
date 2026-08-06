@@ -249,7 +249,11 @@ function getAvatar(name: string) {
   );
 }
 
-async function connectToRoom(roomId: string, localStream: MediaStream | null) {
+async function connectToRoom(
+  classroomId: string,
+  lessonId: string,
+  localStream: MediaStream | null,
+) {
   if (typeof window === "undefined") return;
   try {
     const { Room, Track, RoomEvent } = await import("livekit-client");
@@ -261,7 +265,7 @@ async function connectToRoom(roomId: string, localStream: MediaStream | null) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ roomId, role: "participant" }),
+      body: JSON.stringify({ domain: "class", classroomId, lessonId }),
     });
 
     if (!response.ok) {
@@ -935,7 +939,6 @@ function ParticipantFilmstrip({
 // ----------------------------------------------------------------------------
 
 type ClassLiveSessionProps = {
-  roomId?: string;
   lessonId?: string;
   classroomId?: string;
   userId?: string;
@@ -944,7 +947,6 @@ type ClassLiveSessionProps = {
 };
 
 export default function ClassLiveSession({
-  roomId = "—",
   lessonId,
   classroomId,
   userId,
@@ -1016,17 +1018,17 @@ export default function ClassLiveSession({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Connect to LiveKit when media stream is ready and room ID is valid
+  // Connect to LiveKit when media stream is ready and class identifiers are valid
   useEffect(() => {
-    if (media.stream && roomId && roomId !== "—" && !connectedRef.current) {
+    if (media.stream && classroomId && lessonId && !connectedRef.current) {
       connectedRef.current = true;
-      connectToRoom(roomId, media.stream);
+      connectToRoom(classroomId, lessonId, media.stream);
     }
     return () => {
       disconnectFromRoom();
       connectedRef.current = false;
     };
-  }, [media.stream, roomId]);
+  }, [media.stream, classroomId, lessonId]);
 
   // Start speech transcription once media is active
   useEffect(() => {

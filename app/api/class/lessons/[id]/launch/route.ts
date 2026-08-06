@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { verifyClassroomTeachingAccess } from '@/lib/classroomAuth';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(request);
-  if (!session) {
+  if (!session?.userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { id: lessonId } = await params;
   const supabase = createSupabaseServerClient({ request });
 
-  // Get lesson + classroom owner
   const { data: lesson, error: lessonErr } = await supabase
     .from('classroom_lessons')
-    .select('id, classroom_id, status, classrooms!inner(owner_id)')
+    .select('id, classroom_id, status, livekit_room_id, classrooms!inner(id, slug, owner_id)')
     .eq('id', lessonId)
     .single();
 
@@ -25,21 +25,17 @@ export async function POST(
     return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
   }
 
-  // Verify instructor/TA
-  const { data: enrollment } = await supabase
-    .from('classroom_enrollments')
-    .select('role')
-    .eq('classroom_id', lesson.classroom_id)
-    .eq('student_id', session.userId)
-    .in('role', ['instructor', 'ta'])
-    .single();
+  if (lesson.status === 'cancelled') {
+    return NextResponse.json({ error: 'Cancelled lessons cannot be launched' }, { status: 400 });
+  }
 
-  const isOwner = (lesson.classrooms as any)?.owner_id === session.userId;
-  if (!isOwner && !enrollment) {
+  const classroom = Array.isArray(lesson.classrooms) ? lesson.classrooms[0] : lesson.classrooms;
+  const access = await verifyClassroomTeachingAccess(session.userId, lesson.classroom_id);
+  if (!access.granted || !classroom || access.classroom?.id !== lesson.classroom_id) {
     return NextResponse.json({ error: 'Only instructors can launch' }, { status: 403 });
   }
 
-  const livekitRoomId = `class-${lesson.classroom_id}-${lessonId}`;
+  const livekitRoomId = lesson.livekit_room_id || `class-${lesson.classroom_id}-${lessonId}`;
 
   const { error: updateErr } = await supabase
     .from('classroom_lessons')
@@ -52,7 +48,6 @@ export async function POST(
 
   return NextResponse.json({
     lessonId,
-    livekitRoomId,
-    joinUrl: `/class/classrooms/${lesson.classroom_id}/lessons/${lessonId}/live`,
+    joinUrl: `/class/classrooms/${classroom.slug}/lessons/${lessonId}/live`,
   });
 }
