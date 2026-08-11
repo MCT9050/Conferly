@@ -681,10 +681,12 @@ function SlidesPanel() {
 function AssistantPanel({
   transcript,
   roomType,
+  roomId,
   onSendToChat,
 }: {
   transcript: { id: string; speaker: string; text: string; isFinal: boolean; timestamp: string }[];
   roomType: "meeting" | "classroom";
+  roomId: string;
   onSendToChat: (message: string) => void;
 }) {
   const [messages, setMessages] = useState<
@@ -728,7 +730,7 @@ function AssistantPanel({
         : "";
 
       const fullPrompt = `${systemPrompt}\n\n${contextBlock}User: ${trimmed}\nAssistant:`;
-      const result = await assistantAction(fullPrompt);
+      const result = await assistantAction(fullPrompt, roomId);
 
       if (result.status === 'COOLDOWN') {
         setMessages((prev) => [
@@ -770,7 +772,7 @@ function AssistantPanel({
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, transcript, systemPrompt]);
+  }, [input, isLoading, transcript, systemPrompt, roomId]);
 
   const handleSendToChat = useCallback(
     (text: string) => {
@@ -877,6 +879,7 @@ function Sidebar({
   onClose,
   participants,
   transcript,
+  roomId,
   onSendToChat,
   isListening,
 }: {
@@ -886,6 +889,7 @@ function Sidebar({
   onClose: () => void;
   participants: Participant[];
   transcript: { id: string; speaker: string; text: string; isFinal: boolean; timestamp: string }[];
+  roomId: string;
   onSendToChat: (message: string) => void;
   isListening: boolean;
 }) {
@@ -932,6 +936,7 @@ function Sidebar({
             <AssistantPanel
               transcript={transcript}
               roomType="meeting"
+              roomId={roomId}
               onSendToChat={onSendToChat}
             />
           )}
@@ -1134,7 +1139,7 @@ export default function MeetLiveSession({
         .map((e) => `[${e.speaker}]: ${e.text}`)
         .join("\n");
 
-      summarizeAction(fullText)
+      summarizeAction(fullText, roomId)
         .then((result) => {
           if (result.status === 'COOLDOWN') {
             setSummaryText(`AI is resting to maintain quality. Back in ${result.retryAfter}s.`);
@@ -1152,7 +1157,7 @@ export default function MeetLiveSession({
     } else {
       router.push("/dashboard");
     }
-  }, [router, speechTranscript, stopListening, stopScreenShare]);
+  }, [router, roomId, speechTranscript, stopListening, stopScreenShare]);
 
   // Sidebar helpers
   const handleSidebarTab = useCallback(
@@ -1285,6 +1290,7 @@ export default function MeetLiveSession({
             onClose={() => setSidebarOpen(false)}
             participants={allParticipants}
             transcript={speechTranscript}
+            roomId={roomId}
             onSendToChat={sendChatMessage}
             isListening={isTranscriptActive}
           />
