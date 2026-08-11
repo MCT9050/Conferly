@@ -1,6 +1,26 @@
 DB migration and RLS guide
 =========================
 
+Canonical migration chain
+-------------------------
+
+The authoritative Supabase migration chain for this project is
+`supabase/migrations/`. Use `supabase db push` / `supabase migration up` against
+that directory for clean installations and forward-only upgrades.
+
+The SQL files under `db/migrations/` and the top-level `db/remediation_phase1.sql`
+are legacy/manual migration artifacts retained for audit history. Do not treat
+them as the canonical migration chain for new environments, and do not apply them
+in addition to `supabase/migrations/` unless a dated operational runbook
+explicitly says to do so.
+
+For product-scoped subscriptions, the canonical final uniqueness boundary is
+`UNIQUE(user_id, product_line)`. Historical migrations created a legacy
+user-only uniqueness constraint on `subscriptions.user_id`; the forward-only
+Supabase migration chain removes that obsolete constraint so one user can hold a
+Meet subscription and a Class subscription at the same time.
+
+
 This folder contains SQL migrations and guidance for applying a production-grade
 Postgres schema on Supabase. It is intentionally minimal and focuses on tables
 and Row Level Security (RLS) policies for user profiles, meetings, participants,
