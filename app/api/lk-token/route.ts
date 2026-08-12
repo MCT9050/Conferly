@@ -3,6 +3,7 @@ import { getServerSession } from '@/lib/auth';
 import { createLiveKitToken, LiveKitRole } from '@/lib/livekit';
 import { verifyAccess, verifyClassLessonAccess } from '@/lib/accessControl';
 import { enforceClassCapacity } from '@/lib/classEntitlements';
+import type { ClassroomRole } from '@/types';
 
 const VALID_ROLES = new Set<LiveKitRole>(['participant', 'spectator']);
 
@@ -92,6 +93,7 @@ export async function POST(request: Request) {
 
   let effectiveRoomId: string;
   let role: LiveKitRole;
+  let classroomRoleForToken: ClassroomRole | undefined;
 
   if (domain === 'class') {
     // Class authorization is server-controlled — the client may not supply role/room.
@@ -117,17 +119,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Classroom not found' }, { status: 404 });
     }
 
-    // After `granted === true`, the access role is one of the four concrete
-    // roles (spectator is only returned when access is denied).
-    const accessRole = classAccess.accessRole;
-    if (accessRole === 'spectator') {
-      return NextResponse.json({ error: 'Access denied to this lesson' }, { status: 403 });
+    // Derive the canonical classroom role from the server-authoritative access result.
+    // Owner is NOT an enrollment role — it is derived from access.source === 'owner'.
+    if (classAccess.source === 'owner') {
+      classroomRoleForToken = 'owner';
+    } else {
+      switch (classAccess.accessRole) {
+        case 'instructor':
+        case 'ta':
+        case 'student':
+        case 'auditor':
+          classroomRoleForToken = classAccess.accessRole;
+          break;
+        case 'spectator':
+        default:
+          return NextResponse.json({ error: 'Access denied to this lesson' }, { status: 403 });
+      }
     }
 
     const capacity = await enforceClassCapacity(
       classroom.id,
       classroom.owner_id,
-      accessRole
+      classroomRoleForToken
     );
 
     if (!capacity.allowed) {
@@ -166,6 +179,7 @@ export async function POST(request: Request) {
       name: displayName,
       room: effectiveRoomId,
       role,
+      classroomRole: classroomRoleForToken,
     });
   } catch (err) {
     console.error('[LK_SERVER_ERROR] LiveKit token generation failed:', err);

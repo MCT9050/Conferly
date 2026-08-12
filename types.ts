@@ -180,6 +180,64 @@ export interface ClassroomEnrollment {
   completed_at?: string;
 }
 
+// ── Classroom seating foundation types ──────────────────────────────────────
+export type ClassroomMode =
+  | 'welcome'
+  | 'gallery'
+  | 'teacher-focus'
+  | 'discussion'
+  | 'screen-share'
+  | 'whiteboard'
+  | 'audio-only';
+
+export type PersonalLayout =
+  | 'comfortable'
+  | 'standard'
+  | 'compact'
+  | 'paginated'
+  | 'filmstrip';
+
+export type ClassroomRole = 'owner' | 'instructor' | 'ta' | 'student' | 'auditor';
+
+export type ParticipantDensity = 'comfortable' | 'standard' | 'compact' | 'paginated';
+
+export type ViewportSize = 'mobile' | 'tablet' | 'desktop';
+
+export interface ClassroomSeatingConfig {
+  mode: ClassroomMode;
+  personalLayout: PersonalLayout;
+  density: ParticipantDensity;
+  viewport: ViewportSize;
+  teacherDockVisible: boolean;
+  filmstripVisible: boolean;
+}
+
+export interface ClassroomParticipant {
+  id: string;
+  name: string;
+  avatar: string;
+  role: ClassroomRole;
+  isSpeaking: boolean;
+  isVideoOn: boolean;
+  isMuted: boolean;
+  audioLevel: number;
+  stream: MediaStream | null;
+  screenShareStream: MediaStream | null;
+  isScreenSharing: boolean;
+}
+
+export interface ClassroomState {
+  mode: ClassroomMode;
+  personalLayout: PersonalLayout;
+  density: ParticipantDensity;
+  participants: ClassroomParticipant[];
+  teachers: ClassroomParticipant[];
+  students: ClassroomParticipant[];
+  auditors: ClassroomParticipant[];
+  activeScreenShare: ClassroomParticipant | null;
+  localUser: ClassroomParticipant | null;
+}
+
 export interface ClassroomLesson {
   id: string;
   classroom_id: string;

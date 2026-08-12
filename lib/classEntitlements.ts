@@ -132,7 +132,7 @@ export async function countClassroomRoles(
 export async function enforceClassCapacity(
   classroomId: string,
   ownerId: string,
-  requestingRole: 'instructor' | 'ta' | 'student' | 'auditor'
+  requestingRole: 'owner' | 'instructor' | 'ta' | 'student' | 'auditor'
 ): Promise<CapacityEnforcementResult> {
   // Resolve the classroom owner's Class subscription.
   const capacity = await resolveClassEntitlement(ownerId);
@@ -151,7 +151,7 @@ export async function enforceClassCapacity(
   // The requesting user is already counted in these numbers because access
   // was verified from the enrollments table before this function is called.
   const counts = await countClassroomRoles(classroomId, ownerId);
-  const isTeacherRequest = requestingRole === 'instructor' || requestingRole === 'ta';
+  const isTeacherRequest = requestingRole === 'owner' || requestingRole === 'instructor' || requestingRole === 'ta';
   const isStudentRequest = requestingRole === 'student' || requestingRole === 'auditor';
 
   // Reject an unapproved third teacher on standard plans.

@@ -1,4 +1,5 @@
 import { AccessToken, VideoGrant } from 'livekit-server-sdk';
+import type { ClassroomRole } from '@/types';
 
 export type LiveKitRole = 'participant' | 'spectator';
 
@@ -25,11 +26,13 @@ export async function createLiveKitToken({
   name,
   room,
   role,
+  classroomRole,
 }: {
   identity: string;
   name: string;
   room: string;
   role: LiveKitRole;
+  classroomRole?: ClassroomRole;
 }): Promise<string> {
   if (!identity || !name || !room) {
     throw new Error(
@@ -47,11 +50,17 @@ export async function createLiveKitToken({
     canPublishData: role === 'participant',
   };
 
+  // Build metadata - include classroom role if provided
+  const metadata: Record<string, unknown> = { role };
+  if (classroomRole) {
+    metadata.classroomRole = classroomRole;
+  }
+
   const token = new AccessToken(apiKey, apiSecret, {
     identity,
     name,
-    metadata: JSON.stringify({ role }),
-    attributes: { role },
+    metadata: JSON.stringify(metadata),
+    attributes: { role, ...(classroomRole ? { classroomRole } : {}) },
   });
 
   token.addGrant(grant);
