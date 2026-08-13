@@ -45,6 +45,7 @@ test.describe('Phase 2 — Product-Scoped Monetization and Entitlement Contract'
 
   test('forward migration uses expand/deploy/contract safety and secures webhook ledger', async () => {
     const migration = await readProjectFile('supabase', 'migrations', '20260806185601_phase2_product_scope_expansion_contract.sql');
+    const consolidatedMigration = await readProjectFile('supabase', 'migrations', '20260812223120_align_product_entitlements_127697b.sql');
 
     expect(migration).not.toContain('DROP CONSTRAINT IF EXISTS subscriptions_user_id_key');
     expect(migration).toContain('add column if not exists product_line text');
@@ -55,11 +56,17 @@ test.describe('Phase 2 — Product-Scoped Monetization and Entitlement Contract'
     expect(migration).toContain('revoke all on table public.subscription_webhook_events from anon, authenticated');
     expect(migration).toContain('grant execute on function public.process_lemon_squeezy_subscription_webhook');
     expect(migration).toContain('to service_role');
+    expect(consolidatedMigration).toContain('create index idx_subscription_webhook_events_user_id');
+    expect(consolidatedMigration).toContain("(plan='class_10' and participant_cap=10)");
+    expect(consolidatedMigration).toContain("(plan='class_20' and participant_cap=20)");
+    expect(consolidatedMigration).toContain("(plan='class_30' and participant_cap=30)");
+    expect(consolidatedMigration).toContain("(plan='meet_enterprise' and participant_cap>0)");
   });
 
   test('webhook processing is atomic, idempotent, product-scoped, and order-aware', async () => {
     const webhook = await readProjectFile('app', 'api', 'webhooks', 'lemon-squeezy', 'route.ts');
     const migration = await readProjectFile('supabase', 'migrations', '20260806185601_phase2_product_scope_expansion_contract.sql');
+    const consolidatedMigration = await readProjectFile('supabase', 'migrations', '20260812223120_align_product_entitlements_127697b.sql');
 
     expect(webhook).toContain("'process_lemon_squeezy_subscription_webhook'");
     expect(webhook).toContain('p_webhook_id: webhookId');
@@ -71,6 +78,13 @@ test.describe('Phase 2 — Product-Scoped Monetization and Entitlement Contract'
     expect(migration).toContain("return jsonb_build_object('processed', false, 'duplicate', true)");
     expect(migration).toContain('p_external_event_at < existing_last_event_at');
     expect(migration).toContain('on conflict (user_id, product_line) do update');
+    expect(consolidatedMigration).toContain('on conflict (webhook_id) do nothing');
+    expect(consolidatedMigration).toContain("return jsonb_build_object('processed',false,'duplicate',true)");
+    expect(consolidatedMigration).toContain('p_external_event_at < existing_last_event_at');
+    expect(consolidatedMigration).toContain('p_external_event_at = existing_last_event_at');
+    expect(consolidatedMigration).toContain("p_webhook_id <= coalesce(existing_last_event_id,'')");
+    expect(consolidatedMigration).toContain("status='skipped_older'");
+    expect(consolidatedMigration).toContain('on conflict (user_id,product_line) do update');
   });
 
   test('unknown, enterprise, and unverified Lemon Squeezy mappings fail closed', async () => {
@@ -80,6 +94,13 @@ test.describe('Phase 2 — Product-Scoped Monetization and Entitlement Contract'
     expect(webhook).toContain('Legacy classroom_plus webhook mapping is UNVERIFIED; refusing to grant entitlement');
     expect(webhook).toContain('Enterprise is contact-sales only; refusing automatic entitlement grant');
     expect(webhook).toContain('Webhook missing provider ordering timestamp');
+    expect(webhook).toContain("case 'trialing':\n      return 'active';");
+    expect(webhook).toContain("case 'paused':\n      return 'paused';");
+    expect(webhook).toContain("case 'cancelled':\n      return 'cancelled';");
+    expect(webhook).toContain("case 'expired':\n      return 'expired';");
+    expect(webhook).toContain("case 'past_due':\n      return 'past_due';");
+    expect(webhook).toContain('throw new Error(`Unknown Lemon Squeezy subscription status: ${lsStatus}`);');
+    expect(webhook).not.toContain('return lsStatus;');
   });
 
   test('Class token and capacity enforcement are server-authoritative and owner-safe', async () => {

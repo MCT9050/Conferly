@@ -213,7 +213,7 @@ function mapSubscriptionStatus(lsStatus: string): string {
     case 'past_due':
       return 'past_due';
     default:
-      return lsStatus;
+      throw new Error(`Unknown Lemon Squeezy subscription status: ${lsStatus}`);
   }
 }
 
