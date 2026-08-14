@@ -12,6 +12,8 @@ type ClassroomControlsProps = {
   isVideoOn: boolean;
   isScreenSharing: boolean;
   isRecording: boolean;
+  canPublish: boolean;
+  canUseTeacherControls: boolean;
   onToggleMute: () => void;
   onToggleVideo: () => void;
   onToggleScreenShare: () => void;
@@ -31,6 +33,8 @@ export function ClassroomControls({
   isVideoOn,
   isScreenSharing,
   isRecording,
+  canPublish,
+  canUseTeacherControls,
   onToggleMute,
   onToggleVideo,
   onToggleScreenShare,
@@ -60,6 +64,7 @@ export function ClassroomControls({
         <button
           type="button"
           onClick={onToggleMute}
+          disabled={!canPublish}
           className={`p-3 rounded-xl border transition-all ${
             isMuted
               ? 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20'
@@ -73,6 +78,7 @@ export function ClassroomControls({
         <button
           type="button"
           onClick={onToggleVideo}
+          disabled={!canPublish}
           className={`p-3 rounded-xl border transition-all ${
             !isVideoOn
               ? 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20'
@@ -86,6 +92,7 @@ export function ClassroomControls({
         <button
           type="button"
           onClick={onToggleScreenShare}
+          disabled={!canPublish}
           className={`p-3 rounded-xl border transition-all ${
             isScreenSharing
               ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20'
@@ -99,6 +106,7 @@ export function ClassroomControls({
         <button
           type="button"
           onClick={onToggleRecording}
+          disabled={!canUseTeacherControls}
           className={`p-3 rounded-xl border transition-all ${
             isRecording
               ? 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20'

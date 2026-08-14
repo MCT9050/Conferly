@@ -8,10 +8,12 @@ import type {
   ViewportSize,
   ClassroomParticipant,
 } from '@/types';
-import { ClassroomStage } from './ClassroomStage';
+import type { LiveRoomActivity } from '@/lib/liveRoomSeating';
+import { canPublishClassroomMedia, canUseClassroomTeacherControls, classifyViewport, selectActivityForMedia, selectDefaultDensity, toLiveRoomParticipant } from '@/lib/classroomSeating';
+import { LiveStage } from '@/components/live/LiveStage';
+import { ResponsiveParticipantGallery } from '@/components/live/ResponsiveParticipantGallery';
+import { PresentationFilmstrip as LivePresentationFilmstrip } from '@/components/live/PresentationFilmstrip';
 import { TeacherDock } from './TeacherDock';
-import { ParticipantGallery } from './ParticipantGallery';
-import { PresentationFilmstrip } from './PresentationFilmstrip';
 import { ClassroomControls } from './ClassroomControls';
 
 type ClassroomLayoutProps = {
@@ -48,6 +50,7 @@ export function ClassroomLayout({
   // TODO Slice B: ClassroomMode is currently local-only. Shared classroom mode
   // requires transport protocol and late-join synchronization to be implemented.
   const [mode, setMode] = useState<ClassroomMode>('welcome');
+  const [previousMode, setPreviousMode] = useState<ClassroomMode>('gallery');
   const [personalLayout, setPersonalLayout] = useState<PersonalLayout>('standard');
   const [density, setDensity] = useState<ParticipantDensity>('standard');
   const [viewport, setViewport] = useState<ViewportSize>('desktop');
@@ -57,14 +60,7 @@ export function ClassroomLayout({
     if (typeof window === 'undefined') return;
 
     const updateViewport = () => {
-      const width = window.innerWidth;
-      if (width < 768) {
-        setViewport('mobile');
-      } else if (width < 1024) {
-        setViewport('tablet');
-      } else {
-        setViewport('desktop');
-      }
+      setViewport(classifyViewport(window.innerWidth));
     };
 
     updateViewport();
@@ -74,23 +70,17 @@ export function ClassroomLayout({
 
   // Auto-select sensible defaults based on participant count and viewport
   useEffect(() => {
-    const studentCount = participants.length - teachers.length;
-    if (viewport === 'mobile') {
-      setPersonalLayout('paginated');
-      setDensity('paginated');
-    } else if (studentCount <= 10) {
-      setPersonalLayout('comfortable');
-      setDensity('comfortable');
-    } else if (studentCount <= 20) {
-      setPersonalLayout('standard');
-      setDensity('standard');
-    } else {
-      setPersonalLayout('compact');
-      setDensity('compact');
-    }
+    const nextDensity = selectDefaultDensity(participants.length, teachers.length, viewport);
+    setDensity(nextDensity);
+    setPersonalLayout(viewport === 'mobile' ? 'paginated' : nextDensity);
   }, [participants.length, teachers.length, viewport]);
 
+  useEffect(() => {
+    setMode((current) => selectActivityForMedia(current as LiveRoomActivity, Boolean(activeScreenShare), previousMode as LiveRoomActivity) as ClassroomMode);
+  }, [activeScreenShare, previousMode]);
+
   const handleModeChange = useCallback((newMode: ClassroomMode) => {
+    if (newMode !== 'screen-share') setPreviousMode(newMode);
     setMode(newMode);
   }, []);
 
@@ -110,8 +100,16 @@ export function ClassroomLayout({
 
   // Determine if filmstrip should be visible
   const showFilmstrip = useMemo(() => {
-    return personalLayout === 'filmstrip' || (isMobile && mode === 'gallery');
+    return personalLayout === 'filmstrip' || mode === 'screen-share' || (isMobile && mode === 'gallery');
   }, [personalLayout, isMobile, mode]);
+
+  const liveParticipants = useMemo(() => participants.map((p) => toLiveRoomParticipant(p, localUser?.id)), [participants, localUser?.id]);
+  const liveStageParticipant = useMemo(() => liveParticipants.find((p) => p.isSpeaking) ?? liveParticipants[0] ?? null, [liveParticipants]);
+  const liveScreenShareParticipant = useMemo(() => activeScreenShare ? toLiveRoomParticipant(activeScreenShare, localUser?.id) : null, [activeScreenShare, localUser?.id]);
+  const liveFilmstripParticipants = useMemo(() => liveScreenShareParticipant ? liveParticipants.filter((p) => p.id !== liveScreenShareParticipant.id) : liveParticipants, [liveParticipants, liveScreenShareParticipant]);
+  const liveActivity = mode === 'teacher-focus' ? 'focus' : mode as LiveRoomActivity;
+  const canPublish = canPublishClassroomMedia(localUser?.role);
+  const canUseTeacherControls = canUseClassroomTeacherControls(localUser?.role);
 
   return (
     <div className="flex flex-col gap-4 h-full">
@@ -126,80 +124,37 @@ export function ClassroomLayout({
           /* Mobile: stacked layout */
           <div className="flex flex-col gap-3">
             <div className="h-[40vh] min-h-[300px]">
-              <ClassroomStage
-                mode={mode}
-                activeScreenShare={activeScreenShare}
-                teachers={teachers}
-                localUser={localUser}
-                onModeChange={handleModeChange}
-              />
+              <LiveStage activity={liveActivity} stageParticipant={liveStageParticipant} screenShareParticipant={liveScreenShareParticipant} />
             </div>
             <div className="flex-1 min-h-[300px]">
-              <ParticipantGallery
-                participants={participants}
-                teachers={teachers}
-                layout={personalLayout}
-                density={density}
-                viewport={viewport}
-                onDensityChange={handleDensityChange}
-              />
+              <ResponsiveParticipantGallery participants={liveParticipants} layout={personalLayout} density={density} viewport={viewport} />
             </div>
           </div>
         ) : isTablet ? (
           /* Tablet: side-by-side with reduced stage */
           <div className="grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-4">
             <div className="min-h-[400px]">
-              <ClassroomStage
-                mode={mode}
-                activeScreenShare={activeScreenShare}
-                teachers={teachers}
-                localUser={localUser}
-                onModeChange={handleModeChange}
-              />
+              <LiveStage activity={liveActivity} stageParticipant={liveStageParticipant} screenShareParticipant={liveScreenShareParticipant} />
             </div>
             <div className="min-h-[400px]">
-              <ParticipantGallery
-                participants={participants}
-                teachers={teachers}
-                layout={personalLayout}
-                density={density}
-                viewport={viewport}
-                onDensityChange={handleDensityChange}
-              />
+              <ResponsiveParticipantGallery participants={liveParticipants} layout={personalLayout} density={density} viewport={viewport} />
             </div>
           </div>
         ) : (
           /* Desktop: stage + flexible participant area */
           <div className="grid grid-cols-1 xl:grid-cols-[1fr,auto] gap-4">
             <div className="min-h-[500px]">
-              <ClassroomStage
-                mode={mode}
-                activeScreenShare={activeScreenShare}
-                teachers={teachers}
-                localUser={localUser}
-                onModeChange={handleModeChange}
-              />
+              <LiveStage activity={liveActivity} stageParticipant={liveStageParticipant} screenShareParticipant={liveScreenShareParticipant} />
             </div>
             <div className="w-80 xl:w-96">
-              <ParticipantGallery
-                participants={participants}
-                teachers={teachers}
-                layout={personalLayout}
-                density={density}
-                viewport={viewport}
-                onDensityChange={handleDensityChange}
-              />
+              <ResponsiveParticipantGallery participants={liveParticipants} layout={personalLayout} density={density} viewport={viewport} />
             </div>
           </div>
         )}
       </div>
 
       {/* Presentation filmstrip (optional) */}
-      <PresentationFilmstrip
-        participants={participants}
-        teachers={teachers}
-        visible={showFilmstrip}
-      />
+      <LivePresentationFilmstrip participants={liveFilmstripParticipants} visible={showFilmstrip} />
 
       {/* Classroom controls */}
       <ClassroomControls
@@ -211,6 +166,8 @@ export function ClassroomLayout({
         isVideoOn={isVideoOn}
         isScreenSharing={isScreenSharing}
         isRecording={isRecording}
+        canPublish={canPublish}
+        canUseTeacherControls={canUseTeacherControls}
         onToggleMute={onToggleMute}
         onToggleVideo={onToggleVideo}
         onToggleScreenShare={onToggleScreenShare}

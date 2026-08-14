@@ -5,14 +5,9 @@ import { useRouter } from 'next/navigation';
 import type { ClassroomParticipant } from '@/types';
 import { ClassroomPreJoin } from './ClassroomPreJoin';
 import { ClassroomLayout } from './ClassroomLayout';
-import { findActiveScreenShare, partitionParticipants, parseClassroomRoleFromMetadata } from '@/lib/classroomSeating';
+import { canPublishClassroomMedia, findActiveScreenShare, partitionParticipants, parseClassroomRoleFromMetadata } from '@/lib/classroomSeating';
+import RemoteAudioRenderer, { collectRemoteMicrophonePublications, type RemoteAudioTrackReference } from '@/components/live/RemoteAudioRenderer';
 import type { Room } from 'livekit-client';
-
-const LIVEKIT_TRACK_SOURCE = {
-  Camera: 'camera',
-  Microphone: 'microphone',
-  ScreenShare: 'screen_share',
-} as const;
 
 type ClassroomSessionProps = {
   classroomId: string;
@@ -33,7 +28,10 @@ export function ClassroomSession({
   const [isJoined, setIsJoined] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteParticipants, setRemoteParticipants] = useState<ClassroomParticipant[]>([]);
+  const [remoteAudioTracks, setRemoteAudioTracks] = useState<RemoteAudioTrackReference[]>([]);
   const [activeScreenShare, setActiveScreenShare] = useState<ClassroomParticipant | null>(null);
+  const [localScreenShareStream, setLocalScreenShareStream] = useState<MediaStream | null>(null);
+  const [playbackBlocked, setPlaybackBlocked] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
@@ -59,10 +57,10 @@ export function ClassroomSession({
       isMuted: isMuted,
       audioLevel: 0,
       stream: localStream,
-      screenShareStream: null,
-      isScreenSharing: false,
+      screenShareStream: localScreenShareStream,
+      isScreenSharing: Boolean(localScreenShareStream),
     };
-  }, [isJoined, userId, userName, userRole, isVideoOn, isMuted, localStream]);
+  }, [isJoined, userId, userName, userRole, isVideoOn, isMuted, localStream, localScreenShareStream]);
 
   // Partition participants
   const { teachers, students, auditors } = useMemo(() => {
@@ -110,7 +108,7 @@ export function ClassroomSession({
       const { token, url } = await response.json();
 
       // Import LiveKit and connect
-      const { Room } = await import('livekit-client');
+      const { Room, RoomEvent, Track } = await import('livekit-client');
       const room = new Room({ adaptiveStream: true, dynacast: true });
       roomRef.current = room;
 
@@ -122,13 +120,13 @@ export function ClassroomSession({
         const videoTrack = acquiredStream.getVideoTracks()[0];
         if (audioTrack) {
           await room.localParticipant.publishTrack(audioTrack, {
-            source: LIVEKIT_TRACK_SOURCE.Microphone,
+            source: Track.Source.Microphone,
             name: 'microphone',
           });
         }
         if (videoTrack) {
           await room.localParticipant.publishTrack(videoTrack, {
-            source: LIVEKIT_TRACK_SOURCE.Camera,
+            source: Track.Source.Camera,
             name: 'camera',
           });
         }
@@ -138,8 +136,9 @@ export function ClassroomSession({
       const updateRemoteParticipants = () => {
         const participants: ClassroomParticipant[] = Array.from(room.remoteParticipants.values()).map((p: any) => {
           const metadata = parseClassroomRoleFromMetadata(p.metadata);
-          const cameraPub = p.getTrackPublication(LIVEKIT_TRACK_SOURCE.Camera);
-          const screenPub = p.getTrackPublication(LIVEKIT_TRACK_SOURCE.ScreenShare);
+          const cameraPub = p.getTrackPublication(Track.Source.Camera);
+          const micPub = p.getTrackPublication(Track.Source.Microphone);
+          const screenPub = p.getTrackPublication(Track.Source.ScreenShare);
 
           const tracks: MediaStreamTrack[] = [];
           if (cameraPub?.isSubscribed && cameraPub.videoTrack?.mediaStreamTrack) {
@@ -154,7 +153,7 @@ export function ClassroomSession({
             role: metadata || 'student',
             isSpeaking: Boolean(p.isSpeaking),
             isVideoOn: Boolean(cameraPub?.isSubscribed),
-            isMuted: cameraPub?.muted ?? true,
+            isMuted: micPub?.isMuted ?? micPub?.muted ?? true,
             audioLevel: 0,
             stream,
             screenShareStream: screenPub?.isSubscribed && screenPub.videoTrack?.mediaStreamTrack
@@ -165,13 +164,18 @@ export function ClassroomSession({
         });
         setRemoteParticipants(participants);
         setActiveScreenShare(findActiveScreenShare(participants));
+        setRemoteAudioTracks(collectRemoteMicrophonePublications(room));
+        setPlaybackBlocked(room.canPlaybackAudio === false);
       };
 
-      room.on('participantConnected', updateRemoteParticipants);
-      room.on('participantDisconnected', updateRemoteParticipants);
-      room.on('trackSubscribed', updateRemoteParticipants);
-      room.on('trackUnsubscribed', updateRemoteParticipants);
-      room.on('activeSpeakersChanged', updateRemoteParticipants);
+      room.on(RoomEvent.ParticipantConnected, updateRemoteParticipants);
+      room.on(RoomEvent.ParticipantDisconnected, updateRemoteParticipants);
+      room.on(RoomEvent.TrackSubscribed, updateRemoteParticipants);
+      room.on(RoomEvent.TrackUnsubscribed, updateRemoteParticipants);
+      room.on(RoomEvent.TrackMuted, updateRemoteParticipants);
+      room.on(RoomEvent.TrackUnmuted, updateRemoteParticipants);
+      room.on(RoomEvent.ActiveSpeakersChanged, updateRemoteParticipants);
+      room.on(RoomEvent.AudioPlaybackStatusChanged, (playing) => setPlaybackBlocked(!playing));
 
       updateRemoteParticipants();
       setIsJoined(true);
@@ -205,7 +209,9 @@ export function ClassroomSession({
     setIsMuted(false);
     setIsVideoOn(false);
     setIsScreenSharing(false);
+    setLocalScreenShareStream(null);
     setRemoteParticipants([]);
+    setRemoteAudioTracks([]);
     setActiveScreenShare(null);
 
     router.push('/class/dashboard');
@@ -213,25 +219,38 @@ export function ClassroomSession({
 
   // Media controls using LiveKit's supported APIs
   const toggleMute = useCallback(() => {
-    if (!roomRef.current) return;
+    if (!roomRef.current || !canPublishClassroomMedia(userRole)) return;
     const newMutedState = !isMuted;
     roomRef.current.localParticipant.setMicrophoneEnabled(!newMutedState);
     setIsMuted(newMutedState);
-  }, [isMuted]);
+  }, [isMuted, userRole]);
 
   const toggleVideo = useCallback(() => {
-    if (!roomRef.current) return;
+    if (!roomRef.current || !canPublishClassroomMedia(userRole)) return;
     const newVideoState = !isVideoOn;
     roomRef.current.localParticipant.setCameraEnabled(!newVideoState);
     setIsVideoOn(newVideoState);
-  }, [isVideoOn]);
+  }, [isVideoOn, userRole]);
 
-  // Screen sharing is NOT implemented in Slice A.
-  // Keep the control visible but clearly labeled as unavailable.
   const toggleScreenShare = useCallback(async () => {
-    // Slice B: implement native LiveKit screen sharing
-    console.warn('Screen sharing is not yet available in this version');
-  }, []);
+    const room = roomRef.current;
+    if (!room || !canPublishClassroomMedia(userRole)) return;
+    try {
+      const next = !isScreenSharing;
+      await room.localParticipant.setScreenShareEnabled(next);
+      setIsScreenSharing(next);
+      if (next) {
+        const { Track } = await import('livekit-client');
+        const publication = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
+        const mediaStreamTrack = publication?.videoTrack?.mediaStreamTrack;
+        setLocalScreenShareStream(mediaStreamTrack ? new MediaStream([mediaStreamTrack]) : null);
+      } else {
+        setLocalScreenShareStream(null);
+      }
+    } catch (error) {
+      console.error('Unable to toggle classroom screen share', error);
+    }
+  }, [isScreenSharing, userRole]);
 
   const toggleRecording = useCallback(() => {
     setIsRecording((prev) => !prev);
@@ -271,6 +290,13 @@ export function ClassroomSession({
   // Show classroom layout
   return (
     <div className="h-screen flex flex-col bg-slate-950 p-4 gap-4">
+      <RemoteAudioRenderer
+        room={roomRef.current}
+        tracks={remoteAudioTracks}
+        playbackBlocked={playbackBlocked}
+        onPlaybackBlocked={() => setPlaybackBlocked(true)}
+        onPlaybackRecovered={() => setPlaybackBlocked(false)}
+      />
       <ClassroomLayout
         participants={localUser ? [localUser, ...remoteParticipants] : remoteParticipants}
         teachers={teachers}

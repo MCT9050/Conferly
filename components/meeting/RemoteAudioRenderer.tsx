@@ -23,14 +23,12 @@ type ParticipantLike = {
   sid?: string;
   identity?: string;
   isLocal?: boolean;
-  trackPublications?: Map<string, RemoteTrackPublicationLike>;
-  getTrackPublications?: () => Map<string, RemoteTrackPublicationLike>;
+  trackPublications?: ReadonlyMap<string, RemoteTrackPublicationLike>;
 };
 
-type RoomLike = {
-  localParticipant?: ParticipantLike | Record<string, unknown> | null;
-  remoteParticipants?: Map<string, ParticipantLike>;
-  participants?: Map<string, ParticipantLike>;
+export type RoomLike = {
+  remoteParticipants?: ReadonlyMap<string, ParticipantLike>;
+  participants?: ReadonlyMap<string, ParticipantLike>;
   startAudio?: () => Promise<void>;
 };
 
@@ -70,16 +68,8 @@ function getParticipantId(participant: ParticipantLike) {
   return participant.identity ?? participant.sid ?? "remote-participant";
 }
 
-function getPublicationMap(participant: ParticipantLike): Map<string, RemoteTrackPublicationLike> {
-  if (participant.trackPublications instanceof Map) {
-    return participant.trackPublications;
-  }
-
-  if (typeof participant.getTrackPublications === "function") {
-    return participant.getTrackPublications();
-  }
-
-  return new Map();
+function getPublicationMap(participant: ParticipantLike): ReadonlyMap<string, RemoteTrackPublicationLike> {
+  return participant.trackPublications ?? new Map();
 }
 
 function isRemoteMicrophonePublication(publication: RemoteTrackPublicationLike | undefined | null) {
