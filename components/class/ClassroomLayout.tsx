@@ -13,6 +13,7 @@ import { canPublishClassroomMedia, canUseClassroomTeacherControls, classifyViewp
 import { LiveStage } from '@/components/live/LiveStage';
 import { ResponsiveParticipantGallery } from '@/components/live/ResponsiveParticipantGallery';
 import { PresentationFilmstrip as LivePresentationFilmstrip } from '@/components/live/PresentationFilmstrip';
+import { useSharedLiveRoomActivity } from '@/components/live/SharedLiveRoomActivityProvider';
 import { TeacherDock } from './TeacherDock';
 import { ClassroomControls } from './ClassroomControls';
 
@@ -47,9 +48,7 @@ export function ClassroomLayout({
   isScreenSharing,
   isRecording,
 }: ClassroomLayoutProps) {
-  // TODO Slice B: ClassroomMode is currently local-only. Shared classroom mode
-  // requires transport protocol and late-join synchronization to be implemented.
-  const [mode, setMode] = useState<ClassroomMode>('welcome');
+  const { activity, canControl, lastRejection, setActivity } = useSharedLiveRoomActivity();
   const [previousMode, setPreviousMode] = useState<ClassroomMode>('gallery');
   const [personalLayout, setPersonalLayout] = useState<PersonalLayout>('standard');
   const [density, setDensity] = useState<ParticipantDensity>('standard');
@@ -76,13 +75,15 @@ export function ClassroomLayout({
   }, [participants.length, teachers.length, viewport]);
 
   useEffect(() => {
-    setMode((current) => selectActivityForMedia(current as LiveRoomActivity, Boolean(activeScreenShare), previousMode as LiveRoomActivity) as ClassroomMode);
-  }, [activeScreenShare, previousMode]);
+    const next = selectActivityForMedia(activity as LiveRoomActivity, Boolean(activeScreenShare), previousMode as LiveRoomActivity) as ClassroomMode;
+    if (next !== activity && canControl) void setActivity(next as LiveRoomActivity);
+  }, [activeScreenShare, activity, canControl, previousMode, setActivity]);
 
   const handleModeChange = useCallback((newMode: ClassroomMode) => {
+    if (!canControl) return;
     if (newMode !== 'screen-share') setPreviousMode(newMode);
-    setMode(newMode);
-  }, []);
+    void setActivity((newMode === 'teacher-focus' ? 'focus' : newMode) as LiveRoomActivity);
+  }, [canControl, setActivity]);
 
   const handleLayoutChange = useCallback((newLayout: PersonalLayout) => {
     setPersonalLayout(newLayout);
@@ -100,19 +101,24 @@ export function ClassroomLayout({
 
   // Determine if filmstrip should be visible
   const showFilmstrip = useMemo(() => {
-    return personalLayout === 'filmstrip' || mode === 'screen-share' || (isMobile && mode === 'gallery');
-  }, [personalLayout, isMobile, mode]);
+    return personalLayout === 'filmstrip' || activity === 'screen-share' || (isMobile && activity === 'gallery');
+  }, [personalLayout, isMobile, activity]);
 
   const liveParticipants = useMemo(() => participants.map((p) => toLiveRoomParticipant(p, localUser?.id)), [participants, localUser?.id]);
   const liveStageParticipant = useMemo(() => liveParticipants.find((p) => p.isSpeaking) ?? liveParticipants[0] ?? null, [liveParticipants]);
   const liveScreenShareParticipant = useMemo(() => activeScreenShare ? toLiveRoomParticipant(activeScreenShare, localUser?.id) : null, [activeScreenShare, localUser?.id]);
   const liveFilmstripParticipants = useMemo(() => liveScreenShareParticipant ? liveParticipants.filter((p) => p.id !== liveScreenShareParticipant.id) : liveParticipants, [liveParticipants, liveScreenShareParticipant]);
-  const liveActivity = mode === 'teacher-focus' ? 'focus' : mode as LiveRoomActivity;
+  const mode = (activity === 'focus' ? 'teacher-focus' : activity) as ClassroomMode;
+  const liveActivity = activity as LiveRoomActivity;
   const canPublish = canPublishClassroomMedia(localUser?.role);
-  const canUseTeacherControls = canUseClassroomTeacherControls(localUser?.role);
+  const canUseTeacherControls = canUseClassroomTeacherControls(localUser?.role) && canControl;
 
   return (
     <div className="flex flex-col gap-4 h-full">
+      <div className="sr-only" role="status" aria-live="polite">
+        Classroom activity synchronized: {mode}. Revision conflicts are resolved by latest authorized revision.
+        {lastRejection ? ` Last rejected packet: ${lastRejection.reason}.` : ''}
+      </div>
       {/* Teacher dock - always visible for teachers during gallery, screen-share, whiteboard */}
       {(mode === 'gallery' || mode === 'screen-share' || mode === 'whiteboard') && (
         <TeacherDock teachers={teachers} localUser={localUser} />

@@ -48,6 +48,7 @@ export async function createLiveKitToken({
     canSubscribe: true,
     canPublish: role === 'participant',
     canPublishData: role === 'participant',
+    canUpdateOwnMetadata: true,
   };
 
   // Build metadata - include classroom role if provided

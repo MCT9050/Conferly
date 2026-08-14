@@ -268,22 +268,24 @@ test.describe('Classroom Seating Foundation', () => {
       expect(source).not.toContain('LIVEKIT_TRACK_SOURCE');
     });
 
-    test('ClassroomLayout uses shared stage/gallery/filmstrip and keeps gallery fallback local', () => {
+    test('ClassroomLayout uses shared stage/gallery/filmstrip and synchronized activity', () => {
       const source = read('components/class/ClassroomLayout.tsx');
       expect(source).toContain('@/components/live/LiveStage');
       expect(source).toContain('@/components/live/ResponsiveParticipantGallery');
       expect(source).toContain('@/components/live/PresentationFilmstrip');
-      expect(source).toContain("useState<ClassroomMode>('welcome')");
       expect(source).toContain("useState<ClassroomMode>('gallery')");
+      expect(source).toContain('useSharedLiveRoomActivity');
       expect(source).toContain('selectActivityForMedia');
     });
 
-    test('shared components contain no Classroom whiteboard import or synchronization transport', () => {
+    test('shared components contain no Classroom whiteboard import and isolate synchronization transport', () => {
       for (const file of fs.readdirSync(path.join(root, 'components/live'))) {
         const source = read(`components/live/${file}`);
         expect(source).not.toContain('ClassroomWhiteboard');
-        expect(source).not.toContain('DataPacket');
-        expect(source).not.toContain('publishData');
+        if (file !== 'SharedLiveRoomActivityProvider.tsx') {
+          expect(source).not.toContain('DataPacket');
+          expect(source).not.toContain('publishData');
+        }
       }
     });
 
@@ -304,11 +306,11 @@ test.describe('Classroom Seating Foundation', () => {
       expect(instrumentation).toContain("import('./lib/monitoring.server')");
     });
 
-    test('protocol document is design-only', () => {
+    test('protocol document describes Phase 2 synchronization', () => {
       const doc = read('docs/shared-live-room-activity-protocol.md');
-      expect(doc).toContain('Synchronization: NOT IMPLEMENTED IN PHASE 1');
-      expect(doc).toContain('Late-join hydration: NOT IMPLEMENTED IN PHASE 1');
-      expect(doc).toContain('A role written inside a client packet never authorizes the packet');
+      expect(doc).toContain('Phase 2 implements a versioned LiveKit synchronization protocol');
+      expect(doc).toContain('Late join hydration');
+      expect(doc).toContain('Client packet roles are never trusted by themselves');
     });
   });
 });

@@ -7,6 +7,7 @@ import { ClassroomPreJoin } from './ClassroomPreJoin';
 import { ClassroomLayout } from './ClassroomLayout';
 import { canPublishClassroomMedia, findActiveScreenShare, partitionParticipants, parseClassroomRoleFromMetadata } from '@/lib/classroomSeating';
 import RemoteAudioRenderer, { collectRemoteMicrophonePublications, type RemoteAudioTrackReference } from '@/components/live/RemoteAudioRenderer';
+import { SharedLiveRoomActivityProvider } from '@/components/live/SharedLiveRoomActivityProvider';
 import type { Room } from 'livekit-client';
 
 type ClassroomSessionProps = {
@@ -63,7 +64,7 @@ export function ClassroomSession({
   }, [isJoined, userId, userName, userRole, isVideoOn, isMuted, localStream, localScreenShareStream]);
 
   // Partition participants
-  const { teachers, students, auditors } = useMemo(() => {
+  const { teachers } = useMemo(() => {
     const allParticipants = localUser ? [localUser, ...remoteParticipants] : remoteParticipants;
     return partitionParticipants(allParticipants);
   }, [localUser, remoteParticipants]);
@@ -297,21 +298,29 @@ export function ClassroomSession({
         onPlaybackBlocked={() => setPlaybackBlocked(true)}
         onPlaybackRecovered={() => setPlaybackBlocked(false)}
       />
-      <ClassroomLayout
-        participants={localUser ? [localUser, ...remoteParticipants] : remoteParticipants}
-        teachers={teachers}
-        localUser={localUser}
-        activeScreenShare={activeScreenShare}
-        onLeave={handleLeave}
-        onToggleMute={toggleMute}
-        onToggleVideo={toggleVideo}
-        onToggleScreenShare={toggleScreenShare}
-        onToggleRecording={toggleRecording}
-        isMuted={isMuted}
-        isVideoOn={isVideoOn}
-        isScreenSharing={isScreenSharing}
-        isRecording={isRecording}
-      />
+      <SharedLiveRoomActivityProvider
+        room={roomRef.current}
+        roomId={lessonId}
+        domain="classroom"
+        localRole={userRole}
+        initialActivity="welcome"
+      >
+        <ClassroomLayout
+          participants={localUser ? [localUser, ...remoteParticipants] : remoteParticipants}
+          teachers={teachers}
+          localUser={localUser}
+          activeScreenShare={activeScreenShare}
+          onLeave={handleLeave}
+          onToggleMute={toggleMute}
+          onToggleVideo={toggleVideo}
+          onToggleScreenShare={toggleScreenShare}
+          onToggleRecording={toggleRecording}
+          isMuted={isMuted}
+          isVideoOn={isVideoOn}
+          isScreenSharing={isScreenSharing}
+          isRecording={isRecording}
+        />
+      </SharedLiveRoomActivityProvider>
     </div>
   );
 }

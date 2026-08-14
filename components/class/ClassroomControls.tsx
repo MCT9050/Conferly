@@ -165,6 +165,29 @@ export function ClassroomControls({
       {/* Divider */}
       <div className="w-px h-8 bg-white/10 hidden sm:block" />
 
+      {/* Shared teacher activity selector */}
+      <div className="flex items-center gap-1">
+        {(['welcome', 'gallery', 'teacher-focus', 'discussion', 'whiteboard'] as ClassroomMode[]).map((nextMode) => (
+          <button
+            key={nextMode}
+            type="button"
+            onClick={() => onModeChange(nextMode)}
+            disabled={!canUseTeacherControls}
+            className={`px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+              mode === nextMode
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                : 'bg-slate-800/40 text-slate-400 border border-white/10 hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-slate-800/40'
+            }`}
+            aria-pressed={mode === nextMode}
+          >
+            {nextMode}
+          </button>
+        ))}
+      </div>
+
+      {/* Divider */}
+      <div className="w-px h-8 bg-white/10 hidden sm:block" />
+
       {/* Leave button */}
       <button
         type="button"
