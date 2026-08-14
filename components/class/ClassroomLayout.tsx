@@ -18,6 +18,8 @@ import { TeacherDock } from './TeacherDock';
 import { ClassroomControls } from './ClassroomControls';
 
 type ClassroomLayoutProps = {
+  classroomTitle: string;
+  lessonTitle: string;
   participants: ClassroomParticipant[];
   teachers: ClassroomParticipant[];
   localUser: ClassroomParticipant | null;
@@ -34,6 +36,8 @@ type ClassroomLayoutProps = {
 };
 
 export function ClassroomLayout({
+  classroomTitle,
+  lessonTitle,
   participants,
   teachers,
   localUser,
@@ -112,13 +116,38 @@ export function ClassroomLayout({
   const liveActivity = activity as LiveRoomActivity;
   const canPublish = canPublishClassroomMedia(localUser?.role);
   const canUseTeacherControls = canUseClassroomTeacherControls(localUser?.role) && canControl;
+  const permissionMessage = canUseTeacherControls
+    ? 'You can control the shared classroom activity.'
+    : 'Only the owner, instructor, or authorized TA can control the shared classroom activity.';
 
   return (
     <div className="flex flex-col gap-4 h-full">
-      <div className="sr-only" role="status" aria-live="polite">
-        Classroom activity synchronized: {mode}. Revision conflicts are resolved by latest authorized revision.
+      <header className="rounded-2xl border border-white/10 bg-slate-900/80 p-3 text-white" aria-labelledby="classroom-live-heading">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 id="classroom-live-heading" className="text-base font-semibold">{lessonTitle}</h1>
+            <p className="text-xs text-slate-400">{classroomTitle}</p>
+          </div>
+          <div className="text-xs text-slate-300" role="status" aria-live="polite">
+            Synchronized activity: <span className="font-semibold text-emerald-300">{mode}</span>
+          </div>
+        </div>
+      </header>
+      <div className="sr-only" role="status" aria-live="polite" data-classroom-sync-state="true">
+        Classroom activity synchronized: {mode}. Revision conflicts are resolved by latest authorized revision. {permissionMessage}
+        {participants.length === 0 ? ' No participants are currently visible.' : ` ${participants.length} participant${participants.length === 1 ? '' : 's'} visible.`}
         {lastRejection ? ` Last rejected packet: ${lastRejection.reason}.` : ''}
       </div>
+      {!canUseTeacherControls && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200" role="note" data-classroom-permission-state="restricted">
+          {permissionMessage}
+        </div>
+      )}
+      {lastRejection && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200" role="alert" data-classroom-sync-error="true">
+          Ignored an invalid shared activity update: {lastRejection.reason}.
+        </div>
+      )}
       {/* Teacher dock - always visible for teachers during gallery, screen-share, whiteboard */}
       {(mode === 'gallery' || mode === 'screen-share' || mode === 'whiteboard') && (
         <TeacherDock teachers={teachers} localUser={localUser} />

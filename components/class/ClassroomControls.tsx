@@ -179,6 +179,7 @@ export function ClassroomControls({
                 : 'bg-slate-800/40 text-slate-400 border border-white/10 hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-slate-800/40'
             }`}
             aria-pressed={mode === nextMode}
+            aria-disabled={!canUseTeacherControls}
           >
             {nextMode}
           </button>

@@ -12,7 +12,9 @@ import type { Room } from 'livekit-client';
 
 type ClassroomSessionProps = {
   classroomId: string;
+  classroomTitle?: string;
   lessonId: string;
+  lessonTitle?: string;
   userId: string;
   userName: string;
   userRole: 'owner' | 'instructor' | 'ta' | 'student' | 'auditor';
@@ -20,7 +22,9 @@ type ClassroomSessionProps = {
 
 export function ClassroomSession({
   classroomId,
+  classroomTitle = 'Classroom',
   lessonId,
+  lessonTitle = 'Live lesson',
   userId,
   userName,
   userRole,
@@ -282,6 +286,7 @@ export function ClassroomSession({
       <ClassroomPreJoin
         userName={userName}
         userRole={userRole}
+        lessonTitle={lessonTitle}
         onJoin={handleJoin}
         onCancel={() => router.push('/class/dashboard')}
       />
@@ -306,6 +311,8 @@ export function ClassroomSession({
         initialActivity="welcome"
       >
         <ClassroomLayout
+          classroomTitle={classroomTitle}
+          lessonTitle={lessonTitle}
           participants={localUser ? [localUser, ...remoteParticipants] : remoteParticipants}
           teachers={teachers}
           localUser={localUser}

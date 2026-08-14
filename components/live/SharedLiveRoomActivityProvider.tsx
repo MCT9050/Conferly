@@ -6,13 +6,16 @@ import {
   LIVE_ROOM_ACTIVITY_ATTRIBUTE,
   LIVE_ROOM_ACTIVITY_TOPIC,
   acceptSharedActivityPacket,
+  compareSharedActivityStatePriority,
   canControlSharedActivity,
   createSharedActivityPacket,
   createSharedActivityState,
+  acceptSharedActivitySnapshot,
   decodeSharedActivityAttribute,
   decodeSharedActivityPacket,
   encodeSharedActivityAttribute,
   encodeSharedActivityPacket,
+  selectAuthorizedSharedActivitySnapshot,
   type SharedActivityRejectReason,
   type SharedActivityState,
   type SharedLiveRoomActivity,
@@ -56,8 +59,8 @@ export function SharedLiveRoomActivityProvider({ children, room, roomId, domain,
 
   const applyState = useCallback((next: SharedActivityState) => {
     setState((current) => {
-      if (next.revision < current.revision) return current;
-      if (next.revision === current.revision && next.updatedAt <= current.updatedAt) return current;
+      const comparison = compareSharedActivityStatePriority(next, current);
+      if (comparison <= 0) return current;
       return next;
     });
   }, []);
@@ -65,9 +68,24 @@ export function SharedLiveRoomActivityProvider({ children, room, roomId, domain,
   useEffect(() => {
     if (!room) return;
     const hydrateFromAttributes = () => {
-      for (const participant of [room.localParticipant, ...Array.from(room.remoteParticipants.values())]) {
-        const snapshot = decodeSharedActivityAttribute((participant.attributes as Record<string, string> | undefined)?.[LIVE_ROOM_ACTIVITY_ATTRIBUTE]);
-        if (snapshot && snapshot.roomId === roomId && snapshot.domain === domain && canControlSharedActivity(domain, snapshot.senderRole)) applyState(snapshot);
+      const selectedSnapshot = selectAuthorizedSharedActivitySnapshot({
+        current: state,
+        snapshots: [room.localParticipant, ...Array.from(room.remoteParticipants.values())].map((participant) => ({
+          snapshot: decodeSharedActivityAttribute((participant.attributes as Record<string, string> | undefined)?.[LIVE_ROOM_ACTIVITY_ATTRIBUTE]),
+          participantIdentity: participant.identity,
+          participantRole: participantRole(participant),
+        })),
+      });
+      if (selectedSnapshot) {
+        const result = acceptSharedActivitySnapshot({
+          snapshot: selectedSnapshot,
+          current: state,
+          participantIdentity: selectedSnapshot.senderIdentity,
+          participantRole: selectedSnapshot.senderRole,
+        });
+        if (result.accepted) {
+          applyState(result.state);
+        }
       }
     };
     const onData = (payload: Uint8Array, participant?: Participant, kind?: DataPacket_Kind, topic?: string) => {

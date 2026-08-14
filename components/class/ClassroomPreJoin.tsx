@@ -9,6 +9,7 @@ type JoinPreferences = {
 };
 
 type ClassroomPreJoinProps = {
+  lessonTitle?: string;
   userName: string;
   userRole: 'owner' | 'instructor' | 'ta' | 'student' | 'auditor';
   onJoin: (prefs: JoinPreferences) => void;
@@ -16,6 +17,7 @@ type ClassroomPreJoinProps = {
 };
 
 export function ClassroomPreJoin({
+  lessonTitle = 'Live lesson',
   userName,
   userRole,
   onJoin,
@@ -99,6 +101,9 @@ export function ClassroomPreJoin({
       <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-slate-900/95 shadow-2xl shadow-black/40 p-8 space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold text-white">Join Classroom</h1>
+          <p className="text-sm text-slate-300" role="status" aria-live="polite">
+            Preparing shared classroom foundation for {lessonTitle}
+          </p>
           <p className="text-sm text-slate-400">
             {isAuditor
               ? 'You are joining as an auditor (listen-only).'

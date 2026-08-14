@@ -5,12 +5,13 @@ export const LIVE_ROOM_ACTIVITY_TOPIC = 'conferly.live-room.activity.v1' as cons
 export const LIVE_ROOM_ACTIVITY_ATTRIBUTE = 'conferly.liveRoom.activity.v1' as const;
 
 export type SharedLiveRoomDomain = 'classroom' | 'meet';
-export type SharedLiveRoomActivity = 'welcome' | 'gallery' | 'focus' | 'discussion' | 'screen-share' | 'presentation' | 'whiteboard' | 'audio-only';
+export type SharedLiveRoomActivity = 'welcome' | 'gallery' | 'focus' | 'discussion' | 'screen-share' | 'presentation' | 'whiteboard';
 export type SharedLiveRoomRole = ClassroomRole | 'host' | 'co-host' | 'presenter' | 'participant' | 'auditor' | 'viewer';
 export type SharedLiveRoomPacketKind = 'activity.set' | 'activity.snapshot';
 
 export type SharedActivityState = {
   protocol: typeof LIVE_ROOM_ACTIVITY_PROTOCOL_VERSION;
+  packetId: string;
   roomId: string;
   domain: SharedLiveRoomDomain;
   activity: SharedLiveRoomActivity;
@@ -47,7 +48,6 @@ const ACTIVITIES = new Set<SharedLiveRoomActivity>([
   'screen-share',
   'presentation',
   'whiteboard',
-  'audio-only',
 ]);
 
 const CLASSROOM_ACTIVITIES = new Set<SharedLiveRoomActivity>([
@@ -71,18 +71,20 @@ export function canControlSharedActivity(domain: SharedLiveRoomDomain, role: Sha
 
 export function normalizeSharedClassroomActivity(activity: SharedLiveRoomActivity): SharedLiveRoomActivity {
   if (activity === 'focus') return 'focus';
-  if (activity === 'audio-only') return 'gallery';
   return CLASSROOM_ACTIVITIES.has(activity) ? activity : 'gallery';
 }
 
-export function createSharedActivityState(input: Omit<SharedActivityState, 'protocol' | 'updatedAt'> & { updatedAt?: number }): SharedActivityState {
+export function createSharedActivityState(input: Omit<SharedActivityState, 'protocol' | 'updatedAt' | 'packetId'> & { updatedAt?: number; packetId?: string }): SharedActivityState {
+  const updatedAt = input.updatedAt ?? Date.now();
+  const revision = Math.max(0, Math.trunc(input.revision));
   return {
     protocol: LIVE_ROOM_ACTIVITY_PROTOCOL_VERSION,
+    packetId: input.packetId ?? `${input.roomId}:${revision}:${input.senderIdentity}:${updatedAt}`,
     roomId: input.roomId,
     domain: input.domain,
     activity: input.domain === 'classroom' ? normalizeSharedClassroomActivity(input.activity) : input.activity,
-    revision: Math.max(0, Math.trunc(input.revision)),
-    updatedAt: input.updatedAt ?? Date.now(),
+    revision,
+    updatedAt,
     senderIdentity: input.senderIdentity,
     senderRole: input.senderRole,
   };
@@ -93,7 +95,6 @@ export function createSharedActivityPacket(input: Omit<SharedActivityPacket, 'pr
   return {
     ...state,
     kind: input.kind,
-    packetId: input.packetId ?? `${state.roomId}:${state.revision}:${state.senderIdentity}:${state.updatedAt}`,
   };
 }
 
@@ -129,11 +130,78 @@ export function decodeSharedActivityAttribute(value: string | undefined): Shared
   try {
     const parsed = JSON.parse(value) as SharedActivityState;
     if (parsed.protocol !== LIVE_ROOM_ACTIVITY_PROTOCOL_VERSION) return null;
-    if (!parsed.roomId || !ACTIVITIES.has(parsed.activity)) return null;
+    if (!parsed.packetId || !parsed.roomId || !ACTIVITIES.has(parsed.activity)) return null;
     return parsed;
   } catch {
     return null;
   }
+}
+
+export function compareSharedActivityStatePriority(candidate: Pick<SharedActivityState, 'revision' | 'updatedAt' | 'packetId'>, current: Pick<SharedActivityState, 'revision' | 'updatedAt' | 'packetId'>): number {
+  if (candidate.packetId === current.packetId) return 0;
+  if (candidate.revision !== current.revision) return candidate.revision > current.revision ? 1 : -1;
+  if (candidate.updatedAt !== current.updatedAt) return candidate.updatedAt > current.updatedAt ? 1 : -1;
+  return candidate.packetId.localeCompare(current.packetId);
+}
+
+function validateSharedActivityState(params: {
+  state: SharedActivityState | null;
+  current: SharedActivityState;
+  participantIdentity?: string;
+  participantRole?: SharedLiveRoomRole | null;
+}): SharedActivityAcceptResult {
+  const { state, current, participantIdentity, participantRole } = params;
+  if (!state) return { accepted: false, reason: 'malformed' };
+  if (state.protocol !== LIVE_ROOM_ACTIVITY_PROTOCOL_VERSION) return { accepted: false, reason: 'unsupported' };
+  if (state.roomId !== current.roomId || state.domain !== current.domain) return { accepted: false, reason: 'wrong-room' };
+  if (participantIdentity && state.senderIdentity !== participantIdentity) return { accepted: false, reason: 'unauthorized' };
+  if (participantRole && state.senderRole !== participantRole) return { accepted: false, reason: 'unauthorized' };
+  if (!canControlSharedActivity(current.domain, state.senderRole)) return { accepted: false, reason: 'unauthorized' };
+  return { accepted: true, state };
+}
+
+export function acceptSharedActivitySnapshot(params: {
+  snapshot: SharedActivityState | null;
+  current: SharedActivityState;
+  participantIdentity?: string;
+  participantRole?: SharedLiveRoomRole | null;
+}): SharedActivityAcceptResult {
+  const validated = validateSharedActivityState({
+    state: params.snapshot,
+    current: params.current,
+    participantIdentity: params.participantIdentity,
+    participantRole: params.participantRole,
+  });
+  if (!validated.accepted) return validated;
+  const comparison = compareSharedActivityStatePriority(validated.state, params.current);
+  if (comparison === 0) return { accepted: false, reason: 'duplicate' };
+  if (comparison < 0) return { accepted: false, reason: 'stale' };
+  return { accepted: true, state: createSharedActivityState(validated.state) };
+}
+
+export function selectAuthorizedSharedActivitySnapshot(params: {
+  current: SharedActivityState;
+  snapshots: Array<{
+    snapshot: SharedActivityState | null;
+    participantIdentity?: string;
+    participantRole?: SharedLiveRoomRole | null;
+  }>;
+}): SharedActivityState | null {
+  const { current, snapshots } = params;
+  let selected: SharedActivityState | null = null;
+  for (const candidate of snapshots) {
+    const base = selected ?? current;
+    const accepted = acceptSharedActivitySnapshot({
+      snapshot: candidate.snapshot,
+      current: base,
+      participantIdentity: candidate.participantIdentity,
+      participantRole: candidate.participantRole,
+    });
+    if (accepted.accepted) {
+      selected = accepted.state;
+    }
+  }
+  return selected;
 }
 
 export function acceptSharedActivityPacket(params: {
@@ -146,14 +214,12 @@ export function acceptSharedActivityPacket(params: {
 }): SharedActivityAcceptResult {
   const { packet, current, topic, participantIdentity, participantRole, seenPacketIds } = params;
   if (topic !== undefined && topic !== LIVE_ROOM_ACTIVITY_TOPIC) return { accepted: false, reason: 'malformed' };
-  if (!packet) return { accepted: false, reason: 'malformed' };
-  if (packet.protocol !== LIVE_ROOM_ACTIVITY_PROTOCOL_VERSION) return { accepted: false, reason: 'unsupported' };
-  if (packet.roomId !== current.roomId || packet.domain !== current.domain) return { accepted: false, reason: 'wrong-room' };
-  if (seenPacketIds.has(packet.packetId)) return { accepted: false, reason: 'duplicate' };
-  if (participantIdentity && packet.senderIdentity !== participantIdentity) return { accepted: false, reason: 'unauthorized' };
-  if (participantRole && packet.senderRole !== participantRole) return { accepted: false, reason: 'unauthorized' };
-  if (!canControlSharedActivity(current.domain, packet.senderRole)) return { accepted: false, reason: 'unauthorized' };
-  if (packet.revision < current.revision) return { accepted: false, reason: 'stale' };
-  if (packet.revision === current.revision && packet.updatedAt <= current.updatedAt) return { accepted: false, reason: 'stale' };
-  return { accepted: true, state: createSharedActivityState(packet) };
+  const validated = validateSharedActivityState({ state: packet, current, participantIdentity, participantRole });
+  if (!validated.accepted) return validated;
+  const acceptedPacket = validated.state as SharedActivityPacket;
+  if (seenPacketIds.has(acceptedPacket.packetId)) return { accepted: false, reason: 'duplicate' };
+  const comparison = compareSharedActivityStatePriority(acceptedPacket, current);
+  if (comparison === 0) return { accepted: false, reason: 'duplicate' };
+  if (comparison < 0) return { accepted: false, reason: 'stale' };
+  return { accepted: true, state: createSharedActivityState(validated.state) };
 }

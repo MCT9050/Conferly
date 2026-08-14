@@ -254,7 +254,10 @@ test.describe('Classroom Seating Foundation', () => {
     const read = (relativePath: string) => fs.readFileSync(path.join(root, relativePath), 'utf8');
 
     test('production route still renders ClassroomSession', () => {
-      expect(read('app/class/classrooms/[slug]/lessons/[lessonId]/live/page.tsx')).toContain('ClassroomSession');
+      const source = read('app/class/classrooms/[slug]/lessons/[lessonId]/live/page.tsx');
+      expect(source).toContain('ClassroomSession');
+      expect(source).toContain('classroomTitle={classroom.title}');
+      expect(source).toContain('lessonTitle={lesson.title}');
     });
 
     test('ClassroomSession uses shared foundation, remote audio, microphone mute, and real screen-share API', () => {
@@ -276,6 +279,9 @@ test.describe('Classroom Seating Foundation', () => {
       expect(source).toContain("useState<ClassroomMode>('gallery')");
       expect(source).toContain('useSharedLiveRoomActivity');
       expect(source).toContain('selectActivityForMedia');
+      expect(source).toContain('data-classroom-sync-state');
+      expect(source).toContain('data-classroom-permission-state');
+      expect(source).toContain('data-classroom-sync-error');
     });
 
     test('shared components contain no Classroom whiteboard import and isolate synchronization transport', () => {

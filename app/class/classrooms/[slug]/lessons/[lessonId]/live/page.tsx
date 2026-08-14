@@ -35,7 +35,9 @@ export default async function ClassLivePage({
   return (
     <ClassroomSession
       classroomId={classroom.id}
+      classroomTitle={classroom.title}
       lessonId={lesson.id}
+      lessonTitle={lesson.title}
       userId={authenticatedSession.userId}
       userName={authenticatedSession.email ?? `User-${authenticatedSession.userId.slice(0, 4)}`}
       userRole={classroomRole}

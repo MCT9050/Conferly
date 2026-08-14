@@ -18,7 +18,7 @@ type SharedActivityPacket = {
   packetId: string;
   roomId: string;
   domain: 'classroom' | 'meet';
-  activity: 'welcome' | 'gallery' | 'focus' | 'discussion' | 'screen-share' | 'presentation' | 'whiteboard' | 'audio-only';
+  activity: 'welcome' | 'gallery' | 'focus' | 'discussion' | 'screen-share' | 'presentation' | 'whiteboard';
   revision: number;
   updatedAt: number;
   senderIdentity: string;
@@ -26,23 +26,36 @@ type SharedActivityPacket = {
 };
 ```
 
+`audio-only` is intentionally excluded from the shared packet and snapshot vocabulary. Audio-only remains a local media preference or local Classroom UI state only.
+
 ## Authorization
 
 Client packet roles are never trusted by themselves. Receivers validate sender identity against the LiveKit participant identity and sender role against server-issued participant attributes.
+
+LiveKit currently exposes own-metadata/attribute updates to the participant that owns the token. The token grant therefore enables `canUpdateOwnMetadata` for connected participants, but that is not the authority boundary. Receiver-side validation against the authoritative participant identity plus the server-issued role attributes is the security boundary.
 
 Classroom shared activity control is limited to owner, instructor, and authorized TA. Students and auditors cannot control shared activity.
 
 ## Rejection rules
 
-Packets are rejected when malformed, stale, duplicate, unsupported, unauthorized, or targeted at the wrong room/domain.
+Packets and snapshots are rejected when malformed, stale, duplicate, unsupported, unauthorized, or targeted at the wrong room/domain.
+
+Malformed or unsupported activity values such as a shared `audio-only` payload are rejected and must never override local media or layout preferences.
 
 ## Deterministic revision handling
 
-Highest revision wins. For equal revisions, later `updatedAt` wins. Older or equal timestamp packets are stale.
+Conflict resolution is deterministic and uses this exact ordering:
+
+1. Higher revision wins.
+2. If revisions are equal, higher `updatedAt` wins.
+3. If revision and `updatedAt` are equal, lexically greater stable `packetId` wins.
+4. An identical `packetId` is a duplicate and is ignored.
+
+Arrival order is never used as a tie-break.
 
 ## Late join hydration
 
-Authorized controllers write the latest accepted shared activity state to their participant attributes. Late joiners hydrate from the latest valid authorized snapshot.
+Authorized controllers write the latest accepted shared activity state to their participant attributes. Late joiners hydrate from the newest valid authorized snapshot only after validating the snapshot owner's participant identity and server-issued role.
 
 ## Phase 2 boundaries
 
