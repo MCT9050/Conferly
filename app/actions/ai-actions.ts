@@ -13,7 +13,7 @@ import { summarize, translate, assistant } from "../../lib/hf-api";
 import { getServerEnv } from "../../lib/serverEnv";
 import { checkRateLimit, recordHfResponse } from "../../lib/system-guard";
 import { getServerSession } from "../../lib/auth";
-import { verifyRoomAccess } from "../../lib/meetingAuth";
+import { canUseMeetFeature, type MeetFeature } from "../../lib/meetEntitlements";
 
 // ---------------------------------------------------------------------------
 // Response union type — all AI actions return this shape
@@ -30,7 +30,8 @@ export type AIActionResponse<T> =
 
 async function guardedCall<T>(
   hfCall: () => Promise<T>,
-  roomId?: string,
+  roomId: string | undefined,
+  meetFeature?: MeetFeature,
 ): Promise<AIActionResponse<T>> {
   // 1. Require authentication — every AI call costs HF quota
   const session = await getServerSession();
@@ -38,11 +39,17 @@ async function guardedCall<T>(
     return { status: 'ERROR', error: 'Authentication required' };
   }
 
-  // 2. If roomId is provided, verify the caller is a participant
-  if (roomId) {
-    const access = await verifyRoomAccess(session.userId, roomId);
-    if (!access) {
-      return { status: 'ERROR', error: 'Access denied: not a participant of this room' };
+  // 2. Server-authoritative Meet premium feature authorization.
+  if (meetFeature) {
+    const featureDecision = await canUseMeetFeature(session.userId, roomId, meetFeature);
+    if (!featureDecision.allowed) {
+      if (featureDecision.reason === 'missing_context') {
+        return { status: 'ERROR', error: 'Meet room context required' };
+      }
+      if (featureDecision.reason === 'room_access_denied') {
+        return { status: 'ERROR', error: 'Access denied: not a participant of this room' };
+      }
+      return { status: 'ERROR', error: 'Meet premium entitlement required' };
     }
   }
 
@@ -92,6 +99,7 @@ export async function summarizeAction(
   return guardedCall(
     () => summarize(text, env.HUGGINGFACE_API_KEY),
     roomId,
+    'ai_summary',
   );
 }
 
@@ -143,5 +151,6 @@ export async function assistantAction(
   return guardedCall(
     () => assistant(prompt, env.HUGGINGFACE_API_KEY),
     roomId,
+    'ai_assistant',
   );
 }

@@ -1,6 +1,8 @@
 // app/api/webhooks/lemon-squeezy/route.ts
-// Lemon Squeezy webhook handler — the "Truth Layer" for subscription state
-// Listens for subscription_created and subscription_updated events
+// Lemon Squeezy webhook handler — the "Truth Layer" for subscription state.
+// Product-scoped and idempotent mutation is delegated to a single PostgreSQL
+// RPC so webhook claim, ordering checks, subscription mutation, and ledger
+// status commit together.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '../../../../lib/supabaseServerClient';
@@ -29,6 +31,7 @@ export async function POST(request: NextRequest) {
     const payload = JSON.parse(rawBody);
     const eventName: string = payload?.meta?.event_name ?? '';
     const customData: Record<string, string> | undefined = payload?.meta?.custom_data;
+    const webhookId: string | undefined = payload?.meta?.webhook_id;
 
     // Only process subscription events
     if (!eventName.startsWith('subscription_')) {
@@ -46,46 +49,60 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing user_id in custom_data' }, { status: 400 });
     }
 
+    if (!webhookId) {
+      return NextResponse.json({ error: 'Missing webhook id' }, { status: 400 });
+    }
+
     // Determine plan and participant cap based on event
     const attributes = payload?.data?.attributes ?? {};
     const status: string = attributes.status ?? 'unknown';
     const productName: string = attributes.product_name ?? '';
     const variantName: string = attributes.variant_name ?? '';
 
-    // Determine product line from plan_tier prefix (or custom_data)
-    const rawPlanTier = customData?.plan_tier ?? '';
-    const productLine: 'meet' | 'class' = rawPlanTier.startsWith('class_') ? 'class' : 'meet';
-
-    // Map Lemon Squeezy product/variant to our plan using custom_data plan_tier if available
+    // Map Lemon Squeezy product/variant to our internal product-scoped plan.
+    // Unknown products/variants fail closed and remain retryable.
     const planData = mapPlanFromProduct(productName, variantName, customData?.plan_tier);
 
-    // Update the user's subscription in the database
-    if (eventName === 'subscription_created' || eventName === 'subscription_updated') {
-      await upsertSubscription(userId, {
-        plan: planData.plan,
-        participantCap: planData.participantCap,
-        productLine,
-        status: mapSubscriptionStatus(status),
-        lemonSqueezySubscriptionId: subscriptionId,
-        lemonSqueezyOrderId: (payload?.data?.attributes?.order_id as string) ?? null,
-        currentPeriodStart: attributes.renews_at as string ?? null,
-        currentPeriodEnd: attributes.ends_at as string ?? null,
+    const externalEventAt = resolveExternalEventTime(attributes);
+    if (!externalEventAt) {
+      console.error('[LemonSqueezyWebhook] Missing provider ordering timestamp', {
+        eventName,
+        webhookId,
+        subscriptionId,
       });
-    } else if (eventName === 'subscription_cancelled') {
-      // On cancellation, downgrade to trial
-      await upsertSubscription(userId, {
-        plan: 'trial',
-        participantCap: 2,
-        status: 'cancelled',
-        lemonSqueezySubscriptionId: subscriptionId,
-        lemonSqueezyOrderId: null,
-        currentPeriodStart: null,
-        currentPeriodEnd: null,
-      });
+      return NextResponse.json(
+        { error: 'Webhook missing provider ordering timestamp' },
+        { status: 422 }
+      );
     }
 
-    return NextResponse.json({ received: true, event: eventName });
-  } catch {
+    const supabase = getSupabaseServerClient();
+
+    const { data: rpcResult, error: rpcError } = await supabase.rpc(
+      'process_lemon_squeezy_subscription_webhook',
+      {
+        p_webhook_id: webhookId,
+        p_event_name: eventName,
+        p_external_subscription_id: subscriptionId,
+        p_user_id: userId,
+        p_product_line: planData.productLine,
+        p_plan: planData.plan,
+        p_participant_cap: planData.participantCap,
+        p_status: mapSubscriptionStatus(status),
+        p_external_event_at: externalEventAt,
+        p_external_order_id: attributes.order_id ? String(attributes.order_id) : null,
+        p_current_period_start: parseNullableDate(attributes.renews_at),
+        p_current_period_end: parseNullableDate(attributes.ends_at),
+      }
+    );
+
+    if (rpcError) {
+      throw new Error(`Atomic webhook processing failed: ${rpcError.message}`);
+    }
+
+    return NextResponse.json({ received: true, event: eventName, result: rpcResult });
+  } catch (err) {
+    console.error('[LemonSqueezyWebhook] Error:', err);
     return NextResponse.json(
       { error: 'Internal server error processing webhook' },
       { status: 500 }
@@ -100,89 +117,46 @@ export async function GET() {
 
 // ─── Helpers ───
 
-type SubscriptionUpdate = {
-  plan: string;
-  participantCap: number;
-  productLine?: 'meet' | 'class';
-  status: string;
-  lemonSqueezySubscriptionId: string | null;
-  lemonSqueezyOrderId: string | null;
-  currentPeriodStart: string | null;
-  currentPeriodEnd: string | null;
-};
-
-/**
- * Upsert a user's subscription record in the database.
- * Uses service_role client to bypass RLS.
- */
-async function upsertSubscription(userId: string, data: SubscriptionUpdate) {
-  const supabase = getSupabaseServerClient();
-
-  const record: Record<string, unknown> = {
-    user_id: userId,
-    plan: data.plan,
-    participant_cap: data.participantCap,
-    status: data.status,
-    lemon_squeezy_subscription_id: data.lemonSqueezySubscriptionId,
-    lemon_squeezy_order_id: data.lemonSqueezyOrderId,
-    current_period_start: data.currentPeriodStart ? new Date(data.currentPeriodStart).toISOString() : null,
-    current_period_end: data.currentPeriodEnd ? new Date(data.currentPeriodEnd).toISOString() : null,
-    updated_at: new Date().toISOString(),
-  };
-
-  if (data.productLine) {
-    record.product_line = data.productLine;
-  }
-
-  const { error } = await supabase.from('subscriptions').upsert(
-    record,
-    {
-      onConflict: 'user_id',
-      ignoreDuplicates: false,
-    }
-  );
-
-  if (error) {
-    throw new Error(`Failed to upsert subscription: ${error.message}`);
-  }
-}
-
 /**
  * Map a Lemon Squeezy product / variant name (or the custom_data plan_tier
  * we sent at checkout) to our internal plan + participant cap.
  *
- * The custom_data path is the most reliable because it round-trips the exact
- * plan key our checkout put in. The name-based fallback exists in case a
- * future variant is added before we update this switch.
+ * Phase 2 authoritative Class contract:
+ *   class_10 — R89  — 10 student seats (up to 2 teachers)
+ *   class_20 — R120 — 20 student seats (up to 2 teachers)
+ *   class_30 — R140 — 30 student seats (up to 2 teachers)
  *
- * Tier matrix:
- *   classroom      — R89  / 5   learners
- *   classroom_plus — R220 / 30  learners
- *   individual     — R110 / 10  participants
- *   pro            — R169 / 50  participants
- *   business       — R169 / 50  participants (same variant family as Pro)
- *   enterprise     — custom    (legacy)
- *   unlimited      — R389 / UNLIMITED_PARTICIPANT_CAP (9999) — cap bypass in participantStore
+ * Legacy mappings:
+ *   classroom      → class_10 (R89, 10 seats)
+ *   classroom_plus → UNVERIFIED — do NOT silently map to a new contract.
+ *                     Existing subscribers keep their records; new purchases
+ *                     should use one of the proven Class variants.
  */
 function mapPlanFromProduct(
   productName: string,
   variantName: string,
   planTier?: string
-): { plan: string; participantCap: number } {
+): { plan: string; participantCap: number; productLine: 'meet' | 'class' } {
   // 1) Trust the custom_data plan_tier sent at checkout
   switch (planTier) {
+    case 'class_10':
+      return { plan: 'class_10', participantCap: 10, productLine: 'class' };
+    case 'class_20':
+      return { plan: 'class_20', participantCap: 20, productLine: 'class' };
+    case 'class_30':
+      return { plan: 'class_30', participantCap: 30, productLine: 'class' };
     case 'classroom':
-      return { plan: 'classroom', participantCap: 5 };
+      return { plan: 'class_10', participantCap: 10, productLine: 'class' };
     case 'classroom_plus':
-      return { plan: 'classroom_plus', participantCap: 30 };
+      throw new Error('Legacy classroom_plus webhook mapping is UNVERIFIED; refusing to grant entitlement');
     case 'individual':
-      return { plan: 'individual', participantCap: 10 };
+      return { plan: 'meet_individual', participantCap: 10, productLine: 'meet' };
     case 'pro':
-      return { plan: 'pro', participantCap: 50 };
+      return { plan: 'meet_pro', participantCap: 50, productLine: 'meet' };
     case 'business':
-      return { plan: 'business', participantCap: 50 };
+      return { plan: 'meet_pro', participantCap: 50, productLine: 'meet' };
     case 'unlimited':
-      return { plan: 'unlimited', participantCap: UNLIMITED_PARTICIPANT_CAP };
+      return { plan: 'meet_unlimited', participantCap: UNLIMITED_PARTICIPANT_CAP, productLine: 'meet' };
   }
 
   // 2) Fallback: parse the product / variant name (order matters — 'classroom plus'
@@ -190,34 +164,40 @@ function mapPlanFromProduct(
   const lp = productName.toLowerCase();
   const lv = variantName.toLowerCase();
 
+  if (lp.includes('class 30') || lv.includes('class 30')) {
+    return { plan: 'class_30', participantCap: 30, productLine: 'class' };
+  }
+  if (lp.includes('class 20') || lv.includes('class 20')) {
+    return { plan: 'class_20', participantCap: 20, productLine: 'class' };
+  }
   if (lp.includes('classroom plus') || lv.includes('classroom plus')) {
-    return { plan: 'classroom_plus', participantCap: 30 };
+    throw new Error('Legacy classroom_plus webhook mapping is UNVERIFIED; refusing to grant entitlement');
   }
   if (lp.includes('unlimited') || lv.includes('unlimited')) {
-    return { plan: 'unlimited', participantCap: UNLIMITED_PARTICIPANT_CAP };
+    return { plan: 'meet_unlimited', participantCap: UNLIMITED_PARTICIPANT_CAP, productLine: 'meet' };
   }
   if (lp.includes('classroom') || lv.includes('classroom')) {
-    return { plan: 'classroom', participantCap: 5 };
+    return { plan: 'class_10', participantCap: 10, productLine: 'class' };
   }
   if (lp.includes('individual') || lv.includes('individual')) {
-    return { plan: 'individual', participantCap: 10 };
+    return { plan: 'meet_individual', participantCap: 10, productLine: 'meet' };
   }
   if (lp.includes('business') || lv.includes('business')) {
-    return { plan: 'business', participantCap: 50 };
+    return { plan: 'meet_pro', participantCap: 50, productLine: 'meet' };
   }
   if (lp.includes('pro') || lv.includes('pro')) {
-    return { plan: 'pro', participantCap: 50 };
+    return { plan: 'meet_pro', participantCap: 50, productLine: 'meet' };
   }
   if (lp.includes('enterprise') || lv.includes('enterprise')) {
-    return { plan: 'enterprise', participantCap: UNLIMITED_PARTICIPANT_CAP };
+    throw new Error('Enterprise is contact-sales only; refusing automatic entitlement grant');
   }
 
-  // 3) Hard fallback — should never be hit in production
-  return { plan: 'classroom', participantCap: 5 };
+  throw new Error('Unknown Lemon Squeezy product or variant; refusing entitlement grant');
 }
 
 /**
  * Map Lemon Squeezy status to our internal status.
+ * Event context is used so cancelled/expired events set the right lifecycle state.
  */
 function mapSubscriptionStatus(lsStatus: string): string {
   switch (lsStatus) {
@@ -227,13 +207,29 @@ function mapSubscriptionStatus(lsStatus: string): string {
     case 'paused':
       return 'paused';
     case 'cancelled':
-    case 'expired':
       return 'cancelled';
+    case 'expired':
+      return 'expired';
     case 'past_due':
       return 'past_due';
     default:
       return lsStatus;
   }
+}
+
+function parseNullableDate(value: unknown): string | null {
+  if (!value) return null;
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function resolveExternalEventTime(attributes: Record<string, unknown>): string | null {
+  return (
+    parseNullableDate(attributes.updated_at) ??
+    parseNullableDate(attributes.created_at) ??
+    parseNullableDate(attributes.renews_at) ??
+    parseNullableDate(attributes.ends_at)
+  );
 }
 
 /**

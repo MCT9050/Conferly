@@ -313,4 +313,10 @@ test.describe('remote audio integrity recovery', () => {
     expect(tokenRoute).toContain('verifyAccess');
     expect(tokenRoute).not.toContain('createExplicitMeeting');
   });
+
+  test('22. Meet renders shared remote audio exactly once', async () => {
+    const session = await readFile(path.join(process.cwd(), 'components', 'meet', 'MeetLiveSession.tsx'), 'utf8');
+    const rendererCount = session.match(/<RemoteAudioRenderer/g) ?? [];
+    expect(rendererCount).toHaveLength(1);
+  });
 });

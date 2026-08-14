@@ -2,15 +2,15 @@
 // DEPRECATED ROUTE — Redirects to new domain-specific paths
 
 import { redirect } from 'next/navigation';
-import type { NextPage } from 'next';
 
 interface MeetingPageProps {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-const MeetingPage: NextPage<MeetingPageProps> = ({ searchParams }) => {
-  const slug = searchParams?.slug as string | undefined;
-  const type = searchParams?.type as string | undefined;
+export default async function MeetingPage({ searchParams }: MeetingPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const slug = resolvedSearchParams.slug as string | undefined;
+  const type = resolvedSearchParams.type as string | undefined;
 
   if (!slug) {
     redirect('/dashboard');
@@ -21,7 +21,4 @@ const MeetingPage: NextPage<MeetingPageProps> = ({ searchParams }) => {
   }
 
   redirect(`/meet/rooms/${slug}`);
-};
-
-export default MeetingPage;
-
+}

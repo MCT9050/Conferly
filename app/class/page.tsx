@@ -146,10 +146,10 @@ export default function ClassLandingPage() {
       <section className="px-8 py-20 sm:py-24 border-y border-slate-800/50">
         <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
           {[
-            { value: '1', label: 'Classrooms', sub: 'Free tier' },
-            { value: '5', label: 'Students', sub: 'Per classroom' },
-            { value: 'R89', label: 'Starting at', sub: 'Classroom plan' },
-            { value: '14', label: 'Free trial', sub: 'No credit card' },
+            { value: '10', label: 'Student seats', sub: 'Class 10 plan' },
+            { value: '2', label: 'Teachers', sub: 'Included in every plan' },
+            { value: 'R89', label: 'Starting at', sub: 'Class 10 plan' },
+            { value: '30', label: 'Max standard seats', sub: 'Class 30 plan' },
           ].map(s => (
             <div key={s.label} className="text-center">
               <div className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-b from-white to-slate-400 bg-clip-text text-transparent">
@@ -219,27 +219,27 @@ export default function ClassLandingPage() {
           <div className="grid md:grid-cols-3 gap-6">
             {[
               {
-                title: 'For Tutors',
+                title: 'Class 10',
                 price: 'R89',
                 period: '/month',
-                features: ['5 classrooms', '25 students', 'Whiteboard + recordings', 'Student roster', 'Assignments'],
+                features: ['10 student seats', 'Up to 2 teachers', 'Whiteboard + recordings', 'Student roster', 'Lesson scheduling'],
                 gradient: 'from-emerald-600 to-teal-500',
                 popular: true,
               },
               {
-                title: 'For Training Businesses',
-                price: 'R220',
+                title: 'Class 20',
+                price: 'R120',
                 period: '/month',
-                features: ['Unlimited classrooms', 'Up to 100 students', 'Grading & submissions', 'Payment collection'],
+                features: ['20 student seats', 'Up to 2 teachers', 'Whiteboard + recordings', 'Student roster', 'Assignments'],
                 gradient: 'from-emerald-700 to-teal-600',
                 popular: false,
               },
               {
-                title: 'For Institutions',
-                price: 'Custom',
-                period: '',
-                features: ['Unlimited everything', 'White-label branding', 'API access', 'Dedicated success manager'],
-                gradient: 'from-amber-500 to-orange-500',
+                title: 'Class 30',
+                price: 'R140',
+                period: '/month',
+                features: ['30 student seats', 'Up to 2 teachers', 'Whiteboard + recordings', 'Student roster', 'Assignments & grading'],
+                gradient: 'from-emerald-700 to-teal-600',
                 popular: false,
               },
             ].map(plan => (
@@ -277,7 +277,7 @@ export default function ClassLandingPage() {
                   href="/class/pricing"
                   className={`block w-full py-3 min-h-[44px] rounded-xl bg-gradient-to-r ${plan.gradient} text-white font-semibold text-sm transition-all duration-300 hover:opacity-90 shadow-lg text-center`}
                 >
-                  {plan.price === 'Custom' ? 'Contact Sales' : `Get ${plan.title}`}
+                  {`Get ${plan.title}`}
                 </Link>
               </div>
             ))}

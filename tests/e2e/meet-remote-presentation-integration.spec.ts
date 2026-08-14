@@ -46,10 +46,10 @@ test.describe("MeetLiveSession remote presentation integration contracts", () =>
     expect(meetLiveSessionTsx).not.toMatch(/useRemotePresentations\(liveKitRoom/);
   });
 
-  test("renders PresentationStage with focusedPresentation above VideoGrid", () => {
-    expect(meetLiveSessionTsx).toMatch(
-      /<PresentationStage presentation=\{focusedPresentation\} \/>[\s\S]*?<VideoGrid/
-    );
+  test("passes focused presentation into the shared Meet foundation", () => {
+    expect(meetLiveSessionTsx).toContain('focusedPresentation={focusedPresentation}');
+    expect(meetLiveSessionTsx).toContain('<MeetSharedLiveRoomContent');
+    expect(meetLiveSessionTsx).not.toContain('<VideoGrid');
   });
 
   test("does not create a second Room", () => {
@@ -71,5 +71,12 @@ test.describe("MeetLiveSession remote presentation integration contracts", () =>
     expect(meetLiveSessionTsx).toMatch(/toggleScreenShare=\{\(\) => void toggleScreenShare\(\)\}/);
     expect(meetLiveSessionTsx).toMatch(/screenStream=\{screenStream\}/);
     expect(meetLiveSessionTsx).toMatch(/isScreenSharing=\{isScreenSharing\}/);
+  });
+
+  test("synchronizes remote screen-share tracks into participant screenShareStream", () => {
+    expect(meetLiveSessionTsx).toContain('const remoteScreenShareStreams = new Map<string, MediaStream>()');
+    expect(meetLiveSessionTsx).toContain('const screenSharePub = participant.getTrackPublication?.(Track.Source.ScreenShare);');
+    expect(meetLiveSessionTsx).toContain('const screenShareStream = getParticipantScreenShareStream(participantId, screenShareTrack);');
+    expect(meetLiveSessionTsx).toContain('screenShareStream,');
   });
 });

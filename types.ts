@@ -30,10 +30,10 @@ export function planIdToLegacyTier(planId: PlanId): PlanTier {
     case 'meet_pro': return 'pro';
     case 'meet_unlimited': return 'unlimited';
     case 'meet_enterprise': return 'enterprise';
-    case 'class_free': return 'trial';
-    case 'class_room': return 'classroom';
-    case 'class_room_plus': return 'classroom_plus';
-    case 'class_unlimited': return 'unlimited';
+    case 'class_10': return 'classroom';
+    case 'class_20': return 'classroom';
+    case 'class_30': return 'classroom';
+    case 'class_custom': return 'enterprise';
   }
 }
 
@@ -42,14 +42,14 @@ export function planIdToLegacyTier(planId: PlanId): PlanTier {
  */
 export function legacyTierToPlanId(tier: PlanTier, productLine: ProductLine = 'meet'): PlanId {
   switch (tier) {
-    case 'trial': return productLine === 'class' ? 'class_free' : 'meet_free';
-    case 'classroom': return 'class_room';
-    case 'classroom_plus': return 'class_room_plus';
+    case 'trial': return productLine === 'class' ? 'class_10' : 'meet_free';
+    case 'classroom': return 'class_10';
+    case 'classroom_plus': return 'class_30';
     case 'individual': return 'meet_individual';
     case 'pro': return 'meet_pro';
     case 'business': return 'meet_pro'; // business = pro (same variant)
-    case 'enterprise': return 'meet_enterprise';
-    case 'unlimited': return productLine === 'class' ? 'class_unlimited' : 'meet_unlimited';
+    case 'enterprise': return productLine === 'class' ? 'class_custom' : 'meet_enterprise';
+    case 'unlimited': return productLine === 'class' ? 'class_custom' : 'meet_unlimited';
   }
 }
 
@@ -87,7 +87,8 @@ export type Subscription = {
 export type SubscriptionRecord = {
   id: string;
   user_id: string;
-  plan: PlanTier;
+  product_line: ProductLine;
+  plan: string;
   participant_cap: number;
   status: string;
   lemon_squeezy_subscription_id: string | null;
@@ -132,6 +133,7 @@ export type Participant = {
   name: string;
   avatar: string;
   stream: MediaStream | null;
+  screenShareStream?: MediaStream | null;
   isSpeaking: boolean;
   isVideoOn: boolean;
   isMuted: boolean;
@@ -177,6 +179,64 @@ export interface ClassroomEnrollment {
   progress_percent: number;
   enrolled_at: string;
   completed_at?: string;
+}
+
+// ── Classroom seating foundation types ──────────────────────────────────────
+export type ClassroomMode =
+  | 'welcome'
+  | 'gallery'
+  | 'teacher-focus'
+  | 'discussion'
+  | 'screen-share'
+  | 'whiteboard'
+  | 'audio-only';
+
+export type PersonalLayout =
+  | 'comfortable'
+  | 'standard'
+  | 'compact'
+  | 'paginated'
+  | 'filmstrip';
+
+export type ClassroomRole = 'owner' | 'instructor' | 'ta' | 'student' | 'auditor';
+
+export type ParticipantDensity = 'comfortable' | 'standard' | 'compact' | 'paginated';
+
+export type ViewportSize = 'mobile' | 'tablet' | 'desktop';
+
+export interface ClassroomSeatingConfig {
+  mode: ClassroomMode;
+  personalLayout: PersonalLayout;
+  density: ParticipantDensity;
+  viewport: ViewportSize;
+  teacherDockVisible: boolean;
+  filmstripVisible: boolean;
+}
+
+export interface ClassroomParticipant {
+  id: string;
+  name: string;
+  avatar: string;
+  role: ClassroomRole;
+  isSpeaking: boolean;
+  isVideoOn: boolean;
+  isMuted: boolean;
+  audioLevel: number;
+  stream: MediaStream | null;
+  screenShareStream: MediaStream | null;
+  isScreenSharing: boolean;
+}
+
+export interface ClassroomState {
+  mode: ClassroomMode;
+  personalLayout: PersonalLayout;
+  density: ParticipantDensity;
+  participants: ClassroomParticipant[];
+  teachers: ClassroomParticipant[];
+  students: ClassroomParticipant[];
+  auditors: ClassroomParticipant[];
+  activeScreenShare: ClassroomParticipant | null;
+  localUser: ClassroomParticipant | null;
 }
 
 export interface ClassroomLesson {

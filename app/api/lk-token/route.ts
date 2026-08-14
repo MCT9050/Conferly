@@ -2,8 +2,17 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { createLiveKitToken, LiveKitRole } from '@/lib/livekit';
 import { verifyAccess, verifyClassLessonAccess } from '@/lib/accessControl';
+import { enforceClassCapacity } from '@/lib/classEntitlements';
+import type { ClassroomRole } from '@/types';
 
 const VALID_ROLES = new Set<LiveKitRole>(['participant', 'spectator']);
+
+function mapMeetAccessRoleToSharedRole(role: string): string {
+  if (role === 'owner') return 'host';
+  if (role === 'presenter') return 'presenter';
+  if (role === 'participant') return 'participant';
+  return 'viewer';
+}
 
 /**
  * Retrieve LiveKit URL directly from process.env.
@@ -91,8 +100,11 @@ export async function POST(request: Request) {
 
   let effectiveRoomId: string;
   let role: LiveKitRole;
+  let classroomRoleForToken: ClassroomRole | undefined;
+  let participantRoleForToken: string | undefined;
 
   if (domain === 'class') {
+    // Class authorization is server-controlled — the client may not supply role/room.
     if (payload.role !== undefined || payload.roomId !== undefined || payload.room !== undefined) {
       return NextResponse.json({ error: 'Class authorization is server controlled' }, { status: 400 });
     }
@@ -106,8 +118,49 @@ export async function POST(request: Request) {
     if (!classAccess.lesson.livekit_room_id?.trim()) {
       return NextResponse.json({ error: 'Live lesson room is unavailable' }, { status: 409 });
     }
+
+    // ── Server-side Class capacity enforcement ───────────────────────────────
+    // The classroom owner's entitlement is resolved from the subscriptions DB.
+    // Roles are counted from server-side enrollment data — never from the client.
+    const classroom = classAccess.classroom;
+    if (!classroom) {
+      return NextResponse.json({ error: 'Classroom not found' }, { status: 404 });
+    }
+
+    // Derive the canonical classroom role from the server-authoritative access result.
+    // Owner is NOT an enrollment role — it is derived from access.source === 'owner'.
+    if (classAccess.source === 'owner') {
+      classroomRoleForToken = 'owner';
+    } else {
+      switch (classAccess.accessRole) {
+        case 'instructor':
+        case 'ta':
+        case 'student':
+        case 'auditor':
+          classroomRoleForToken = classAccess.accessRole;
+          break;
+        case 'spectator':
+        default:
+          return NextResponse.json({ error: 'Access denied to this lesson' }, { status: 403 });
+      }
+    }
+
+    const capacity = await enforceClassCapacity(
+      classroom.id,
+      classroom.owner_id,
+      classroomRoleForToken
+    );
+
+    if (!capacity.allowed) {
+      return NextResponse.json(
+        { error: capacity.reason ?? 'Class capacity limit reached' },
+        { status: 403 }
+      );
+    }
+
     effectiveRoomId = classAccess.lesson.livekit_room_id;
     role = classAccess.liveKitRole;
+    participantRoleForToken = role;
   } else {
     let access;
     try {
@@ -120,6 +173,7 @@ export async function POST(request: Request) {
     }
     effectiveRoomId = access.roomId;
     role = access.role === 'spectator' ? 'spectator' : requestedRole;
+    participantRoleForToken = mapMeetAccessRoleToSharedRole(access.role);
   }
 
   // ── LiveKit URL ──────────────────────────────────────────────────────────
@@ -135,6 +189,8 @@ export async function POST(request: Request) {
       name: displayName,
       room: effectiveRoomId,
       role,
+      classroomRole: classroomRoleForToken,
+      participantRole: participantRoleForToken,
     });
   } catch (err) {
     console.error('[LK_SERVER_ERROR] LiveKit token generation failed:', err);

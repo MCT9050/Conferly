@@ -92,7 +92,7 @@ const TESTIMONIALS = [
 ];
 
 const meetProPlan = MEET_PLANS.find(p => p.id === 'meet_pro');
-const classRoomPlan = CLASS_PLANS.find(p => p.id === 'class_room');
+const classRoomPlan = CLASS_PLANS.find(p => p.id === 'class_10');
 
 // ─── Component ───────────────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 "use server";
 
 // app/actions/checkout-actions.ts
-// Server action to generate Lemon Squeezy checkout URLs
+// Server action to generate Lemon Squeezy checkout URLs (product-scoped)
 
 import { getServerSession } from '../../lib/auth';
 import { createCheckout, type SupportedPlanTier } from '../../lib/lemon-squeezy';
@@ -10,21 +10,6 @@ export type CheckoutActionResult = {
   url?: string;
   error?: string;
 };
-
-/**
- * Creates a Lemon Squeezy checkout session for the authenticated user.
- * Uses the per-tier actions below instead; this function is kept for backward compatibility.
- */
-export async function createCheckoutSession(
-  planTier: 'pro' | 'business',
-  _cycle: 'monthly' | 'annual'
-): Promise<CheckoutActionResult> {
-  // Redirect to the proper per-tier action
-  if (planTier === 'pro') {
-    return createProCheckout();
-  }
-  return { error: 'Please use the plan-specific checkout actions.' };
-}
 
 /**
  * Generic checkout helper used by the per-tier wrapper actions below.
@@ -47,20 +32,24 @@ async function createPlanCheckoutInternal(plan: SupportedPlanTier): Promise<Chec
 }
 
 /**
- * Simplified checkout specifically for the Classroom tier (R89/month ZAR).
- * Uses the new createCheckout function that reads the variant ID from
- * NEXT_PUBLIC_LEMONSQUEEZY_VARIANT_ID and passes userId as a custom attribute.
+ * Checkout for Class 10 (R89/month ZAR, 10 student seats + up to 2 teachers).
  */
-export async function createClassroomCheckout(): Promise<CheckoutActionResult> {
-  return createPlanCheckoutInternal('classroom');
+export async function createClass10Checkout(): Promise<CheckoutActionResult> {
+  return createPlanCheckoutInternal('class_10');
 }
 
 /**
- * Checkout for the Classroom+ tier (R220/month ZAR, 30-learner cap).
- * Same tutor/whiteboard feature set as Classroom, but at 6x the capacity.
+ * Checkout for Class 20 (R120/month ZAR, 20 student seats + up to 2 teachers).
  */
-export async function createClassroomPlusCheckout(): Promise<CheckoutActionResult> {
-  return createPlanCheckoutInternal('classroom_plus');
+export async function createClass20Checkout(): Promise<CheckoutActionResult> {
+  return createPlanCheckoutInternal('class_20');
+}
+
+/**
+ * Checkout for Class 30 (R140/month ZAR, 30 student seats + up to 2 teachers).
+ */
+export async function createClass30Checkout(): Promise<CheckoutActionResult> {
+  return createPlanCheckoutInternal('class_30');
 }
 
 /**
@@ -92,9 +81,14 @@ export async function createUnlimitedCheckout(): Promise<CheckoutActionResult> {
  */
 export async function createMeetCheckout(planId: string): Promise<CheckoutActionResult> {
   const { MEET_PLANS } = await import('../../lib/pricing/meet');
-  const plan = MEET_PLANS.find(p => p.id === planId);
+  const plan = MEET_PLANS.find((p) => p.id === planId);
   if (!plan) {
     return { error: 'Invalid Meet plan selected.' };
+  }
+
+  // Meet Enterprise is contact-sales only — no public checkout.
+  if (planId === 'meet_enterprise') {
+    return { error: 'Meet Enterprise requires contacting sales at info@conferly.site.' };
   }
 
   // Map meet plan IDs to legacy SupportedPlanTier for Lemon Squeezy
@@ -118,27 +112,52 @@ export async function createMeetCheckout(planId: string): Promise<CheckoutAction
  */
 export async function createClassCheckout(planId: string): Promise<CheckoutActionResult> {
   const { CLASS_PLANS } = await import('../../lib/pricing/class');
-  const plan = CLASS_PLANS.find(p => p.id === planId);
+  const plan = CLASS_PLANS.find((p) => p.id === planId);
   if (!plan) {
     return { error: 'Invalid Class plan selected.' };
   }
 
-  // Map class plan IDs to legacy SupportedPlanTier for Lemon Squeezy
-  const legacyPlanMap: Record<string, 'classroom' | 'classroom_plus'> = {
-    class_room: 'classroom',
-    class_room_plus: 'classroom_plus',
+  // Custom Class is contact-sales only — no public checkout.
+  if (planId === 'class_custom') {
+    return { error: 'Custom Class requires contacting sales at info@conferly.site.' };
+  }
+
+  // Map class plan IDs to SupportedPlanTier
+  const planMap: Record<string, 'class_10' | 'class_20' | 'class_30'> = {
+    class_10: 'class_10',
+    class_20: 'class_20',
+    class_30: 'class_30',
   };
 
-  const legacyPlan = legacyPlanMap[planId];
-  if (!legacyPlan) {
+  const mappedPlan = planMap[planId];
+  if (!mappedPlan) {
     return { error: 'This plan is not available for online checkout.' };
   }
 
-  return createPlanCheckoutInternal(legacyPlan);
+  return createPlanCheckoutInternal(mappedPlan);
+}
+
+/**
+ * Legacy checkout for the Classroom tier (R89/month ZAR).
+ * Maps to Class 10 in the new product-scoped model.
+ * Kept for backward compatibility with existing callers.
+ */
+export async function createClassroomCheckout(): Promise<CheckoutActionResult> {
+  return createPlanCheckoutInternal('class_10');
+}
+
+/**
+ * Legacy Classroom+ is intentionally not available for new public checkout.
+ * Existing subscribers must be handled by verified webhook/back-office evidence
+ * only; do not mint new checkout URLs for the UNVERIFIED legacy variant.
+ */
+export async function createClassroomPlusCheckout(): Promise<CheckoutActionResult> {
+  return { error: 'Classroom+ is a legacy plan. Please contact sales at info@conferly.site.' };
 }
 
 /**
  * Fetches the user's current subscription status from the database.
+ * Returns both product lines independently.
  */
 export async function getUserSubscription() {
   try {
@@ -154,8 +173,7 @@ export async function getUserSubscription() {
     const { data, error } = await supabase
       .from('subscriptions')
       .select('*')
-      .eq('user_id', session.userId)
-      .maybeSingle();
+      .eq('user_id', session.userId);
 
     if (error) {
       return null;
