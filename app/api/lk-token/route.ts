@@ -7,6 +7,13 @@ import type { ClassroomRole } from '@/types';
 
 const VALID_ROLES = new Set<LiveKitRole>(['participant', 'spectator']);
 
+function mapMeetAccessRoleToSharedRole(role: string): string {
+  if (role === 'owner') return 'host';
+  if (role === 'presenter') return 'presenter';
+  if (role === 'participant') return 'participant';
+  return 'viewer';
+}
+
 /**
  * Retrieve LiveKit URL directly from process.env.
  * Bypasses getServerEnv() cache to avoid 'Env Desync' issues.
@@ -94,6 +101,7 @@ export async function POST(request: Request) {
   let effectiveRoomId: string;
   let role: LiveKitRole;
   let classroomRoleForToken: ClassroomRole | undefined;
+  let participantRoleForToken: string | undefined;
 
   if (domain === 'class') {
     // Class authorization is server-controlled — the client may not supply role/room.
@@ -152,6 +160,7 @@ export async function POST(request: Request) {
 
     effectiveRoomId = classAccess.lesson.livekit_room_id;
     role = classAccess.liveKitRole;
+    participantRoleForToken = role;
   } else {
     let access;
     try {
@@ -164,6 +173,7 @@ export async function POST(request: Request) {
     }
     effectiveRoomId = access.roomId;
     role = access.role === 'spectator' ? 'spectator' : requestedRole;
+    participantRoleForToken = mapMeetAccessRoleToSharedRole(access.role);
   }
 
   // ── LiveKit URL ──────────────────────────────────────────────────────────
@@ -180,6 +190,7 @@ export async function POST(request: Request) {
       room: effectiveRoomId,
       role,
       classroomRole: classroomRoleForToken,
+      participantRole: participantRoleForToken,
     });
   } catch (err) {
     console.error('[LK_SERVER_ERROR] LiveKit token generation failed:', err);

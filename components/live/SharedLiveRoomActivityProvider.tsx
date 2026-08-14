@@ -29,6 +29,7 @@ type SharedLiveRoomActivityContextValue = {
   activity: SharedLiveRoomActivity;
   state: SharedActivityState;
   canControl: boolean;
+  hydrated: boolean;
   lastRejection: Rejection | null;
   setActivity: (activity: SharedLiveRoomActivity) => Promise<boolean>;
 };
@@ -52,6 +53,7 @@ function participantRole(participant: Participant | undefined): SharedLiveRoomRo
 export function SharedLiveRoomActivityProvider({ children, room, roomId, domain, localRole, initialActivity = 'gallery' }: ProviderProps) {
   const initialState = useMemo(() => createSharedActivityState({ roomId, domain, activity: initialActivity, revision: 0, senderIdentity: 'server', senderRole: localRole }), [domain, initialActivity, localRole, roomId]);
   const [state, setState] = useState<SharedActivityState>(initialState);
+  const [hydrated, setHydrated] = useState(false);
   const [lastRejection, setLastRejection] = useState<Rejection | null>(null);
   const seenPacketIds = useRef<Set<string>>(new Set());
 
@@ -101,6 +103,7 @@ export function SharedLiveRoomActivityProvider({ children, room, roomId, domain,
     };
     const onAttributesChanged = () => hydrateFromAttributes();
     hydrateFromAttributes();
+    setHydrated(true);
     room.on(RoomEvent.DataReceived, onData);
     room.on(RoomEvent.ParticipantAttributesChanged, onAttributesChanged);
     return () => {
@@ -115,14 +118,22 @@ export function SharedLiveRoomActivityProvider({ children, room, roomId, domain,
       return false;
     }
     const next = createSharedActivityPacket({ kind: 'activity.set', roomId, domain, activity, revision: state.revision + 1, senderIdentity: room.localParticipant.identity, senderRole: localRole });
-    await room.localParticipant.setAttributes({ [LIVE_ROOM_ACTIVITY_ATTRIBUTE]: encodeSharedActivityAttribute(next) });
+    try {
+      await room.localParticipant.setAttributes({ [LIVE_ROOM_ACTIVITY_ATTRIBUTE]: encodeSharedActivityAttribute(next) });
+    } catch (error) {
+      if (domain !== 'classroom') {
+        console.warn('Shared activity attribute hydration update failed', error);
+      } else {
+        throw error;
+      }
+    }
     await room.localParticipant.publishData(encodeSharedActivityPacket(next), { reliable: true, topic: LIVE_ROOM_ACTIVITY_TOPIC });
     seenPacketIds.current.add(next.packetId);
     applyState(next);
     return true;
   }, [applyState, domain, localRole, room, roomId, state.revision]);
 
-  const value = useMemo(() => ({ activity: state.activity, state, canControl: canControlSharedActivity(domain, localRole), lastRejection, setActivity }), [domain, lastRejection, localRole, setActivity, state]);
+  const value = useMemo(() => ({ activity: state.activity, state, canControl: canControlSharedActivity(domain, localRole), hydrated, lastRejection, setActivity }), [domain, hydrated, lastRejection, localRole, setActivity, state]);
   return <SharedLiveRoomActivityContext.Provider value={value}>{children}</SharedLiveRoomActivityContext.Provider>;
 }
 

@@ -133,6 +133,7 @@ export type Participant = {
   name: string;
   avatar: string;
   stream: MediaStream | null;
+  screenShareStream?: MediaStream | null;
   isSpeaking: boolean;
   isVideoOn: boolean;
   isMuted: boolean;

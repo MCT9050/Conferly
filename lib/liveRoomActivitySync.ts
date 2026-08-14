@@ -39,6 +39,7 @@ export type SharedActivityAcceptResult =
   | { accepted: false; reason: SharedActivityRejectReason };
 
 export const SHARED_CLASSROOM_CONTROL_ROLES = new Set<SharedLiveRoomRole>(['owner', 'instructor', 'ta']);
+export const SHARED_MEET_CONTROL_ROLES = new Set<SharedLiveRoomRole>(['host', 'presenter']);
 
 const ACTIVITIES = new Set<SharedLiveRoomActivity>([
   'welcome',
@@ -60,18 +61,30 @@ const CLASSROOM_ACTIVITIES = new Set<SharedLiveRoomActivity>([
   'whiteboard',
 ]);
 
+const MEET_ACTIVITIES = new Set<SharedLiveRoomActivity>([
+  'gallery',
+  'focus',
+  'discussion',
+  'screen-share',
+  'presentation',
+]);
+
 export function canControlSharedClassroomActivity(role: SharedLiveRoomRole | null | undefined): boolean {
   return Boolean(role && SHARED_CLASSROOM_CONTROL_ROLES.has(role));
 }
 
 export function canControlSharedActivity(domain: SharedLiveRoomDomain, role: SharedLiveRoomRole | null | undefined): boolean {
   if (domain === 'classroom') return canControlSharedClassroomActivity(role);
-  return role === 'host' || role === 'co-host' || role === 'presenter';
+  return Boolean(role && SHARED_MEET_CONTROL_ROLES.has(role));
 }
 
 export function normalizeSharedClassroomActivity(activity: SharedLiveRoomActivity): SharedLiveRoomActivity {
   if (activity === 'focus') return 'focus';
   return CLASSROOM_ACTIVITIES.has(activity) ? activity : 'gallery';
+}
+
+export function normalizeSharedMeetActivity(activity: SharedLiveRoomActivity): SharedLiveRoomActivity {
+  return MEET_ACTIVITIES.has(activity) ? activity : 'gallery';
 }
 
 export function createSharedActivityState(input: Omit<SharedActivityState, 'protocol' | 'updatedAt' | 'packetId'> & { updatedAt?: number; packetId?: string }): SharedActivityState {
@@ -82,7 +95,10 @@ export function createSharedActivityState(input: Omit<SharedActivityState, 'prot
     packetId: input.packetId ?? `${input.roomId}:${revision}:${input.senderIdentity}:${updatedAt}`,
     roomId: input.roomId,
     domain: input.domain,
-    activity: input.domain === 'classroom' ? normalizeSharedClassroomActivity(input.activity) : input.activity,
+    activity:
+      input.domain === 'classroom'
+        ? normalizeSharedClassroomActivity(input.activity)
+        : normalizeSharedMeetActivity(input.activity),
     revision,
     updatedAt,
     senderIdentity: input.senderIdentity,
@@ -154,6 +170,8 @@ function validateSharedActivityState(params: {
   if (!state) return { accepted: false, reason: 'malformed' };
   if (state.protocol !== LIVE_ROOM_ACTIVITY_PROTOCOL_VERSION) return { accepted: false, reason: 'unsupported' };
   if (state.roomId !== current.roomId || state.domain !== current.domain) return { accepted: false, reason: 'wrong-room' };
+  if (state.domain === 'classroom' && !CLASSROOM_ACTIVITIES.has(state.activity)) return { accepted: false, reason: 'unsupported' };
+  if (state.domain === 'meet' && !MEET_ACTIVITIES.has(state.activity)) return { accepted: false, reason: 'unsupported' };
   if (participantIdentity && state.senderIdentity !== participantIdentity) return { accepted: false, reason: 'unauthorized' };
   if (participantRole && state.senderRole !== participantRole) return { accepted: false, reason: 'unauthorized' };
   if (!canControlSharedActivity(current.domain, state.senderRole)) return { accepted: false, reason: 'unauthorized' };

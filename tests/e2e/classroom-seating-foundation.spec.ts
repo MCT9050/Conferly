@@ -295,9 +295,10 @@ test.describe('Classroom Seating Foundation', () => {
       }
     });
 
-    test('Meet source remains unchanged in Phase 1 and is not whiteboard-coupled', () => {
+    test('Meet source uses shared foundation and is not whiteboard-coupled', () => {
       const meetSource = read('components/meet/MeetLiveSession.tsx');
-      expect(meetSource).toContain('@/components/meeting/RemoteAudioRenderer');
+      expect(meetSource).toContain('@/components/live/RemoteAudioRenderer');
+      expect(meetSource).toContain('MeetSharedLiveRoomContent');
       expect(meetSource).not.toContain('ClassroomWhiteboard');
     });
 

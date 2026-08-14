@@ -27,6 +27,10 @@ test.describe("MeetLiveSession local screen-share hook integration contracts", (
     expect(meetLiveSessionTsx).toMatch(/toggleScreenShare=\{\(\) => void toggleScreenShare\(\)\}/);
   });
 
+  test("passes the local screen-share stream through the shared participant model", () => {
+    expect(meetLiveSessionTsx).toMatch(/screenShareStream: screenStream/);
+  });
+
   test("removes direct Meet-local display capture and publishing", () => {
     expect(meetLiveSessionTsx).not.toMatch(/getDisplayMedia/);
     expect(meetLiveSessionTsx).not.toMatch(/publishScreenShareTrack/);
@@ -42,7 +46,7 @@ test.describe("MeetLiveSession local screen-share hook integration contracts", (
 
   test("preserves remote presentation viewing", () => {
     expect(meetLiveSessionTsx).toMatch(/useRemotePresentations\(presentationRoom\)/);
-    expect(meetLiveSessionTsx).toMatch(/<PresentationStage presentation=\{focusedPresentation\} \/>/);
+    expect(meetLiveSessionTsx).toContain('focusedPresentation={focusedPresentation}');
   });
 
   test("does not reference Class code or alter camera and microphone publication logic", () => {

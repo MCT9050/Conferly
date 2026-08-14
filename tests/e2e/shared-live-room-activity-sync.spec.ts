@@ -265,4 +265,99 @@ test.describe('shared live-room activity synchronization protocol', () => {
     expect(canControlSharedActivity('classroom', 'student')).toBe(false);
     expect(canControlSharedActivity('classroom', 'auditor')).toBe(false);
   });
+
+  test('Meet only allows host and presenter to control shared activity', () => {
+    expect(canControlSharedActivity('meet', 'host')).toBe(true);
+    expect(canControlSharedActivity('meet', 'presenter')).toBe(true);
+    expect(canControlSharedActivity('meet', 'participant')).toBe(false);
+    expect(canControlSharedActivity('meet', 'viewer')).toBe(false);
+    expect(canControlSharedActivity('meet', 'co-host')).toBe(false);
+  });
+
+  test('Meet rejects whiteboard packets and snapshots', () => {
+    const meetCurrent = createSharedActivityState({
+      roomId: 'meeting-1',
+      domain: 'meet',
+      activity: 'gallery',
+      revision: 1,
+      updatedAt: 100,
+      senderIdentity: 'host-1',
+      senderRole: 'host',
+    });
+
+    const whiteboardPacket = createSharedActivityPacket({
+      kind: 'activity.set',
+      roomId: 'meeting-1',
+      domain: 'meet',
+      activity: 'whiteboard',
+      revision: 2,
+      updatedAt: 200,
+      senderIdentity: 'host-1',
+      senderRole: 'host',
+      packetId: 'meet-whiteboard-packet',
+    });
+
+    expect(whiteboardPacket.activity).toBe('gallery');
+
+    expect(acceptSharedActivityPacket({
+      packet: { ...whiteboardPacket, activity: 'whiteboard' },
+      current: meetCurrent,
+      topic: LIVE_ROOM_ACTIVITY_TOPIC,
+      participantIdentity: 'host-1',
+      participantRole: 'host',
+      seenPacketIds: new Set(),
+    })).toEqual({ accepted: false, reason: 'unsupported' });
+
+    expect(acceptSharedActivitySnapshot({
+      snapshot: {
+        ...createSharedActivityState({
+          roomId: 'meeting-1',
+          domain: 'meet',
+          activity: 'whiteboard',
+          revision: 2,
+          updatedAt: 200,
+          senderIdentity: 'host-1',
+          senderRole: 'host',
+          packetId: 'meet-whiteboard-snapshot',
+        }),
+        activity: 'whiteboard',
+      },
+      current: meetCurrent,
+      participantIdentity: 'host-1',
+      participantRole: 'host',
+    })).toEqual({ accepted: false, reason: 'unsupported' });
+  });
+
+  test('Meet rejects claimed host role when server-issued metadata says participant', () => {
+    const meetCurrent = createSharedActivityState({
+      roomId: 'meeting-1',
+      domain: 'meet',
+      activity: 'gallery',
+      revision: 1,
+      updatedAt: 100,
+      senderIdentity: 'host-1',
+      senderRole: 'host',
+    });
+
+    const spoofedPacket = createSharedActivityPacket({
+      kind: 'activity.set',
+      roomId: 'meeting-1',
+      domain: 'meet',
+      activity: 'discussion',
+      revision: 2,
+      updatedAt: 200,
+      senderIdentity: 'participant-1',
+      senderRole: 'host',
+      packetId: 'meet-spoofed-host',
+    });
+
+    expect(acceptSharedActivityPacket({
+      packet: spoofedPacket,
+      current: meetCurrent,
+      topic: LIVE_ROOM_ACTIVITY_TOPIC,
+      participantIdentity: 'participant-1',
+      participantRole: 'participant',
+      seenPacketIds: new Set(),
+    })).toEqual({ accepted: false, reason: 'unauthorized' });
+  });
 });

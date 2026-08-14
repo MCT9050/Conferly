@@ -27,12 +27,14 @@ export async function createLiveKitToken({
   room,
   role,
   classroomRole,
+  participantRole,
 }: {
   identity: string;
   name: string;
   room: string;
   role: LiveKitRole;
   classroomRole?: ClassroomRole;
+  participantRole?: string;
 }): Promise<string> {
   if (!identity || !name || !room) {
     throw new Error(
@@ -48,11 +50,12 @@ export async function createLiveKitToken({
     canSubscribe: true,
     canPublish: role === 'participant',
     canPublishData: role === 'participant',
-    canUpdateOwnMetadata: true,
+    canUpdateOwnMetadata: Boolean(classroomRole),
   };
 
   // Build metadata - include classroom role if provided
-  const metadata: Record<string, unknown> = { role };
+  const resolvedParticipantRole = participantRole ?? role;
+  const metadata: Record<string, unknown> = { role: resolvedParticipantRole };
   if (classroomRole) {
     metadata.classroomRole = classroomRole;
   }
@@ -61,7 +64,7 @@ export async function createLiveKitToken({
     identity,
     name,
     metadata: JSON.stringify(metadata),
-    attributes: { role, ...(classroomRole ? { classroomRole } : {}) },
+    attributes: { role: resolvedParticipantRole, ...(classroomRole ? { classroomRole } : {}) },
   });
 
   token.addGrant(grant);

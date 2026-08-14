@@ -7,12 +7,11 @@
 import { useEffect, useState, useRef, useCallback, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import VideoGrid from "@/components/VideoGrid";
 import CaptionsOverlay from "@/components/meeting/CaptionsOverlay";
-import RemoteAudioRenderer from "@/components/meeting/RemoteAudioRenderer";
-import type { RemoteAudioTrackReference, RemoteTrackPublicationLike } from "@/components/meeting/RemoteAudioRenderer";
+import RemoteAudioRenderer from "@/components/live/RemoteAudioRenderer";
+import type { RemoteAudioTrackReference, RemoteTrackPublicationLike } from "@/components/live/RemoteAudioRenderer";
 import MeetingControls from "@/components/MeetingControls";
-import PresentationStage from "@/components/presentation/PresentationStage";
+import MeetSharedLiveRoomContent from "@/components/meet/MeetSharedLiveRoomContent";
 import { useSpeechTranscript } from "@/hooks/useSpeechTranscript";
 import { useRemotePresentations } from "@/hooks/useRemotePresentations";
 import { useScreenShare } from "@/hooks/useScreenShare";
@@ -172,6 +171,7 @@ const initialLiveKitState: LiveKitState = {
 let liveKitState: LiveKitState = { ...initialLiveKitState };
 const liveKitListeners = new Set<() => void>();
 const remoteVideoStreams = new Map<string, MediaStream>();
+const remoteScreenShareStreams = new Map<string, MediaStream>();
 type LiveKitTrackLike = {
   mediaStreamTrack?: MediaStreamTrack;
   attach?: (element?: HTMLMediaElement) => HTMLMediaElement | MediaStream | MediaStreamTrack | void;
@@ -238,31 +238,43 @@ function collectRemoteAudioTracks(participants: LiveKitParticipantLike[]) {
   return tracks;
 }
 
-function getParticipantVideoStream(participantId: string, videoTrack?: MediaStreamTrack) {
-  const existing = remoteVideoStreams.get(participantId);
+function getParticipantTrackStream(
+  registry: Map<string, MediaStream>,
+  streamId: string,
+  mediaTrack?: MediaStreamTrack,
+) {
+  const existing = registry.get(streamId);
 
-  if (!videoTrack) {
+  if (!mediaTrack) {
     if (existing) {
       existing.getTracks().forEach((track) => existing.removeTrack(track));
-      remoteVideoStreams.delete(participantId);
+      registry.delete(streamId);
     }
     return null;
   }
 
   if (existing) {
     const currentTrack = existing.getVideoTracks()[0];
-    if (currentTrack === videoTrack) {
+    if (currentTrack === mediaTrack) {
       return existing;
     }
 
     existing.getTracks().forEach((track) => existing.removeTrack(track));
-    existing.addTrack(videoTrack);
+    existing.addTrack(mediaTrack);
     return existing;
   }
 
-  const stream = new MediaStream([videoTrack]);
-  remoteVideoStreams.set(participantId, stream);
+  const stream = new MediaStream([mediaTrack]);
+  registry.set(streamId, stream);
   return stream;
+}
+
+function getParticipantVideoStream(participantId: string, videoTrack?: MediaStreamTrack) {
+  return getParticipantTrackStream(remoteVideoStreams, participantId, videoTrack);
+}
+
+function getParticipantScreenShareStream(participantId: string, screenTrack?: MediaStreamTrack) {
+  return getParticipantTrackStream(remoteScreenShareStreams, `${participantId}:screen`, screenTrack);
 }
 
 function emitLiveKitChange() {
@@ -357,9 +369,14 @@ async function connectToRoom(roomId: string): Promise<boolean> {
         const participantId = participant.identity ?? participant.sid ?? Math.random().toString(36).slice(2);
         const cameraPub = participant.getTrackPublication?.(Track.Source.Camera);
         const micPub = participant.getTrackPublication?.(Track.Source.Microphone);
+        const screenSharePub = participant.getTrackPublication?.(Track.Source.ScreenShare);
 
         const videoTrack = cameraPub?.isSubscribed ? cameraPub.videoTrack?.mediaStreamTrack : undefined;
+        const screenShareTrack = screenSharePub?.isSubscribed
+          ? screenSharePub.videoTrack?.mediaStreamTrack ?? screenSharePub.track?.mediaStreamTrack
+          : undefined;
         const stream = getParticipantVideoStream(participantId, videoTrack);
+        const screenShareStream = getParticipantScreenShareStream(participantId, screenShareTrack);
         const name = participant.name ?? participant.identity ?? "Guest";
 
         return {
@@ -367,6 +384,7 @@ async function connectToRoom(roomId: string): Promise<boolean> {
           name,
           avatar: getAvatar(name),
           stream,
+          screenShareStream,
           isSpeaking: Boolean(participant.isSpeaking),
           isVideoOn: Boolean(videoTrack),
           isMuted: micPub?.isMuted ?? true,
@@ -416,6 +434,7 @@ async function connectToRoom(roomId: string): Promise<boolean> {
 
     const handleDisconnected = () => {
       remoteVideoStreams.clear();
+      remoteScreenShareStreams.clear();
       setLiveKitState((s) => ({
         ...s,
         connected: false,
@@ -481,6 +500,7 @@ function disconnectFromRoom() {
   liveKitRoomCleanup?.();
   liveKitRoomCleanup = null;
   remoteVideoStreams.clear();
+  remoteScreenShareStreams.clear();
   if (liveKitRoom) {
     liveKitRoom.disconnect().catch(() => {});
     liveKitRoom = null;
@@ -680,11 +700,11 @@ function SlidesPanel() {
 
 function AssistantPanel({
   transcript,
-  roomType,
+  roomId,
   onSendToChat,
 }: {
   transcript: { id: string; speaker: string; text: string; isFinal: boolean; timestamp: string }[];
-  roomType: "meeting" | "classroom";
+  roomId?: string;
   onSendToChat: (message: string) => void;
 }) {
   const [messages, setMessages] = useState<
@@ -694,10 +714,7 @@ function AssistantPanel({
   const [isLoading, setIsLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const systemPrompt =
-    roomType === "classroom"
-      ? "You are an expert tutor. Help the teacher explain concepts and suggest whiteboard diagrams."
-      : "You are a professional secretary. Help the user with meeting minutes and business logic.";
+  const systemPrompt = "You are a professional secretary. Help the user with meeting minutes and business logic.";
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -728,7 +745,7 @@ function AssistantPanel({
         : "";
 
       const fullPrompt = `${systemPrompt}\n\n${contextBlock}User: ${trimmed}\nAssistant:`;
-      const result = await assistantAction(fullPrompt);
+      const result = await assistantAction(fullPrompt, roomId);
 
       if (result.status === 'COOLDOWN') {
         setMessages((prev) => [
@@ -770,7 +787,7 @@ function AssistantPanel({
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, transcript, systemPrompt]);
+  }, [input, isLoading, roomId, transcript, systemPrompt]);
 
   const handleSendToChat = useCallback(
     (text: string) => {
@@ -877,6 +894,7 @@ function Sidebar({
   onClose,
   participants,
   transcript,
+  roomId,
   onSendToChat,
   isListening,
 }: {
@@ -886,6 +904,7 @@ function Sidebar({
   onClose: () => void;
   participants: Participant[];
   transcript: { id: string; speaker: string; text: string; isFinal: boolean; timestamp: string }[];
+  roomId?: string;
   onSendToChat: (message: string) => void;
   isListening: boolean;
 }) {
@@ -931,7 +950,7 @@ function Sidebar({
           {tab === "assistant" && (
             <AssistantPanel
               transcript={transcript}
-              roomType="meeting"
+              roomId={roomId}
               onSendToChat={onSendToChat}
             />
           )}
@@ -1058,6 +1077,7 @@ export default function MeetLiveSession({
       name: userName || "You",
       avatar: getAvatar(userName || "You"),
       stream: media.stream,
+      screenShareStream: screenStream,
       isSpeaking: false,
       isVideoOn: media.isVideoOn,
       isMuted: media.isMuted,
@@ -1134,7 +1154,7 @@ export default function MeetLiveSession({
         .map((e) => `[${e.speaker}]: ${e.text}`)
         .join("\n");
 
-      summarizeAction(fullText)
+      summarizeAction(fullText, roomId)
         .then((result) => {
           if (result.status === 'COOLDOWN') {
             setSummaryText(`AI is resting to maintain quality. Back in ${result.retryAfter}s.`);
@@ -1152,7 +1172,7 @@ export default function MeetLiveSession({
     } else {
       router.push("/dashboard");
     }
-  }, [router, speechTranscript, stopListening, stopScreenShare]);
+  }, [router, roomId, speechTranscript, stopListening, stopScreenShare]);
 
   // Sidebar helpers
   const handleSidebarTab = useCallback(
@@ -1227,9 +1247,9 @@ export default function MeetLiveSession({
         </div>
       )}
 
-      {/* Video grid + sidebar */}
+      {/* Shared live-room foundation + sidebar */}
       <div className="grid gap-6 xl:grid-cols-[1.55fr,0.95fr]">
-        <ErrorBoundary name="VideoGrid" fallback={() => <PanelError />}>
+        <ErrorBoundary name="MeetSharedLiveRoomContent" fallback={() => <PanelError />}>
           <div className="rounded-3xl border border-white/10 bg-slate-900/85 shadow-xl shadow-black/20 overflow-hidden min-h-[30rem]">
             <div className="border-b border-white/10 bg-slate-950/90 px-5 py-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1267,11 +1287,15 @@ export default function MeetLiveSession({
               </div>
             </div>
             <div className="flex min-h-0 flex-col gap-4 p-3 sm:p-4">
-              <PresentationStage presentation={focusedPresentation} />
-              <VideoGrid
+              <MeetSharedLiveRoomContent
+                room={presentationRoom}
+                syncRoomId={meetingId ?? roomId}
+                accessRole={role}
                 participants={allParticipants}
                 screenStream={screenStream}
-                handRaised={handRaised}
+                focusedPresentation={focusedPresentation}
+                mediaError={media.mediaError}
+                screenShareError={screenShareStatus === "error" ? screenShareError : null}
               />
             </div>
           </div>
@@ -1285,6 +1309,7 @@ export default function MeetLiveSession({
             onClose={() => setSidebarOpen(false)}
             participants={allParticipants}
             transcript={speechTranscript}
+            roomId={roomId}
             onSendToChat={sendChatMessage}
             isListening={isTranscriptActive}
           />
