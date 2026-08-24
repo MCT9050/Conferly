@@ -1,0 +1,257 @@
+==================== COLUMNS (production) ====================
+
+## analytics_events
+  id  integer (int4)  NOT NULL  DEFAULT nextval(...seq)
+  event_type  text (text)  NULL
+  metadata  jsonb (jsonb)  NULL
+  created_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+
+## audit_logs
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  actor  uuid (uuid)  NULL
+  action  text (text)  NOT NULL
+  object_type  text (text)  NULL
+  object_id  uuid (uuid)  NULL
+  data  jsonb (jsonb)  NULL  DEFAULT '{}'::jsonb
+  created_at  timestamp with time zone (timestamptz)  NOT NULL  DEFAULT now()
+
+## chat_messages
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  meeting_id  uuid (uuid)  NOT NULL
+  user_id  uuid (uuid)  NOT NULL
+  messages  jsonb (jsonb)  NOT NULL  DEFAULT '[]'::jsonb
+  created_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+
+## classroom_assignments
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  lesson_id  uuid (uuid)  NOT NULL
+  title  text (text)  NOT NULL
+  instructions  text (text)  NULL
+  due_at  timestamp with time zone (timestamptz)  NULL
+  max_score  integer (int4)  NULL  DEFAULT 100
+  created_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+
+## classroom_enrollments
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  classroom_id  uuid (uuid)  NOT NULL
+  student_id  uuid (uuid)  NOT NULL
+  role  text (text)  NULL  DEFAULT 'student'::text
+  enrollment_status  text (text)  NULL  DEFAULT 'pending'::text
+  progress_percent  integer (int4)  NULL  DEFAULT 0
+  enrolled_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+  completed_at  timestamp with time zone (timestamptz)  NULL
+
+## classroom_lessons
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  classroom_id  uuid (uuid)  NOT NULL
+  title  text (text)  NOT NULL
+  content  jsonb (jsonb)  NULL  DEFAULT '{}'::jsonb
+  order_index  integer (int4)  NULL  DEFAULT 0
+  scheduled_at  timestamp with time zone (timestamptz)  NULL
+  livekit_room_id  text (text)  NULL
+  recording_url  text (text)  NULL
+  status  text (text)  NULL  DEFAULT 'scheduled'::text
+  created_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+  updated_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+
+## classroom_submissions
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  assignment_id  uuid (uuid)  NOT NULL
+  student_id  uuid (uuid)  NOT NULL
+  content  jsonb (jsonb)  NULL  DEFAULT '{}'::jsonb
+  score  integer (int4)  NULL
+  submitted_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+  graded_at  timestamp with time zone (timestamptz)  NULL
+
+## classrooms
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  owner_id  uuid (uuid)  NOT NULL
+  slug  text (text)  NOT NULL
+  title  text (text)  NOT NULL
+  description  text (text)  NULL
+  subject  text (text)  NULL
+  schedule  jsonb (jsonb)  NULL  DEFAULT '{}'::jsonb
+  settings  jsonb (jsonb)  NULL  DEFAULT '{}'::jsonb
+  enrollment_type  text (text)  NULL  DEFAULT 'open'::text
+  price_cents  integer (int4)  NULL  DEFAULT 0
+  status  text (text)  NULL  DEFAULT 'draft'::text
+  created_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+  updated_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+
+## meeting_invitations
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  meeting_id  uuid (uuid)  NOT NULL
+  token_hash  text (text)  NOT NULL
+  role  text (text)  NOT NULL  DEFAULT 'attendee'::text
+  created_by  uuid (uuid)  NOT NULL
+  expires_at  timestamp with time zone (timestamptz)  NULL
+  revoked_at  timestamp with time zone (timestamptz)  NULL
+  max_uses  integer (int4)  NULL
+  use_count  integer (int4)  NOT NULL  DEFAULT 0
+  last_used_at  timestamp with time zone (timestamptz)  NULL
+  created_at  timestamp with time zone (timestamptz)  NOT NULL  DEFAULT now()
+
+## meeting_participants
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  meeting_id  uuid (uuid)  NOT NULL
+  user_id  uuid (uuid)  NOT NULL
+  role  text (text)  NOT NULL  DEFAULT 'attendee'::text
+  invited_by  uuid (uuid)  NULL
+  joined_at  timestamp with time zone (timestamptz)  NULL
+  created_at  timestamp with time zone (timestamptz)  NOT NULL  DEFAULT now()
+
+## meetings
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  user_id  uuid (uuid)  NOT NULL
+  room_code  text (text)  NOT NULL
+  title  text (text)  NULL
+  started_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+  ended_at  timestamp with time zone (timestamptz)  NULL
+  duration_seconds  integer (int4)  NULL  DEFAULT 0
+  participant_count  integer (int4)  NULL  DEFAULT 1
+  has_recording  boolean (bool)  NULL  DEFAULT false
+  created_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+  language  text (text)  NULL  DEFAULT 'en'::text
+  host_id  text (text)  NULL
+  room_id  text (text)  NULL
+  status  text (text)  NULL  DEFAULT 'active'::text
+  org_id  uuid (uuid)  NULL
+  owner  uuid (uuid)  NULL
+  slug  text (text)  NULL
+  description  text (text)  NULL
+  starts_at  timestamp with time zone (timestamptz)  NULL
+  ends_at  timestamp with time zone (timestamptz)  NULL
+  is_public  boolean (bool)  NULL  DEFAULT false
+  updated_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+
+## notes
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  meeting_id  uuid (uuid)  NOT NULL
+  user_id  uuid (uuid)  NOT NULL
+  content  text (text)  NOT NULL  DEFAULT ''::text
+  created_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+  updated_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+  position  integer (int4)  NULL  DEFAULT 0
+
+## org_members
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  org_id  uuid (uuid)  NOT NULL
+  user_id  uuid (uuid)  NOT NULL
+  role  text (text)  NOT NULL  DEFAULT 'member'::text
+  created_at  timestamp with time zone (timestamptz)  NOT NULL  DEFAULT now()
+
+## organizations
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  name  text (text)  NOT NULL
+  slug  text (text)  NULL
+  created_by  uuid (uuid)  NULL
+  created_at  timestamp with time zone (timestamptz)  NOT NULL  DEFAULT now()
+  updated_at  timestamp with time zone (timestamptz)  NOT NULL  DEFAULT now()
+
+## payments
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  user_id  uuid (uuid)  NOT NULL
+  plan_tier  text (text)  NOT NULL
+  billing_cycle  text (text)  NOT NULL
+  amount_zar  numeric (numeric)  NOT NULL
+  currency  text (text)  NULL  DEFAULT 'ZAR'::text
+  status  text (text)  NULL  DEFAULT 'completed'::text
+  peach_transaction_id  text (text)  NULL
+  created_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+  amount  integer (int4)  NULL
+
+## presentations
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  meeting_id  uuid (uuid)  NOT NULL
+  title  text (text)  NOT NULL
+  metadata  jsonb (jsonb)  NULL  DEFAULT '{}'::jsonb
+  content  jsonb (jsonb)  NULL  DEFAULT '[]'::jsonb
+  created_by  uuid (uuid)  NULL
+  created_at  timestamp with time zone (timestamptz)  NOT NULL  DEFAULT now()
+  updated_at  timestamp with time zone (timestamptz)  NOT NULL  DEFAULT now()
+
+## profiles
+  id  uuid (uuid)  NOT NULL
+  email  text (text)  NULL
+  display_name  text (text)  NOT NULL  DEFAULT 'User'::text
+  avatar_url  text (text)  NULL
+  plan_tier  text (text)  NOT NULL  DEFAULT 'free'::text
+  billing_cycle  text (text)  NULL  DEFAULT 'monthly'::text
+  plan_period_end  timestamp with time zone (timestamptz)  NULL
+  meetings_this_month  integer (int4)  NOT NULL  DEFAULT 0
+  meetings_month  integer (int4)  NOT NULL  DEFAULT 0
+  created_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+  updated_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+  user_type  text (text)  NULL  DEFAULT 'individual'::text
+  organization_name  text (text)  NULL
+  organization_size  integer (int4)  NULL
+  organization_industry  text (text)  NULL
+  onboarding_complete  boolean (bool)  NULL  DEFAULT false
+  full_name  text (text)  NULL
+  subscription_tier  text (text)  NULL  DEFAULT 'free'::text
+  subscription_status  text (text)  NULL  DEFAULT 'active'::text
+
+## recordings
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  meeting_id  uuid (uuid)  NOT NULL
+  url  text (text)  NOT NULL
+  created_by  uuid (uuid)  NULL
+  created_at  timestamp with time zone (timestamptz)  NOT NULL  DEFAULT now()
+
+## slides
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  presentation_id  uuid (uuid)  NOT NULL
+  position  integer (int4)  NOT NULL  DEFAULT 0
+  content  jsonb (jsonb)  NULL  DEFAULT '{}'::jsonb
+  created_at  timestamp with time zone (timestamptz)  NOT NULL  DEFAULT now()
+
+## subscription_webhook_events
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  webhook_id  text (text)  NOT NULL
+  event_name  text (text)  NOT NULL
+  external_subscription_id  text (text)  NULL
+  user_id  uuid (uuid)  NULL
+  product_line  text (text)  NULL
+  created_at  timestamp with time zone (timestamptz)  NOT NULL  DEFAULT now()
+  external_event_at  timestamp with time zone (timestamptz)  NULL
+  status  text (text)  NULL
+  error  text (text)  NULL
+  received_at  timestamp with time zone (timestamptz)  NULL
+  processed_at  timestamp with time zone (timestamptz)  NULL
+
+## subscription_webhook_events_v2
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  webhook_id  text (text)  NOT NULL
+  event_name  text (text)  NOT NULL
+  external_subscription_id  text (text)  NULL
+  user_id  uuid (uuid)  NULL
+  product_line  text (text)  NULL
+  external_event_at  timestamp with time zone (timestamptz)  NULL
+  status  text (text)  NOT NULL  DEFAULT 'processing'::text
+  error  text (text)  NULL
+  received_at  timestamp with time zone (timestamptz)  NOT NULL  DEFAULT now()
+  processed_at  timestamp with time zone (timestamptz)  NULL
+
+## subscriptions
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  user_id  uuid (uuid)  NULL
+  tier  text (text)  NULL  DEFAULT 'free'::text
+  status  text (text)  NULL  DEFAULT 'active'::text
+  current_period_end  timestamp with time zone (timestamptz)  NULL
+  created_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()
+  product_line  text (text)  NOT NULL  DEFAULT 'meet'::text
+  plan  text (text)  NOT NULL  DEFAULT 'trial'::text
+  participant_cap  integer (int4)  NOT NULL  DEFAULT 2
+  lemon_squeezy_subscription_id  text (text)  NULL
+  lemon_squeezy_order_id  text (text)  NULL
+  current_period_start  timestamp with time zone (timestamptz)  NULL
+  updated_at  timestamp with time zone (timestamptz)  NOT NULL  DEFAULT now()
+  last_external_event_at  timestamp with time zone (timestamptz)  NULL
+  last_external_event_id  text (text)  NULL
+
+## transcripts
+  id  uuid (uuid)  NOT NULL  DEFAULT gen_random_uuid()
+  meeting_id  uuid (uuid)  NOT NULL
+  user_id  uuid (uuid)  NOT NULL
+  entries  jsonb (jsonb)  NOT NULL  DEFAULT '[]'::jsonb
+  created_at  timestamp with time zone (timestamptz)  NULL  DEFAULT now()

@@ -1,0 +1,1242 @@
+{
+  "constraints": [
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "analytics_events_pkey",
+      "constraint_type": "p",
+      "table_name": "public.analytics_events"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (actor) REFERENCES auth.users(id)",
+      "constraint_name": "audit_logs_actor_fkey",
+      "constraint_type": "f",
+      "table_name": "public.audit_logs"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "audit_logs_pkey",
+      "constraint_type": "p",
+      "table_name": "public.audit_logs"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE",
+      "constraint_name": "chat_messages_meeting_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.chat_messages"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "chat_messages_pkey",
+      "constraint_type": "p",
+      "table_name": "public.chat_messages"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE",
+      "constraint_name": "chat_messages_user_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.chat_messages"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (lesson_id) REFERENCES classroom_lessons(id) ON DELETE CASCADE",
+      "constraint_name": "classroom_assignments_lesson_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.classroom_assignments"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "classroom_assignments_pkey",
+      "constraint_type": "p",
+      "table_name": "public.classroom_assignments"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (classroom_id) REFERENCES classrooms(id) ON DELETE CASCADE",
+      "constraint_name": "classroom_enrollments_classroom_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.classroom_enrollments"
+    },
+    {
+      "constraint_def": "UNIQUE (classroom_id, student_id)",
+      "constraint_name": "classroom_enrollments_classroom_id_student_id_key",
+      "constraint_type": "u",
+      "table_name": "public.classroom_enrollments"
+    },
+    {
+      "constraint_def": "CHECK ((enrollment_status = ANY (ARRAY['pending'::text, 'active'::text, 'suspended'::text, 'completed'::text])))",
+      "constraint_name": "classroom_enrollments_enrollment_status_check",
+      "constraint_type": "c",
+      "table_name": "public.classroom_enrollments"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "classroom_enrollments_pkey",
+      "constraint_type": "p",
+      "table_name": "public.classroom_enrollments"
+    },
+    {
+      "constraint_def": "CHECK (((progress_percent >= 0) AND (progress_percent <= 100)))",
+      "constraint_name": "classroom_enrollments_progress_percent_check",
+      "constraint_type": "c",
+      "table_name": "public.classroom_enrollments"
+    },
+    {
+      "constraint_def": "CHECK ((role = ANY (ARRAY['instructor'::text, 'ta'::text, 'student'::text, 'auditor'::text])))",
+      "constraint_name": "classroom_enrollments_role_check",
+      "constraint_type": "c",
+      "table_name": "public.classroom_enrollments"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (student_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "constraint_name": "classroom_enrollments_student_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.classroom_enrollments"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (classroom_id) REFERENCES classrooms(id) ON DELETE CASCADE",
+      "constraint_name": "classroom_lessons_classroom_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.classroom_lessons"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "classroom_lessons_pkey",
+      "constraint_type": "p",
+      "table_name": "public.classroom_lessons"
+    },
+    {
+      "constraint_def": "CHECK ((status = ANY (ARRAY['scheduled'::text, 'live'::text, 'recorded'::text, 'cancelled'::text])))",
+      "constraint_name": "classroom_lessons_status_check",
+      "constraint_type": "c",
+      "table_name": "public.classroom_lessons"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (assignment_id) REFERENCES classroom_assignments(id) ON DELETE CASCADE",
+      "constraint_name": "classroom_submissions_assignment_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.classroom_submissions"
+    },
+    {
+      "constraint_def": "UNIQUE (assignment_id, student_id)",
+      "constraint_name": "classroom_submissions_assignment_id_student_id_key",
+      "constraint_type": "u",
+      "table_name": "public.classroom_submissions"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "classroom_submissions_pkey",
+      "constraint_type": "p",
+      "table_name": "public.classroom_submissions"
+    },
+    {
+      "constraint_def": "CHECK (((score IS NULL) OR ((score >= 0) AND (score <= 10000))))",
+      "constraint_name": "classroom_submissions_score_check",
+      "constraint_type": "c",
+      "table_name": "public.classroom_submissions"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (student_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "constraint_name": "classroom_submissions_student_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.classroom_submissions"
+    },
+    {
+      "constraint_def": "CHECK ((enrollment_type = ANY (ARRAY['open'::text, 'approval'::text, 'invite'::text])))",
+      "constraint_name": "classrooms_enrollment_type_check",
+      "constraint_type": "c",
+      "table_name": "public.classrooms"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "constraint_name": "classrooms_owner_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.classrooms"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "classrooms_pkey",
+      "constraint_type": "p",
+      "table_name": "public.classrooms"
+    },
+    {
+      "constraint_def": "UNIQUE (slug)",
+      "constraint_name": "classrooms_slug_key",
+      "constraint_type": "u",
+      "table_name": "public.classrooms"
+    },
+    {
+      "constraint_def": "CHECK ((status = ANY (ARRAY['draft'::text, 'scheduled'::text, 'live'::text, 'completed'::text, 'archived'::text])))",
+      "constraint_name": "classrooms_status_check",
+      "constraint_type": "c",
+      "table_name": "public.classrooms"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (created_by) REFERENCES auth.users(id)",
+      "constraint_name": "meeting_invitations_created_by_fkey",
+      "constraint_type": "f",
+      "table_name": "public.meeting_invitations"
+    },
+    {
+      "constraint_def": "CHECK (((expires_at IS NULL) OR (expires_at > created_at)))",
+      "constraint_name": "meeting_invitations_expiry_after_creation_check",
+      "constraint_type": "c",
+      "table_name": "public.meeting_invitations"
+    },
+    {
+      "constraint_def": "CHECK (((max_uses IS NULL) OR (max_uses > 0)))",
+      "constraint_name": "meeting_invitations_max_uses_check",
+      "constraint_type": "c",
+      "table_name": "public.meeting_invitations"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE",
+      "constraint_name": "meeting_invitations_meeting_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.meeting_invitations"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "meeting_invitations_pkey",
+      "constraint_type": "p",
+      "table_name": "public.meeting_invitations"
+    },
+    {
+      "constraint_def": "CHECK ((role = ANY (ARRAY['attendee'::text, 'presenter'::text])))",
+      "constraint_name": "meeting_invitations_role_check",
+      "constraint_type": "c",
+      "table_name": "public.meeting_invitations"
+    },
+    {
+      "constraint_def": "CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))",
+      "constraint_name": "meeting_invitations_token_hash_format_check",
+      "constraint_type": "c",
+      "table_name": "public.meeting_invitations"
+    },
+    {
+      "constraint_def": "UNIQUE (token_hash)",
+      "constraint_name": "meeting_invitations_token_hash_key",
+      "constraint_type": "u",
+      "table_name": "public.meeting_invitations"
+    },
+    {
+      "constraint_def": "CHECK ((use_count >= 0))",
+      "constraint_name": "meeting_invitations_use_count_check",
+      "constraint_type": "c",
+      "table_name": "public.meeting_invitations"
+    },
+    {
+      "constraint_def": "CHECK (((max_uses IS NULL) OR (use_count <= max_uses)))",
+      "constraint_name": "meeting_invitations_use_count_within_max_check",
+      "constraint_type": "c",
+      "table_name": "public.meeting_invitations"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (invited_by) REFERENCES auth.users(id)",
+      "constraint_name": "meeting_participants_invited_by_fkey",
+      "constraint_type": "f",
+      "table_name": "public.meeting_participants"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE",
+      "constraint_name": "meeting_participants_meeting_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.meeting_participants"
+    },
+    {
+      "constraint_def": "UNIQUE (meeting_id, user_id)",
+      "constraint_name": "meeting_participants_meeting_id_user_id_key",
+      "constraint_type": "u",
+      "table_name": "public.meeting_participants"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "meeting_participants_pkey",
+      "constraint_type": "p",
+      "table_name": "public.meeting_participants"
+    },
+    {
+      "constraint_def": "CHECK ((role = ANY (ARRAY['attendee'::text, 'host'::text, 'presenter'::text])))",
+      "constraint_name": "meeting_participants_role_check",
+      "constraint_type": "c",
+      "table_name": "public.meeting_participants"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "constraint_name": "meeting_participants_user_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.meeting_participants"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE SET NULL",
+      "constraint_name": "meetings_org_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.meetings"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (owner) REFERENCES auth.users(id) ON DELETE SET NULL",
+      "constraint_name": "meetings_owner_fkey",
+      "constraint_type": "f",
+      "table_name": "public.meetings"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "meetings_pkey",
+      "constraint_type": "p",
+      "table_name": "public.meetings"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE",
+      "constraint_name": "meetings_user_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.meetings"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE",
+      "constraint_name": "notes_meeting_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.notes"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "notes_pkey",
+      "constraint_type": "p",
+      "table_name": "public.notes"
+    },
+    {
+      "constraint_def": "CHECK ((\"position\" >= 0))",
+      "constraint_name": "notes_position_check",
+      "constraint_type": "c",
+      "table_name": "public.notes"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE",
+      "constraint_name": "notes_user_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.notes"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE",
+      "constraint_name": "org_members_org_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.org_members"
+    },
+    {
+      "constraint_def": "UNIQUE (org_id, user_id)",
+      "constraint_name": "org_members_org_id_user_id_key",
+      "constraint_type": "u",
+      "table_name": "public.org_members"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "org_members_pkey",
+      "constraint_type": "p",
+      "table_name": "public.org_members"
+    },
+    {
+      "constraint_def": "CHECK ((role = ANY (ARRAY['admin'::text, 'member'::text])))",
+      "constraint_name": "org_members_role_check",
+      "constraint_type": "c",
+      "table_name": "public.org_members"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "constraint_name": "org_members_user_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.org_members"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL",
+      "constraint_name": "organizations_created_by_fkey",
+      "constraint_type": "f",
+      "table_name": "public.organizations"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "organizations_pkey",
+      "constraint_type": "p",
+      "table_name": "public.organizations"
+    },
+    {
+      "constraint_def": "UNIQUE (slug)",
+      "constraint_name": "organizations_slug_key",
+      "constraint_type": "u",
+      "table_name": "public.organizations"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "payments_pkey",
+      "constraint_type": "p",
+      "table_name": "public.payments"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE",
+      "constraint_name": "payments_user_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.payments"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (created_by) REFERENCES auth.users(id)",
+      "constraint_name": "presentations_created_by_fkey",
+      "constraint_type": "f",
+      "table_name": "public.presentations"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE",
+      "constraint_name": "presentations_meeting_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.presentations"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "presentations_pkey",
+      "constraint_type": "p",
+      "table_name": "public.presentations"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "constraint_name": "profiles_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.profiles"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "profiles_pkey",
+      "constraint_type": "p",
+      "table_name": "public.profiles"
+    },
+    {
+      "constraint_def": "CHECK ((user_type = ANY (ARRAY['individual'::text, 'organization'::text])))",
+      "constraint_name": "profiles_user_type_check",
+      "constraint_type": "c",
+      "table_name": "public.profiles"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (created_by) REFERENCES auth.users(id)",
+      "constraint_name": "recordings_created_by_fkey",
+      "constraint_type": "f",
+      "table_name": "public.recordings"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE",
+      "constraint_name": "recordings_meeting_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.recordings"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "recordings_pkey",
+      "constraint_type": "p",
+      "table_name": "public.recordings"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "slides_pkey",
+      "constraint_type": "p",
+      "table_name": "public.slides"
+    },
+    {
+      "constraint_def": "CHECK ((\"position\" >= 0))",
+      "constraint_name": "slides_position_check",
+      "constraint_type": "c",
+      "table_name": "public.slides"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (presentation_id) REFERENCES presentations(id) ON DELETE CASCADE",
+      "constraint_name": "slides_presentation_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.slides"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "subscription_webhook_events_pkey",
+      "constraint_type": "p",
+      "table_name": "public.subscription_webhook_events"
+    },
+    {
+      "constraint_def": "UNIQUE (webhook_id)",
+      "constraint_name": "subscription_webhook_events_webhook_id_key",
+      "constraint_type": "u",
+      "table_name": "public.subscription_webhook_events"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "subscription_webhook_events_v2_pkey",
+      "constraint_type": "p",
+      "table_name": "public.subscription_webhook_events_v2"
+    },
+    {
+      "constraint_def": "UNIQUE (webhook_id)",
+      "constraint_name": "subscription_webhook_events_v2_webhook_id_key",
+      "constraint_type": "u",
+      "table_name": "public.subscription_webhook_events_v2"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "subscriptions_pkey",
+      "constraint_type": "p",
+      "table_name": "public.subscriptions"
+    },
+    {
+      "constraint_def": "CHECK ((product_line = ANY (ARRAY['meet'::text, 'class'::text])))",
+      "constraint_name": "subscriptions_product_line_check",
+      "constraint_type": "c",
+      "table_name": "public.subscriptions"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "constraint_name": "subscriptions_user_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.subscriptions"
+    },
+    {
+      "constraint_def": "UNIQUE (user_id, product_line)",
+      "constraint_name": "subscriptions_user_product_line_key",
+      "constraint_type": "u",
+      "table_name": "public.subscriptions"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE",
+      "constraint_name": "transcripts_meeting_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.transcripts"
+    },
+    {
+      "constraint_def": "PRIMARY KEY (id)",
+      "constraint_name": "transcripts_pkey",
+      "constraint_type": "p",
+      "table_name": "public.transcripts"
+    },
+    {
+      "constraint_def": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE",
+      "constraint_name": "transcripts_user_id_fkey",
+      "constraint_type": "f",
+      "table_name": "public.transcripts"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "Insert own analytics events",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "analytics_events",
+      "with_check": "(((metadata ->> 'user_id'::text))::uuid = ( SELECT auth.uid() AS uid))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "Select own analytics events",
+      "qual": "(((metadata ->> 'user_id'::text))::uuid = ( SELECT auth.uid() AS uid))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "analytics_events",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policy_name": "analytics_events_delete_none",
+      "qual": "false",
+      "roles": [
+        "public"
+      ],
+      "tablename": "analytics_events",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "analytics_events_insert_authenticated",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "analytics_events",
+      "with_check": "(( SELECT auth.uid() AS uid) IS NOT NULL)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "analytics_events_select_none",
+      "qual": "false",
+      "roles": [
+        "public"
+      ],
+      "tablename": "analytics_events",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policy_name": "analytics_events_update_none",
+      "qual": "false",
+      "roles": [
+        "public"
+      ],
+      "tablename": "analytics_events",
+      "with_check": "false"
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "audit_logs_insert_actor",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "audit_logs",
+      "with_check": "(actor = auth.uid())"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "audit_logs_select_none",
+      "qual": "false",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "audit_logs",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "Users can create chat",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "chat_messages",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "Users can view own chat",
+      "qual": "(auth.uid() = user_id)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "chat_messages",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "chat_messages_insert_for_user",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "chat_messages",
+      "with_check": "(user_id = ( SELECT auth.uid() AS uid))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "chat_messages_select_for_user",
+      "qual": "(user_id = ( SELECT auth.uid() AS uid))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "chat_messages",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "assignments_students_select",
+      "qual": "(EXISTS ( SELECT 1\n   FROM (classroom_lessons cl\n     JOIN classroom_enrollments ce ON ((ce.classroom_id = cl.classroom_id)))\n  WHERE ((cl.id = classroom_assignments.lesson_id) AND (ce.student_id = auth.uid()) AND (ce.enrollment_status = 'active'::text))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "classroom_assignments",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policy_name": "assignments_teachers",
+      "qual": "(EXISTS ( SELECT 1\n   FROM ((classroom_lessons cl\n     JOIN classrooms c ON ((c.id = cl.classroom_id)))\n     LEFT JOIN classroom_enrollments ce ON ((ce.classroom_id = c.id)))\n  WHERE ((cl.id = classroom_assignments.lesson_id) AND ((c.owner_id = auth.uid()) OR ((ce.student_id = auth.uid()) AND (ce.role = ANY (ARRAY['instructor'::text, 'ta'::text])))))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "classroom_assignments",
+      "with_check": "(EXISTS ( SELECT 1\n   FROM ((classroom_lessons cl\n     JOIN classrooms c ON ((c.id = cl.classroom_id)))\n     LEFT JOIN classroom_enrollments ce ON ((ce.classroom_id = c.id)))\n  WHERE ((cl.id = classroom_assignments.lesson_id) AND ((c.owner_id = auth.uid()) OR ((ce.student_id = auth.uid()) AND (ce.role = ANY (ARRAY['instructor'::text, 'ta'::text])))))))"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policy_name": "enrollments_owner",
+      "qual": "(EXISTS ( SELECT 1\n   FROM classrooms c\n  WHERE ((c.id = classroom_enrollments.classroom_id) AND (c.owner_id = auth.uid()))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "classroom_enrollments",
+      "with_check": "(EXISTS ( SELECT 1\n   FROM classrooms c\n  WHERE ((c.id = classroom_enrollments.classroom_id) AND (c.owner_id = auth.uid()))))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "enrollments_self_select",
+      "qual": "(student_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "classroom_enrollments",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "lessons_students_select",
+      "qual": "(EXISTS ( SELECT 1\n   FROM classroom_enrollments ce\n  WHERE ((ce.classroom_id = classroom_lessons.classroom_id) AND (ce.student_id = auth.uid()) AND (ce.enrollment_status = 'active'::text))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "classroom_lessons",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policy_name": "lessons_teachers",
+      "qual": "(EXISTS ( SELECT 1\n   FROM (classrooms c\n     LEFT JOIN classroom_enrollments ce ON ((ce.classroom_id = c.id)))\n  WHERE ((c.id = classroom_lessons.classroom_id) AND ((c.owner_id = auth.uid()) OR ((ce.student_id = auth.uid()) AND (ce.role = ANY (ARRAY['instructor'::text, 'ta'::text])))))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "classroom_lessons",
+      "with_check": "(EXISTS ( SELECT 1\n   FROM (classrooms c\n     LEFT JOIN classroom_enrollments ce ON ((ce.classroom_id = c.id)))\n  WHERE ((c.id = classroom_lessons.classroom_id) AND ((c.owner_id = auth.uid()) OR ((ce.student_id = auth.uid()) AND (ce.role = ANY (ARRAY['instructor'::text, 'ta'::text])))))))"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policy_name": "submissions_delete",
+      "qual": "(student_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "classroom_submissions",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "submissions_insert",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "classroom_submissions",
+      "with_check": "(student_id = auth.uid())"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "submissions_select",
+      "qual": "((student_id = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM (((classroom_assignments ca\n     JOIN classroom_lessons cl ON ((cl.id = ca.lesson_id)))\n     JOIN classrooms c ON ((c.id = cl.classroom_id)))\n     LEFT JOIN classroom_enrollments ce ON ((ce.classroom_id = c.id)))\n  WHERE ((ca.id = classroom_submissions.assignment_id) AND ((c.owner_id = auth.uid()) OR ((ce.student_id = auth.uid()) AND (ce.role = ANY (ARRAY['instructor'::text, 'ta'::text]))))))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "classroom_submissions",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policy_name": "submissions_update",
+      "qual": "(student_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "classroom_submissions",
+      "with_check": "(student_id = auth.uid())"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "classrooms_enrolled_select",
+      "qual": "((status = ANY (ARRAY['scheduled'::text, 'live'::text, 'completed'::text])) AND (EXISTS ( SELECT 1\n   FROM classroom_enrollments ce\n  WHERE ((ce.classroom_id = classrooms.id) AND (ce.student_id = auth.uid()) AND (ce.enrollment_status = 'active'::text)))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "classrooms",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policy_name": "classrooms_owner",
+      "qual": "(owner_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "classrooms",
+      "with_check": "(owner_id = auth.uid())"
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "meeting_invitations_insert",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "meeting_invitations",
+      "with_check": "((created_by = auth.uid()) AND (EXISTS ( SELECT 1\n   FROM meetings m\n  WHERE ((m.id = meeting_invitations.meeting_id) AND (m.owner = auth.uid())))))"
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policy_name": "meeting_invitations_revoke",
+      "qual": "(EXISTS ( SELECT 1\n   FROM meetings m\n  WHERE ((m.id = meeting_invitations.meeting_id) AND (m.owner = auth.uid()))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "meeting_invitations",
+      "with_check": "((revoked_at IS NOT NULL) AND (EXISTS ( SELECT 1\n   FROM meetings m\n  WHERE ((m.id = meeting_invitations.meeting_id) AND (m.owner = auth.uid())))))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "meeting_invitations_select",
+      "qual": "(EXISTS ( SELECT 1\n   FROM meetings m\n  WHERE ((m.id = meeting_invitations.meeting_id) AND (m.owner = auth.uid()))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "meeting_invitations",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policy_name": "meeting_participants_delete",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "meeting_participants",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "meeting_participants_insert",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "meeting_participants",
+      "with_check": "((user_id = auth.uid()) OR (invited_by = auth.uid()))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "meeting_participants_select",
+      "qual": "((user_id = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM meetings m\n  WHERE ((m.id = meeting_participants.meeting_id) AND (m.owner = auth.uid())))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "meeting_participants",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policy_name": "meeting_participants_update",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "meeting_participants",
+      "with_check": "(user_id = auth.uid())"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policy_name": "meetings_delete_owner",
+      "qual": "(owner = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "meetings",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "meetings_insert_owner",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "meetings",
+      "with_check": "(owner = auth.uid())"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "meetings_select_authorized",
+      "qual": "((owner = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM meeting_participants mp\n  WHERE ((mp.meeting_id = meetings.id) AND (mp.user_id = auth.uid())))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "meetings",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policy_name": "meetings_update_owner",
+      "qual": "(owner = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "meetings",
+      "with_check": "(owner = auth.uid())"
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "Users can create notes",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "notes",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policy_name": "Users can update own notes",
+      "qual": "(auth.uid() = user_id)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "notes",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "Users can view own notes",
+      "qual": "(auth.uid() = user_id)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "notes",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "notes_insert_for_user",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "notes",
+      "with_check": "(user_id = ( SELECT auth.uid() AS uid))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "notes_select_for_user",
+      "qual": "(user_id = ( SELECT auth.uid() AS uid))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "notes",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policy_name": "notes_update_for_user",
+      "qual": "(user_id = ( SELECT auth.uid() AS uid))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "notes",
+      "with_check": "(user_id = ( SELECT auth.uid() AS uid))"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policy_name": "org_members_delete_admin",
+      "qual": "(EXISTS ( SELECT 1\n   FROM org_members om\n  WHERE ((om.org_id = org_members.org_id) AND (om.user_id = auth.uid()) AND (om.role = 'admin'::text))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "org_members",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "org_members_insert_admin",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "org_members",
+      "with_check": "(EXISTS ( SELECT 1\n   FROM org_members om\n  WHERE ((om.org_id = org_members.org_id) AND (om.user_id = auth.uid()) AND (om.role = 'admin'::text))))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "org_members_select_member",
+      "qual": "(EXISTS ( SELECT 1\n   FROM org_members om\n  WHERE ((om.org_id = org_members.org_id) AND (om.user_id = auth.uid()))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "org_members",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policy_name": "org_members_update_admin",
+      "qual": "(EXISTS ( SELECT 1\n   FROM org_members om\n  WHERE ((om.org_id = org_members.org_id) AND (om.user_id = auth.uid()) AND (om.role = 'admin'::text))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "org_members",
+      "with_check": "(EXISTS ( SELECT 1\n   FROM org_members om\n  WHERE ((om.org_id = org_members.org_id) AND (om.user_id = auth.uid()) AND (om.role = 'admin'::text))))"
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "organizations_insert_own",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "organizations",
+      "with_check": "(created_by = auth.uid())"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "organizations_select_member",
+      "qual": "(EXISTS ( SELECT 1\n   FROM org_members om\n  WHERE ((om.org_id = organizations.id) AND (om.user_id = auth.uid()))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "organizations",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "Users can create payments",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "payments",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "Users can view own payments",
+      "qual": "(auth.uid() = user_id)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "payments",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "payments_insert_for_user",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "payments",
+      "with_check": "(user_id = ( SELECT auth.uid() AS uid))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "payments_select_for_user",
+      "qual": "(user_id = ( SELECT auth.uid() AS uid))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "payments",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "presentations_insert_member",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "presentations",
+      "with_check": "(EXISTS ( SELECT 1\n   FROM meetings m\n  WHERE ((m.id = presentations.meeting_id) AND ((m.owner = auth.uid()) OR (EXISTS ( SELECT 1\n           FROM meeting_participants mp\n          WHERE ((mp.meeting_id = m.id) AND (mp.user_id = auth.uid()))))))))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "presentations_select_member",
+      "qual": "(EXISTS ( SELECT 1\n   FROM meetings m\n  WHERE ((m.id = presentations.meeting_id) AND ((m.owner = auth.uid()) OR (EXISTS ( SELECT 1\n           FROM meeting_participants mp\n          WHERE ((mp.meeting_id = m.id) AND (mp.user_id = auth.uid()))))))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "presentations",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policy_name": "profiles_delete_own",
+      "qual": "(auth.uid() = id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "profiles",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "profiles_insert_own",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "profiles",
+      "with_check": "(auth.uid() = id)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "profiles_select_own",
+      "qual": "(auth.uid() = id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "profiles",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policy_name": "profiles_update_own",
+      "qual": "(auth.uid() = id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "profiles",
+      "with_check": "(auth.uid() = id)"
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "recordings_insert_member",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "recordings",
+      "with_check": "(EXISTS ( SELECT 1\n   FROM meetings m\n  WHERE ((m.id = recordings.meeting_id) AND ((m.owner = auth.uid()) OR (EXISTS ( SELECT 1\n           FROM meeting_participants mp\n          WHERE ((mp.meeting_id = m.id) AND (mp.user_id = auth.uid()))))))))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "recordings_select_member",
+      "qual": "(EXISTS ( SELECT 1\n   FROM meetings m\n  WHERE ((m.id = recordings.meeting_id) AND ((m.owner = auth.uid()) OR (EXISTS ( SELECT 1\n           FROM meeting_participants mp\n          WHERE ((mp.meeting_id = m.id) AND (mp.user_id = auth.uid()))))))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "recordings",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "slides_insert_member",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "slides",
+      "with_check": "(EXISTS ( SELECT 1\n   FROM (presentations p\n     JOIN meetings m ON ((m.id = p.meeting_id)))\n  WHERE ((p.id = slides.presentation_id) AND ((m.owner = auth.uid()) OR (EXISTS ( SELECT 1\n           FROM meeting_participants mp\n          WHERE ((mp.meeting_id = m.id) AND (mp.user_id = auth.uid()))))))))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "slides_select_member",
+      "qual": "(EXISTS ( SELECT 1\n   FROM (presentations p\n     JOIN meetings m ON ((m.id = p.meeting_id)))\n  WHERE ((p.id = slides.presentation_id) AND ((m.owner = auth.uid()) OR (EXISTS ( SELECT 1\n           FROM meeting_participants mp\n          WHERE ((mp.meeting_id = m.id) AND (mp.user_id = auth.uid()))))))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "slides",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "subscriptions_select_own",
+      "qual": "(auth.uid() = user_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "subscriptions",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "Users can create transcripts",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "transcripts",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "Users can view own transcripts",
+      "qual": "(auth.uid() = user_id)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "transcripts",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "transcripts_insert_for_user",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "tablename": "transcripts",
+      "with_check": "(user_id = ( SELECT auth.uid() AS uid))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policy_name": "transcripts_select_for_user",
+      "qual": "(user_id = ( SELECT auth.uid() AS uid))",
+      "roles": [
+        "public"
+      ],
+      "tablename": "transcripts",
+      "with_check": null
+    }
+  ]
+}

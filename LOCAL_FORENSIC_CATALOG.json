@@ -1,0 +1,193 @@
+{
+  "status": "STATIC_ANALYSIS_ONLY \u2014 RUNTIME VERIFICATION BLOCKED",
+  "reason": "Docker daemon unavailable",
+  "generated_at": "2026-08-24",
+  "git_commit": "28624ca9415b973e679d86a90e07bf3d008d9bb2",
+  "extensions": {
+    "pgcrypto": "CREATED",
+    "pg_graphql": "default",
+    "supabase_vault": "default"
+  },
+  "tables": {
+    "public.profiles": {
+      "local_count": 7,
+      "production_count": 19,
+      "rls_enabled": true,
+      "note": "Reconciliation v2 adds 14 cols to reach 19",
+      "policies": [
+        {
+          "name": "profiles_owner_full_access",
+          "cmd": "ALL",
+          "roles": [
+            "authenticated"
+          ]
+        }
+      ]
+    },
+    "public.meetings": {
+      "local_count": 22,
+      "production_count": 22,
+      "rls_enabled": true,
+      "note": "MATCH after reconciliation v2",
+      "policies": [
+        {
+          "name": "meetings_select",
+          "cmd": "SELECT",
+          "roles": [
+            "authenticated"
+          ]
+        }
+      ]
+    },
+    "public.subscriptions": {
+      "local_count": 15,
+      "production_count": 15,
+      "rls_enabled": true,
+      "note": "MATCH after reconciliation chain",
+      "policies": [
+        {
+          "name": "subscriptions_select_own",
+          "cmd": "SELECT",
+          "roles": [
+            "authenticated"
+          ]
+        },
+        {
+          "name": "subscriptions_service_role_all",
+          "cmd": "ALL",
+          "roles": [
+            "service_role"
+          ]
+        }
+      ]
+    },
+    "public.meeting_invitations": {
+      "note": "MATCH",
+      "local_count": 11,
+      "production_count": 11
+    },
+    "public.meeting_participants": {
+      "note": "MATCH",
+      "local_count": 7,
+      "production_count": 7
+    },
+    "public.subscription_webhook_events": {
+      "note": "MATCH",
+      "local_count": 12,
+      "production_count": 12
+    },
+    "public.subscription_webhook_events_v2": {
+      "note": "DOCUMENTED GAP \u2014 P1 \u2014 not in local",
+      "local_count": 0,
+      "production_count": 11
+    },
+    "public.classrooms": {
+      "note": "MATCH"
+    },
+    "public.classroom_lessons": {
+      "note": "MATCH"
+    },
+    "public.classroom_enrollments": {
+      "note": "MATCH"
+    },
+    "public.classroom_assignments": {
+      "note": "MATCH"
+    },
+    "public.classroom_submissions": {
+      "note": "MATCH"
+    },
+    "public.presentations": {
+      "note": "MATCH"
+    },
+    "public.slides": {
+      "note": "MATCH"
+    },
+    "public.recordings": {
+      "note": "MATCH"
+    },
+    "public.audit_logs": {
+      "note": "MATCH"
+    },
+    "public.organizations": {
+      "note": "MATCH"
+    },
+    "public.org_members": {
+      "note": "MATCH"
+    },
+    "public.payments": {
+      "note": "MATCH (reconcile v1)"
+    },
+    "public.chat_messages": {
+      "note": "MATCH (reconcile v1)"
+    },
+    "public.notes": {
+      "note": "MATCH (reconcile v1)"
+    },
+    "public.transcripts": {
+      "note": "MATCH (reconcile v1)"
+    },
+    "public.analytics_events": {
+      "note": "MATCH (reconcile v1)"
+    }
+  },
+  "functions": {
+    "handle_new_user()": {
+      "return": "trigger",
+      "security": "SECURITY INVOKER"
+    },
+    "rls_auto_enable()": {
+      "return": "event_trigger",
+      "security": "SECURITY INVOKER"
+    },
+    "accept_meeting_invitation(text,text)": {
+      "return": "jsonb",
+      "security": "SECURITY DEFINER",
+      "grants": "authenticated"
+    },
+    "process_lemon_squeezy_subscription_webhook(...)": {
+      "return": "jsonb",
+      "security": "SECURITY DEFINER",
+      "grants": "service_role"
+    },
+    "is_classroom_enrolled(uuid)": {
+      "return": "boolean",
+      "security": "SECURITY DEFINER"
+    },
+    "is_classroom_owner(uuid)": {
+      "return": "boolean",
+      "security": "SECURITY DEFINER"
+    },
+    "is_meeting_owner(uuid)": {
+      "return": "boolean",
+      "security": "SECURITY DEFINER"
+    },
+    "is_meeting_participant(uuid)": {
+      "return": "boolean",
+      "security": "SECURITY DEFINER"
+    },
+    "is_org_admin(uuid)": {
+      "return": "boolean",
+      "security": "SECURITY DEFINER"
+    },
+    "is_org_member(uuid)": {
+      "return": "boolean",
+      "security": "SECURITY DEFINER"
+    }
+  },
+  "triggers": {
+    "handle_new_user": {
+      "on": "auth.users",
+      "timing": "AFTER INSERT",
+      "function": "handle_new_user()"
+    },
+    "rls_auto_enable": {
+      "type": "EVENT TRIGGER",
+      "event": "ddl_command_end",
+      "function": "rls_auto_enable()"
+    }
+  },
+  "rls_summary": {
+    "tables_with_rls": 23,
+    "note": "All 23 public tables have RLS"
+  }
+}

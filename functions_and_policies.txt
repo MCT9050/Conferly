@@ -1,0 +1,428 @@
+
+########## accept_meeting_invitation ##########
+CREATE OR REPLACE FUNCTION public.accept_meeting_invitation(p_meeting_slug text, p_token_hash text)
+ RETURNS TABLE(meeting_id uuid, slug text, database_role text)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE uid uuid:=auth.uid(); i public.meeting_invitations%ROWTYPE; m public.meetings%ROWTYPE; participant_role text;
+BEGIN
+ IF uid IS NULL THEN RAISE EXCEPTION USING ERRCODE='28000',MESSAGE='authentication required'; END IF;
+ IF p_meeting_slug IS NULL OR p_meeting_slug='' OR p_token_hash IS NULL OR p_token_hash !~ '^[0-9a-f]{64}$' THEN RAISE EXCEPTION USING ERRCODE='P0001',MESSAGE='invalid invitation'; END IF;
+ SELECT i.* INTO i FROM public.meeting_invitations i JOIN public.meetings m ON m.id=i.meeting_id WHERE m.slug=p_meeting_slug AND i.token_hash=p_token_hash FOR UPDATE OF i;
+ IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='P0001',MESSAGE='invalid invitation'; END IF;
+ SELECT * INTO m FROM public.meetings WHERE id=i.meeting_id;
+ IF m.owner=uid THEN RETURN QUERY SELECT m.id,m.slug,'host'::text; RETURN; END IF;
+ SELECT mp.role INTO participant_role FROM public.meeting_participants mp WHERE mp.meeting_id=m.id AND mp.user_id=uid;
+ IF FOUND THEN UPDATE public.meeting_participants SET joined_at=COALESCE(joined_at,statement_timestamp()) WHERE meeting_id=m.id AND user_id=uid; RETURN QUERY SELECT m.id,m.slug,participant_role; RETURN; END IF;
+ IF i.revoked_at IS NOT NULL OR(i.expires_at IS NOT NULL AND i.expires_at<=statement_timestamp()) OR(i.max_uses IS NOT NULL AND i.use_count>=i.max_uses) THEN RAISE EXCEPTION USING ERRCODE='P0001',MESSAGE='invalid invitation'; END IF;
+ INSERT INTO public.meeting_participants(meeting_id,user_id,role,invited_by,joined_at) VALUES(m.id,uid,i.role,i.created_by,statement_timestamp()) ON CONFLICT(meeting_id,user_id) DO NOTHING RETURNING role INTO participant_role;
+ IF participant_role IS NOT NULL THEN UPDATE public.meeting_invitations SET use_count=use_count+1,last_used_at=statement_timestamp() WHERE id=i.id; ELSE SELECT mp.role INTO participant_role FROM public.meeting_participants mp WHERE mp.meeting_id=m.id AND mp.user_id=uid; END IF;
+ RETURN QUERY SELECT m.id,m.slug,participant_role;
+END; $function$
+
+
+########## handle_new_user ##########
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  insert into public.profiles (id, email, display_name)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1))
+  );
+  return new;
+end;
+$function$
+
+
+########## is_classroom_enrolled ##########
+CREATE OR REPLACE FUNCTION public.is_classroom_enrolled(target_classroom_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+ SET row_security TO 'off'
+AS $function$
+  select exists (
+    select 1
+    from public.classroom_enrollments ce
+    where ce.classroom_id = target_classroom_id
+      and ce.student_id = auth.uid()
+      and ce.enrollment_status = 'active'
+  );
+$function$
+
+
+########## is_classroom_owner ##########
+CREATE OR REPLACE FUNCTION public.is_classroom_owner(target_classroom_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+ SET row_security TO 'off'
+AS $function$
+  select exists (
+    select 1
+    from public.classrooms c
+    where c.id = target_classroom_id
+      and c.owner_id = auth.uid()
+  );
+$function$
+
+
+########## is_meeting_owner ##########
+CREATE OR REPLACE FUNCTION public.is_meeting_owner(target_meeting_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+ SET row_security TO 'off'
+AS $function$
+  select exists (
+    select 1
+    from public.meetings m
+    where m.id = target_meeting_id
+      and m.owner = auth.uid()
+  );
+$function$
+
+
+########## is_meeting_participant ##########
+CREATE OR REPLACE FUNCTION public.is_meeting_participant(target_meeting_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+ SET row_security TO 'off'
+AS $function$
+  select exists (
+    select 1
+    from public.meeting_participants mp
+    where mp.meeting_id = target_meeting_id
+      and mp.user_id = auth.uid()
+  );
+$function$
+
+
+########## is_org_admin ##########
+CREATE OR REPLACE FUNCTION public.is_org_admin(target_org_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+ SET row_security TO 'off'
+AS $function$
+  select exists (
+    select 1
+    from public.org_members om
+    where om.org_id = target_org_id
+      and om.user_id = auth.uid()
+      and om.role = 'admin'
+  );
+$function$
+
+
+########## is_org_member ##########
+CREATE OR REPLACE FUNCTION public.is_org_member(target_org_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+ SET row_security TO 'off'
+AS $function$
+  select exists (
+    select 1
+    from public.org_members om
+    where om.org_id = target_org_id
+      and om.user_id = auth.uid()
+  );
+$function$
+
+
+########## process_lemon_squeezy_subscription_webhook ##########
+CREATE OR REPLACE FUNCTION public.process_lemon_squeezy_subscription_webhook(p_webhook_id text, p_event_name text, p_external_subscription_id text, p_user_id uuid, p_product_line text, p_plan text, p_participant_cap integer, p_status text, p_external_event_at timestamp with time zone, p_external_order_id text, p_current_period_start timestamp with time zone, p_current_period_end timestamp with time zone)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE ev public.subscription_webhook_events%ROWTYPE; s public.subscriptions%ROWTYPE; inserted_count integer; event_at timestamptz:=COALESCE(p_external_event_at,statement_timestamp());
+BEGIN
+ IF p_webhook_id IS NULL OR p_webhook_id='' OR p_external_subscription_id IS NULL OR p_user_id IS NULL OR p_product_line NOT IN('meet','class') THEN RAISE EXCEPTION USING ERRCODE='P0001',MESSAGE='invalid webhook payload'; END IF;
+ INSERT INTO public.subscription_webhook_events(webhook_id,event_name,external_subscription_id,user_id,product_line,external_event_at,status,received_at) VALUES(p_webhook_id,p_event_name,p_external_subscription_id,p_user_id,p_product_line,event_at,'received',statement_timestamp()) ON CONFLICT(webhook_id) DO NOTHING;
+ GET DIAGNOSTICS inserted_count=ROW_COUNT;
+ IF inserted_count=0 THEN SELECT * INTO ev FROM public.subscription_webhook_events WHERE webhook_id=p_webhook_id; RETURN jsonb_build_object('duplicate',true,'webhook_id',p_webhook_id,'status',ev.status); END IF;
+ SELECT * INTO s FROM public.subscriptions WHERE user_id=p_user_id AND product_line=p_product_line FOR UPDATE;
+ IF FOUND AND s.last_external_event_at IS NOT NULL AND event_at<s.last_external_event_at THEN UPDATE public.subscription_webhook_events SET status='stale',processed_at=statement_timestamp() WHERE webhook_id=p_webhook_id; RETURN jsonb_build_object('duplicate',false,'stale',true,'webhook_id',p_webhook_id); END IF;
+ IF FOUND THEN UPDATE public.subscriptions SET plan=p_plan,participant_cap=p_participant_cap,status=p_status,lemon_squeezy_subscription_id=p_external_subscription_id,lemon_squeezy_order_id=p_external_order_id,current_period_start=p_current_period_start,current_period_end=p_current_period_end,last_external_event_at=event_at,last_external_event_id=p_webhook_id,updated_at=statement_timestamp() WHERE id=s.id;
+ ELSE INSERT INTO public.subscriptions(user_id,product_line,plan,participant_cap,status,lemon_squeezy_subscription_id,lemon_squeezy_order_id,current_period_start,current_period_end,last_external_event_at,last_external_event_id,created_at,updated_at) VALUES(p_user_id,p_product_line,p_plan,p_participant_cap,p_status,p_external_subscription_id,p_external_order_id,p_current_period_start,p_current_period_end,event_at,p_webhook_id,statement_timestamp(),statement_timestamp()); END IF;
+ UPDATE public.subscription_webhook_events SET status='processed',processed_at=statement_timestamp() WHERE webhook_id=p_webhook_id;
+ RETURN jsonb_build_object('duplicate',false,'stale',false,'processed',true,'webhook_id',p_webhook_id,'product_line',p_product_line);
+END; $function$
+
+
+########## rls_auto_enable ##########
+CREATE OR REPLACE FUNCTION public.rls_auto_enable()
+ RETURNS event_trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog'
+AS $function$
+DECLARE
+  cmd record;
+BEGIN
+  FOR cmd IN
+    SELECT *
+    FROM pg_event_trigger_ddl_commands()
+    WHERE command_tag IN ('CREATE TABLE', 'CREATE TABLE AS', 'SELECT INTO')
+      AND object_type IN ('table','partitioned table')
+  LOOP
+     IF cmd.schema_name IS NOT NULL AND cmd.schema_name IN ('public') AND cmd.schema_name NOT IN ('pg_catalog','information_schema') AND cmd.schema_name NOT LIKE 'pg_toast%' AND cmd.schema_name NOT LIKE 'pg_temp%' THEN
+      BEGIN
+        EXECUTE format('alter table if exists %s enable row level security', cmd.object_identity);
+        RAISE LOG 'rls_auto_enable: enabled RLS on %', cmd.object_identity;
+      EXCEPTION
+        WHEN OTHERS THEN
+          RAISE LOG 'rls_auto_enable: failed to enable RLS on %', cmd.object_identity;
+      END;
+     ELSE
+        RAISE LOG 'rls_auto_enable: skip % (either system schema or not in enforced list: %.)', cmd.object_identity, cmd.schema_name;
+     END IF;
+  END LOOP;
+END;
+$function$
+
+
+
+==================== POLICIES BY TABLE ====================
+[analytics_events] None (INSERT,PERMISSIVE) roles=authenticated
+  CHECK: (((metadata ->> 'user_id'::text))::uuid = ( SELECT auth.uid() AS uid))
+[analytics_events] None (SELECT,PERMISSIVE) roles=authenticated
+  USING: (((metadata ->> 'user_id'::text))::uuid = ( SELECT auth.uid() AS uid))
+[analytics_events] None (DELETE,PERMISSIVE) roles=public
+  USING: false
+[analytics_events] None (INSERT,PERMISSIVE) roles=public
+  CHECK: (( SELECT auth.uid() AS uid) IS NOT NULL)
+[analytics_events] None (SELECT,PERMISSIVE) roles=public
+  USING: false
+[analytics_events] None (UPDATE,PERMISSIVE) roles=public
+  USING: false
+  CHECK: false
+[audit_logs] None (INSERT,PERMISSIVE) roles=authenticated
+  CHECK: (actor = auth.uid())
+[audit_logs] None (SELECT,PERMISSIVE) roles=authenticated
+  USING: false
+[chat_messages] None (INSERT,PERMISSIVE) roles=public
+  CHECK: (auth.uid() = user_id)
+[chat_messages] None (SELECT,PERMISSIVE) roles=public
+  USING: (auth.uid() = user_id)
+[chat_messages] None (INSERT,PERMISSIVE) roles=public
+  CHECK: (user_id = ( SELECT auth.uid() AS uid))
+[chat_messages] None (SELECT,PERMISSIVE) roles=public
+  USING: (user_id = ( SELECT auth.uid() AS uid))
+[classroom_assignments] None (SELECT,PERMISSIVE) roles=authenticated
+  USING: (EXISTS ( SELECT 1
+   FROM (classroom_lessons cl
+     JOIN classroom_enrollments ce ON ((ce.classroom_id = cl.classroom_id)))
+  WHERE ((cl.id = classroom_assignments.lesson_id) AND (ce.student_id = auth.uid()) AND (ce.enrollment_status = 'active'::text))))
+[classroom_assignments] None (ALL,PERMISSIVE) roles=authenticated
+  USING: (EXISTS ( SELECT 1
+   FROM ((classroom_lessons cl
+     JOIN classrooms c ON ((c.id = cl.classroom_id)))
+     LEFT JOIN classroom_enrollments ce ON ((ce.classroom_id = c.id)))
+  WHERE ((cl.id = classroom_assignments.lesson_id) AND ((c.owner_id = auth.uid()) OR ((ce.student_id = auth.uid()) AND (ce.role = ANY (ARRAY['instructor'::text, 'ta'::text])))))))
+  CHECK: (EXISTS ( SELECT 1
+   FROM ((classroom_lessons cl
+     JOIN classrooms c ON ((c.id = cl.classroom_id)))
+     LEFT JOIN classroom_enrollments ce ON ((ce.classroom_id = c.id)))
+  WHERE ((cl.id = classroom_assignments.lesson_id) AND ((c.owner_id = auth.uid()) OR ((ce.student_id = auth.uid()) AND (ce.role = ANY (ARRAY['instructor'::text, 'ta'::text])))))))
+[classroom_enrollments] None (ALL,PERMISSIVE) roles=authenticated
+  USING: (EXISTS ( SELECT 1
+   FROM classrooms c
+  WHERE ((c.id = classroom_enrollments.classroom_id) AND (c.owner_id = auth.uid()))))
+  CHECK: (EXISTS ( SELECT 1
+   FROM classrooms c
+  WHERE ((c.id = classroom_enrollments.classroom_id) AND (c.owner_id = auth.uid()))))
+[classroom_enrollments] None (SELECT,PERMISSIVE) roles=authenticated
+  USING: (student_id = auth.uid())
+[classroom_lessons] None (SELECT,PERMISSIVE) roles=authenticated
+  USING: (EXISTS ( SELECT 1
+   FROM classroom_enrollments ce
+  WHERE ((ce.classroom_id = classroom_lessons.classroom_id) AND (ce.student_id = auth.uid()) AND (ce.enrollment_status = 'active'::text))))
+[classroom_lessons] None (ALL,PERMISSIVE) roles=authenticated
+  USING: (EXISTS ( SELECT 1
+   FROM (classrooms c
+     LEFT JOIN classroom_enrollments ce ON ((ce.classroom_id = c.id)))
+  WHERE ((c.id = classroom_lessons.classroom_id) AND ((c.owner_id = auth.uid()) OR ((ce.student_id = auth.uid()) AND (ce.role = ANY (ARRAY['instructor'::text, 'ta'::text])))))))
+  CHECK: (EXISTS ( SELECT 1
+   FROM (classrooms c
+     LEFT JOIN classroom_enrollments ce ON ((ce.classroom_id = c.id)))
+  WHERE ((c.id = classroom_lessons.classroom_id) AND ((c.owner_id = auth.uid()) OR ((ce.student_id = auth.uid()) AND (ce.role = ANY (ARRAY['instructor'::text, 'ta'::text])))))))
+[classroom_submissions] None (DELETE,PERMISSIVE) roles=authenticated
+  USING: (student_id = auth.uid())
+[classroom_submissions] None (INSERT,PERMISSIVE) roles=authenticated
+  CHECK: (student_id = auth.uid())
+[classroom_submissions] None (SELECT,PERMISSIVE) roles=authenticated
+  USING: ((student_id = auth.uid()) OR (EXISTS ( SELECT 1
+   FROM (((classroom_assignments ca
+     JOIN classroom_lessons cl ON ((cl.id = ca.lesson_id)))
+     JOIN classrooms c ON ((c.id = cl.classroom_id)))
+     LEFT JOIN classroom_enrollments ce ON ((ce.classroom_id = c.id)))
+  WHERE ((ca.id = classroom_submissions.assignment_id) AND ((c.owner_id = auth.uid()) OR ((ce.student_id = auth.uid()) AND (ce.role = ANY (ARRAY['instructor'::text, 'ta'::text]))))))))
+[classroom_submissions] None (UPDATE,PERMISSIVE) roles=authenticated
+  USING: (student_id = auth.uid())
+  CHECK: (student_id = auth.uid())
+[classrooms] None (SELECT,PERMISSIVE) roles=authenticated
+  USING: ((status = ANY (ARRAY['scheduled'::text, 'live'::text, 'completed'::text])) AND (EXISTS ( SELECT 1
+   FROM classroom_enrollments ce
+  WHERE ((ce.classroom_id = classrooms.id) AND (ce.student_id = auth.uid()) AND (ce.enrollment_status = 'active'::text)))))
+[classrooms] None (ALL,PERMISSIVE) roles=authenticated
+  USING: (owner_id = auth.uid())
+  CHECK: (owner_id = auth.uid())
+[meeting_invitations] None (INSERT,PERMISSIVE) roles=authenticated
+  CHECK: ((created_by = auth.uid()) AND (EXISTS ( SELECT 1
+   FROM meetings m
+  WHERE ((m.id = meeting_invitations.meeting_id) AND (m.owner = auth.uid())))))
+[meeting_invitations] None (UPDATE,PERMISSIVE) roles=authenticated
+  USING: (EXISTS ( SELECT 1
+   FROM meetings m
+  WHERE ((m.id = meeting_invitations.meeting_id) AND (m.owner = auth.uid()))))
+  CHECK: ((revoked_at IS NOT NULL) AND (EXISTS ( SELECT 1
+   FROM meetings m
+  WHERE ((m.id = meeting_invitations.meeting_id) AND (m.owner = auth.uid())))))
+[meeting_invitations] None (SELECT,PERMISSIVE) roles=authenticated
+  USING: (EXISTS ( SELECT 1
+   FROM meetings m
+  WHERE ((m.id = meeting_invitations.meeting_id) AND (m.owner = auth.uid()))))
+[meeting_participants] None (DELETE,PERMISSIVE) roles=authenticated
+  USING: (user_id = auth.uid())
+[meeting_participants] None (INSERT,PERMISSIVE) roles=authenticated
+  CHECK: ((user_id = auth.uid()) OR (invited_by = auth.uid()))
+[meeting_participants] None (SELECT,PERMISSIVE) roles=authenticated
+  USING: ((user_id = auth.uid()) OR (EXISTS ( SELECT 1
+   FROM meetings m
+  WHERE ((m.id = meeting_participants.meeting_id) AND (m.owner = auth.uid())))))
+[meeting_participants] None (UPDATE,PERMISSIVE) roles=authenticated
+  USING: (user_id = auth.uid())
+  CHECK: (user_id = auth.uid())
+[meetings] None (DELETE,PERMISSIVE) roles=authenticated
+  USING: (owner = auth.uid())
+[meetings] None (INSERT,PERMISSIVE) roles=authenticated
+  CHECK: (owner = auth.uid())
+[meetings] None (SELECT,PERMISSIVE) roles=authenticated
+  USING: ((owner = auth.uid()) OR (EXISTS ( SELECT 1
+   FROM meeting_participants mp
+  WHERE ((mp.meeting_id = meetings.id) AND (mp.user_id = auth.uid())))))
+[meetings] None (UPDATE,PERMISSIVE) roles=authenticated
+  USING: (owner = auth.uid())
+  CHECK: (owner = auth.uid())
+[notes] None (INSERT,PERMISSIVE) roles=public
+  CHECK: (auth.uid() = user_id)
+[notes] None (UPDATE,PERMISSIVE) roles=public
+  USING: (auth.uid() = user_id)
+[notes] None (SELECT,PERMISSIVE) roles=public
+  USING: (auth.uid() = user_id)
+[notes] None (INSERT,PERMISSIVE) roles=public
+  CHECK: (user_id = ( SELECT auth.uid() AS uid))
+[notes] None (SELECT,PERMISSIVE) roles=public
+  USING: (user_id = ( SELECT auth.uid() AS uid))
+[notes] None (UPDATE,PERMISSIVE) roles=public
+  USING: (user_id = ( SELECT auth.uid() AS uid))
+  CHECK: (user_id = ( SELECT auth.uid() AS uid))
+[org_members] None (DELETE,PERMISSIVE) roles=authenticated
+  USING: (EXISTS ( SELECT 1
+   FROM org_members om
+  WHERE ((om.org_id = org_members.org_id) AND (om.user_id = auth.uid()) AND (om.role = 'admin'::text))))
+[org_members] None (INSERT,PERMISSIVE) roles=authenticated
+  CHECK: (EXISTS ( SELECT 1
+   FROM org_members om
+  WHERE ((om.org_id = org_members.org_id) AND (om.user_id = auth.uid()) AND (om.role = 'admin'::text))))
+[org_members] None (SELECT,PERMISSIVE) roles=authenticated
+  USING: (EXISTS ( SELECT 1
+   FROM org_members om
+  WHERE ((om.org_id = org_members.org_id) AND (om.user_id = auth.uid()))))
+[org_members] None (UPDATE,PERMISSIVE) roles=authenticated
+  USING: (EXISTS ( SELECT 1
+   FROM org_members om
+  WHERE ((om.org_id = org_members.org_id) AND (om.user_id = auth.uid()) AND (om.role = 'admin'::text))))
+  CHECK: (EXISTS ( SELECT 1
+   FROM org_members om
+  WHERE ((om.org_id = org_members.org_id) AND (om.user_id = auth.uid()) AND (om.role = 'admin'::text))))
+[organizations] None (INSERT,PERMISSIVE) roles=authenticated
+  CHECK: (created_by = auth.uid())
+[organizations] None (SELECT,PERMISSIVE) roles=authenticated
+  USING: (EXISTS ( SELECT 1
+   FROM org_members om
+  WHERE ((om.org_id = organizations.id) AND (om.user_id = auth.uid()))))
+[payments] None (INSERT,PERMISSIVE) roles=public
+  CHECK: (auth.uid() = user_id)
+[payments] None (SELECT,PERMISSIVE) roles=public
+  USING: (auth.uid() = user_id)
+[payments] None (INSERT,PERMISSIVE) roles=public
+  CHECK: (user_id = ( SELECT auth.uid() AS uid))
+[payments] None (SELECT,PERMISSIVE) roles=public
+  USING: (user_id = ( SELECT auth.uid() AS uid))
+[presentations] None (INSERT,PERMISSIVE) roles=authenticated
+  CHECK: (EXISTS ( SELECT 1
+   FROM meetings m
+  WHERE ((m.id = presentations.meeting_id) AND ((m.owner = auth.uid()) OR (EXISTS ( SELECT 1
+           FROM meeting_participants mp
+          WHERE ((mp.meeting_id = m.id) AND (mp.user_id = auth.uid()))))))))
+[presentations] None (SELECT,PERMISSIVE) roles=authenticated
+  USING: (EXISTS ( SELECT 1
+   FROM meetings m
+  WHERE ((m.id = presentations.meeting_id) AND ((m.owner = auth.uid()) OR (EXISTS ( SELECT 1
+           FROM meeting_participants mp
+          WHERE ((mp.meeting_id = m.id) AND (mp.user_id = auth.uid()))))))))
+[profiles] None (DELETE,PERMISSIVE) roles=authenticated
+  USING: (auth.uid() = id)
+[profiles] None (INSERT,PERMISSIVE) roles=authenticated
+  CHECK: (auth.uid() = id)
+[profiles] None (SELECT,PERMISSIVE) roles=authenticated
+  USING: (auth.uid() = id)
+[profiles] None (UPDATE,PERMISSIVE) roles=authenticated
+  USING: (auth.uid() = id)
+  CHECK: (auth.uid() = id)
+[recordings] None (INSERT,PERMISSIVE) roles=authenticated
+  CHECK: (EXISTS ( SELECT 1
+   FROM meetings m
+  WHERE ((m.id = recordings.meeting_id) AND ((m.owner = auth.uid()) OR (EXISTS ( SELECT 1
+           FROM meeting_participants mp
+          WHERE ((mp.meeting_id = m.id) AND (mp.user_id = auth.uid()))))))))
+[recordings] None (SELECT,PERMISSIVE) roles=authenticated
+  USING: (EXISTS ( SELECT 1
+   FROM meetings m
+  WHERE ((m.id = recordings.meeting_id) AND ((m.owner = auth.uid()) OR (EXISTS ( SELECT 1
+           FROM meeting_participants mp
+          WHERE ((mp.meeting_id = m.id) AND (mp.user_id = auth.uid()))))))))
+[slides] None (INSERT,PERMISSIVE) roles=authenticated
+  CHECK: (EXISTS ( SELECT 1
+   FROM (presentations p
+     JOIN meetings m ON ((m.id = p.meeting_id)))
+  WHERE ((p.id = slides.presentation_id) AND ((m.owner = auth.uid()) OR (EXISTS ( SELECT 1
+           FROM meeting_participants mp
+          WHERE ((mp.meeting_id = m.id) AND (mp.user_id = auth.uid()))))))))
+[slides] None (SELECT,PERMISSIVE) roles=authenticated
+  USING: (EXISTS ( SELECT 1
+   FROM (presentations p
+     JOIN meetings m ON ((m.id = p.meeting_id)))
+  WHERE ((p.id = slides.presentation_id) AND ((m.owner = auth.uid()) OR (EXISTS ( SELECT 1
+           FROM meeting_participants mp
+          WHERE ((mp.meeting_id = m.id) AND (mp.user_id = auth.uid()))))))))
+[subscriptions] None (SELECT,PERMISSIVE) roles=authenticated
+  USING: (auth.uid() = user_id)
+[transcripts] None (INSERT,PERMISSIVE) roles=public
+  CHECK: (auth.uid() = user_id)
+[transcripts] None (SELECT,PERMISSIVE) roles=public
+  USING: (auth.uid() = user_id)
+[transcripts] None (INSERT,PERMISSIVE) roles=public
+  CHECK: (user_id = ( SELECT auth.uid() AS uid))
+[transcripts] None (SELECT,PERMISSIVE) roles=public
+  USING: (user_id = ( SELECT auth.uid() AS uid))

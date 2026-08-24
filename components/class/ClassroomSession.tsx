@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { ClassroomParticipant } from '@/types';
 import { ClassroomPreJoin } from './ClassroomPreJoin';
 import { ClassroomLayout } from './ClassroomLayout';
-import { canPublishClassroomMedia, findActiveScreenShare, findActiveScreenShare, partitionParticipants, parseClassroomRoleFromMetadata } from '@/lib/classroomSeating';
+import { canPublishClassroomMedia, findActiveScreenShare, partitionParticipants, parseClassroomRoleFromMetadata } from '@/lib/classroomSeating';
 import RemoteAudioRenderer, { collectRemoteMicrophonePublications, type RemoteAudioTrackReference } from '@/components/live/RemoteAudioRenderer';
 import { SharedLiveRoomActivityProvider } from '@/components/live/SharedLiveRoomActivityProvider';
 import type { Room } from 'livekit-client';
@@ -113,7 +113,7 @@ export function ClassroomSession({
       const { token, url } = await response.json();
 
       // Import LiveKit and connect
-      const { Room, Track } = await import('livekit-client');
+      const { Room, RoomEvent, Track } = await import('livekit-client');
       const room = new Room({ adaptiveStream: true, dynacast: true });
       roomRef.current = room;
 

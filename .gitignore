@@ -87,3 +87,9 @@ next-env.d.ts
 ENV_*.md
 CODEBASE_ANALYSIS.md
 *.bak
+
+# Local/private forensic and credential artifacts
+supabase_token.txt
+supabase_remote_dump.sql
+production_dump.sql
+supabase_debug_migration.json

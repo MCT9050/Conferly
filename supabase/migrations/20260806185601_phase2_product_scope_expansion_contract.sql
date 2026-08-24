@@ -64,6 +64,26 @@ create table if not exists public.subscription_webhook_events (
   processed_at timestamptz
 );
 
+-- ----------------------------------------------------------------------------
+-- Reconciliation fix (P0): ensure the full webhook ledger schema exists.
+-- An earlier migration (20260806000001_product_scoped_entitlements.sql) may have
+-- already created subscription_webhook_events as a SLIM table (lacking
+-- external_subscription_id, external_event_at, status, error, received_at,
+-- processed_at). `CREATE TABLE IF NOT EXISTS` above is a no-op when the slim
+-- table already exists, so without these idempotent ADD COLUMN statements the
+-- index below on (external_subscription_id, product_line) and the webhook RPC
+-- would reference non-existent columns and ERROR, rolling the whole migration
+-- back on a fresh `supabase db reset`. This must be non-destructive and
+-- idempotent so it is safe on both slim-schema and full-schema databases.
+-- ----------------------------------------------------------------------------
+alter table public.subscription_webhook_events
+  add column if not exists external_subscription_id text,
+  add column if not exists external_event_at timestamptz,
+  add column if not exists status text not null default 'processing',
+  add column if not exists error text,
+  add column if not exists received_at timestamptz not null default now(),
+  add column if not exists processed_at timestamptz;
+
 alter table public.subscription_webhook_events enable row level security;
 
 revoke all on table public.subscription_webhook_events from anon, authenticated, public;

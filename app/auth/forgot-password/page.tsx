@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { requestPasswordReset } from '@/app/actions/auth-recovery';
 import type { ForgotPasswordResult } from '@/app/actions/auth-recovery';
 import Logo from '@/components/Logo';
 import { Mail, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
@@ -19,6 +18,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setStatus(null);
 
+    const { requestPasswordReset } = await import('@/app/actions/auth-recovery');
     const result = await requestPasswordReset(email.trim());
     setStatus(result);
     setLoading(false);
@@ -62,7 +62,7 @@ export default function ForgotPasswordPage() {
           <div className="text-center space-y-2">
             <h2 className="text-lg font-semibold text-slate-200">Forgot your password?</h2>
             <p className="text-sm text-slate-400">
-              Enter your email address and we&#39;ll send you a reset link.
+              Enter your email address and we\'ll send you a reset link.
             </p>
           </div>
 

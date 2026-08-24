@@ -3,7 +3,6 @@
 // app/actions/checkout-actions.ts
 // Server action to generate Lemon Squeezy checkout URLs (product-scoped)
 
-import { getServerSession } from '../../lib/auth';
 import { createCheckout, type SupportedPlanTier } from '../../lib/lemon-squeezy';
 
 export type CheckoutActionResult = {
@@ -17,6 +16,7 @@ export type CheckoutActionResult = {
  */
 async function createPlanCheckoutInternal(plan: SupportedPlanTier): Promise<CheckoutActionResult> {
   try {
+    const { getServerSession } = await import('../../lib/auth');
     const session = await getServerSession();
     if (!session?.userId) {
       return { error: 'You must be signed in to upgrade your plan.' };
@@ -161,6 +161,7 @@ export async function createClassroomPlusCheckout(): Promise<CheckoutActionResul
  */
 export async function getUserSubscription() {
   try {
+    const { getServerSession } = await import('../../lib/auth');
     const session = await getServerSession();
     if (!session?.userId) {
       return null;
