@@ -11,8 +11,8 @@ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='meetings') THEN
     EXECUTE 'ALTER TABLE public.meetings ADD COLUMN IF NOT EXISTS owner uuid REFERENCES auth.users(id) ON DELETE SET NULL';
     EXECUTE 'ALTER TABLE public.meetings ENABLE ROW LEVEL SECURITY';
-    FOR r IN SELECT polname FROM pg_policies WHERE schemaname='public' AND tablename='meetings' LOOP
-      EXECUTE format('DROP POLICY IF EXISTS %I ON public.meetings', r.polname);
+    FOR r IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='meetings' LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.meetings', r.policyname);
     END LOOP;
     EXECUTE $pol$
       CREATE POLICY meetings_select_for_participants
@@ -67,7 +67,8 @@ BEGIN
     ALTER TABLE public.meeting_participants ENABLE ROW LEVEL SECURITY;
     DROP POLICY IF EXISTS participants_insert_self_or_inviter ON public.meeting_participants;
     DROP POLICY IF EXISTS participants_select_for_member_or_owner ON public.meeting_participants;
-    DROP POLICY IF EXISTS participants_modify_own ON public.meeting_participants;
+    DROP POLICY IF EXISTS participants_modify_own_update ON public.meeting_participants;
+    DROP POLICY IF EXISTS participants_modify_own_delete ON public.meeting_participants;
     EXECUTE $pol$
       CREATE POLICY participants_insert_self_or_inviter
         ON public.meeting_participants
@@ -252,11 +253,13 @@ END$$;
 
 -- 3. Add missing policies for analytics_events and subscriptions.
 DO $$
+DECLARE
+  r record;
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='analytics_events') THEN
     ALTER TABLE public.analytics_events ENABLE ROW LEVEL SECURITY;
-    FOR r IN SELECT polname FROM pg_policies WHERE schemaname='public' AND tablename='analytics_events' LOOP
-      EXECUTE format('DROP POLICY IF EXISTS %I ON public.analytics_events', r.polname);
+    FOR r IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='analytics_events' LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.analytics_events', r.policyname);
     END LOOP;
     EXECUTE $pol$
       CREATE POLICY analytics_events_insert_authenticated
@@ -284,11 +287,13 @@ BEGIN
 END$$;
 
 DO $$
+DECLARE
+  r record;
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='subscriptions') THEN
     ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
-    FOR r IN SELECT polname FROM pg_policies WHERE schemaname='public' AND tablename='subscriptions' LOOP
-      EXECUTE format('DROP POLICY IF EXISTS %I ON public.subscriptions', r.polname);
+    FOR r IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='subscriptions' LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.subscriptions', r.policyname);
     END LOOP;
     EXECUTE $pol$
       CREATE POLICY subscriptions_owner_only
@@ -306,11 +311,13 @@ END$$;
 
 -- 4. Add missing policies for transcripts, notes, chat_messages, and payments.
 DO $$
+DECLARE
+  r record;
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='transcripts') THEN
     ALTER TABLE public.transcripts ENABLE ROW LEVEL SECURITY;
-    FOR r IN SELECT polname FROM pg_policies WHERE schemaname='public' AND tablename='transcripts' LOOP
-      EXECUTE format('DROP POLICY IF EXISTS %I ON public.transcripts', r.polname);
+    FOR r IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='transcripts' LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.transcripts', r.policyname);
     END LOOP;
     EXECUTE $pol$
       CREATE POLICY transcripts_select_for_user
@@ -327,11 +334,13 @@ BEGIN
 END$$;
 
 DO $$
+DECLARE
+  r record;
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='notes') THEN
     ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
-    FOR r IN SELECT polname FROM pg_policies WHERE schemaname='public' AND tablename='notes' LOOP
-      EXECUTE format('DROP POLICY IF EXISTS %I ON public.notes', r.polname);
+    FOR r IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='notes' LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.notes', r.policyname);
     END LOOP;
     EXECUTE $pol$
       CREATE POLICY notes_select_for_user
@@ -354,11 +363,13 @@ BEGIN
 END$$;
 
 DO $$
+DECLARE
+  r record;
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='chat_messages') THEN
     ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
-    FOR r IN SELECT polname FROM pg_policies WHERE schemaname='public' AND tablename='chat_messages' LOOP
-      EXECUTE format('DROP POLICY IF EXISTS %I ON public.chat_messages', r.polname);
+    FOR r IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='chat_messages' LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.chat_messages', r.policyname);
     END LOOP;
     EXECUTE $pol$
       CREATE POLICY chat_messages_select_for_user
@@ -375,11 +386,13 @@ BEGIN
 END$$;
 
 DO $$
+DECLARE
+  r record;
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='payments') THEN
     ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
-    FOR r IN SELECT polname FROM pg_policies WHERE schemaname='public' AND tablename='payments' LOOP
-      EXECUTE format('DROP POLICY IF EXISTS %I ON public.payments', r.polname);
+    FOR r IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='payments' LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.payments', r.policyname);
     END LOOP;
     EXECUTE $pol$
       CREATE POLICY payments_select_for_user
@@ -424,7 +437,7 @@ DECLARE
   func regprocedure;
 BEGIN
   FOR func IN
-    SELECT oid::regprocedure
+    SELECT p.oid::regprocedure
     FROM pg_proc p
     JOIN pg_namespace n ON p.pronamespace = n.oid
     WHERE n.nspname = 'public'

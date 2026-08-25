@@ -114,7 +114,8 @@ DO $$
 BEGIN
   EXECUTE 'DROP POLICY IF EXISTS meetings_select_for_participants ON public.meetings';
   EXECUTE 'DROP POLICY IF EXISTS meetings_insert_owner_only ON public.meetings';
-  EXECUTE 'DROP POLICY IF EXISTS meetings_modify_owner_only ON public.meetings';
+  EXECUTE 'DROP POLICY IF EXISTS meetings_modify_owner_only_update ON public.meetings';
+  EXECUTE 'DROP POLICY IF EXISTS meetings_modify_owner_only_delete ON public.meetings';
   
   EXECUTE $pol$
     CREATE POLICY meetings_select_for_org_or_participant

@@ -10,6 +10,8 @@
 -- 1. Enforce one participant membership per meeting and user.
 -- -----------------------------------------------------------------------------
 
+BEGIN;
+
 LOCK TABLE public.meeting_participants IN SHARE ROW EXCLUSIVE MODE;
 
 DO $duplicate_precheck$
@@ -190,3 +192,5 @@ GRANT INSERT (
 GRANT UPDATE (revoked_at)
   ON public.meeting_invitations
   TO authenticated;
+
+COMMIT;

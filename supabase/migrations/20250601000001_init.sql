@@ -49,6 +49,21 @@ ALTER TABLE meetings
 
 ALTER TABLE meetings ENABLE ROW LEVEL SECURITY;
 
+-- -----------------------------------------------------------------------------
+-- Meeting participants - membership and role assignment
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS meeting_participants (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  meeting_id uuid NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  role text NOT NULL DEFAULT 'attendee', -- host, presenter, attendee
+  invited_by uuid REFERENCES auth.users,
+  joined_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE meeting_participants ENABLE ROW LEVEL SECURITY;
+
 DROP POLICY IF EXISTS meetings_select_for_participants ON meetings;
 CREATE POLICY meetings_select_for_participants
   ON meetings
@@ -82,21 +97,6 @@ CREATE POLICY meetings_modify_owner_only_delete
   ON meetings
   FOR DELETE
   USING (owner = auth.uid());
-
--- -----------------------------------------------------------------------------
--- Meeting participants - membership and role assignment
--- -----------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS meeting_participants (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  meeting_id uuid NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  role text NOT NULL DEFAULT 'attendee', -- host, presenter, attendee
-  invited_by uuid REFERENCES auth.users,
-  joined_at timestamptz,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE meeting_participants ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS participants_insert_self_or_inviter ON meeting_participants;
 CREATE POLICY participants_insert_self_or_inviter

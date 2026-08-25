@@ -80,7 +80,7 @@ WHERE product_line IS NULL;
 -- the unique constraint is applied. These are reported, not deleted.
 
 -- Validate: count rows per (user_id, product_line) to find duplicates
-CREATE TEMP VIEW IF NOT EXISTS duplicate_subscriptions AS
+CREATE TEMP VIEW duplicate_subscriptions AS
 SELECT user_id, product_line, COUNT(*) as subscription_count
 FROM subscriptions
 GROUP BY user_id, product_line
