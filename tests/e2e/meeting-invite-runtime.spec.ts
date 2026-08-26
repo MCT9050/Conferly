@@ -306,7 +306,7 @@ test.describe('meeting invite active runtime wiring', () => {
     ).toBe('/class/classrooms/classroom-123');
   });
 
-  test('active Meet dashboard renders the Join Existing Meeting input', async () => {
+  test('legacy Meet dashboard redirects to the workspace dashboard while the Join Existing Meeting contract stays valid', async () => {
     const dashboardPage = await readFile(
       path.join(process.cwd(), 'app', 'meet', 'dashboard', 'page.tsx'),
       'utf8',
@@ -316,11 +316,17 @@ test.describe('meeting invite active runtime wiring', () => {
       'utf8',
     );
 
-    expect(dashboardPage).toContain("import JoinExistingMeeting from '@/components/meet/JoinExistingMeeting'");
-    expect(dashboardPage).toContain('<JoinExistingMeeting />');
+    // The legacy dashboard is now a pure redirect stub: older links must land
+    // on the unified workspace dashboard instead of a dead-end placeholder.
+    expect(dashboardPage).toContain("redirect('/dashboard')");
+    // ...and the stub must own nothing else: no resurrected legacy widgets.
+    expect(dashboardPage).not.toContain('CreateMeetingButton');
+
+    // The join-by-code runtime contract remains anchored in its component
+    // until the workspace surface re-mounts it.
+    expect(joinComponent).toContain('normalizeMeetingJoinTarget');
     expect(joinComponent).toContain('Meeting link or code');
     expect(joinComponent).toContain('Join meeting');
-    expect(joinComponent).toContain('normalizeMeetingJoinTarget');
     expect(joinComponent).not.toContain("fetch('/api/meetings'");
   });
 
