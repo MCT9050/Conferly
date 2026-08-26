@@ -85,17 +85,31 @@ test.describe('Phase 2 — Product-Scoped Monetization and Entitlement Contract'
   test('Class token and capacity enforcement are server-authoritative and owner-safe', async () => {
     const lkToken = await readProjectFile('app', 'api', 'lk-token', 'route.ts');
     const entitlements = await readProjectFile('lib', 'classEntitlements.ts');
+    const migration = await readProjectFile('supabase', 'migrations', '20260827000000_phase2_class_concurrency_atomic.sql');
 
     expect(lkToken).toContain("domain === 'class'");
     expect(lkToken).toContain('payload.role !== undefined');
     expect(lkToken).toContain('payload.roomId !== undefined');
     expect(lkToken).toContain('verifyClassLessonAccess(session.userId, classroomId, lessonId)');
-    expect(lkToken).toContain('enforceClassCapacity(');
+    // Phase 2 uses the concurrency-safe atomic enforcement path.
+    expect(lkToken).toContain('enforceClassCapacityAtomic(');
     expect(lkToken).toContain("verifyAccess('meet', session.userId, roomId)");
     expect(entitlements).toContain(".select('student_id, role, enrollment_status')");
     expect(entitlements).toContain('enrollment.student_id === ownerId');
     expect(entitlements).toContain('teacherCount = 1');
     expect(entitlements).toContain('counts.teacherCount > capacity.teacherLimit');
     expect(entitlements).toContain('counts.studentCount > capacity.studentLimit');
+
+    // The atomic RPC remains the intended concurrency-safe backend: it locks the
+    // classroom row (FOR UPDATE), resolves owner/teacher vs student semantics,
+    // handles teacher caps / student plan limits / custom participant caps /
+    // requester inclusion / no-subscription, and refuses when exceeded.
+    expect(migration).toContain('enforce_classroom_capacity_atomic(');
+    expect(migration).toContain('FOR UPDATE');
+    expect(migration).toContain('WHEN \'class_10\' THEN 10');
+    expect(migration).toContain('v_teacher_limit := 2');
+    expect(migration).toContain('ELSE');
+    expect(migration).toContain('v_participant_cap');
+    expect(migration).toContain('No active Class subscription for this classroom owner.');
   });
 });

@@ -5,6 +5,7 @@ import path from "node:path";
 test.describe("presentation main-stage layout source contracts", () => {
   let presentationStageTsx: string;
   let meetLiveSessionTsx: string;
+  let meetSharedLiveRoomContentTsx: string;
 
   test.beforeAll(async () => {
     presentationStageTsx = await readFile(
@@ -13,6 +14,10 @@ test.describe("presentation main-stage layout source contracts", () => {
     );
     meetLiveSessionTsx = await readFile(
       path.resolve(process.cwd(), "components/meet/MeetLiveSession.tsx"),
+      "utf-8"
+    );
+    meetSharedLiveRoomContentTsx = await readFile(
+      path.resolve(process.cwd(), "components/meet/MeetSharedLiveRoomContent.tsx"),
       "utf-8"
     );
   });
@@ -63,12 +68,28 @@ test.describe("presentation main-stage layout source contracts", () => {
   });
 
   test.describe("Meet", () => {
-    test("renders the focused presentation before the participant grid", () => {
-      expect(meetLiveSessionTsx).toMatch(
-        /<PresentationStage presentation=\{focusedPresentation\} \/>[\s\S]*?<VideoGrid/
+    test("renders the focused presentation before the participant gallery in the shared live room", () => {
+      // MeetLiveSession delegates the shared room rendering (focused
+      // presentation, main stage, and participant gallery) to the shared
+      // foundation — it no longer owns PresentationStage/VideoGrid directly.
+      expect(meetLiveSessionTsx).toContain("focusedPresentation={focusedPresentation}");
+      expect(meetLiveSessionTsx).toContain("<MeetSharedLiveRoomContent");
+      expect(meetLiveSessionTsx).toContain("<MeetingControls");
+      expect(meetLiveSessionTsx).not.toContain("<VideoGrid");
+      expect(meetLiveSessionTsx).not.toMatch(/<PresentationStage presentation=\{focusedPresentation\}/);
+
+      // In the shared live room, the focused presentation is rendered as the
+      // main-stage presentation content and structurally precedes the
+      // participant gallery in the JSX source.
+      expect(meetSharedLiveRoomContentTsx).toContain(
+        "presentationContent={focusedPresentation ? <PresentationStage presentation={focusedPresentation}"
       );
-      expect(meetLiveSessionTsx).toMatch(/<VideoGrid/);
-      expect(meetLiveSessionTsx).toMatch(/<MeetingControls/);
+      expect(meetSharedLiveRoomContentTsx).toContain("<LiveStage");
+      expect(meetSharedLiveRoomContentTsx).toContain("<ResponsiveParticipantGallery");
+      const stageIndex = meetSharedLiveRoomContentTsx.indexOf("<LiveStage");
+      const galleryIndex = meetSharedLiveRoomContentTsx.indexOf("<ResponsiveParticipantGallery");
+      expect(stageIndex).toBeGreaterThan(-1);
+      expect(galleryIndex).toBeGreaterThan(stageIndex);
     });
 
     test("keeps remote and local screen-share hooks", () => {
