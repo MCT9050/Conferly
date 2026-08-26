@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerEnv } from '@/lib/serverEnv';
+import { getServerSession } from '@/lib/auth';
 import type { MonitoringEvent } from '@/lib/monitoring';
 
 function isSameOrigin(request: Request) {
@@ -20,6 +21,13 @@ function validateEvent(event: any): event is MonitoringEvent {
 }
 
 export async function POST(request: Request) {
+  // P4-7 hardening: require an authenticated session, mirroring /api/heartbeat,
+  // so anonymous callers cannot relay arbitrary events to the monitoring sink.
+  const session = await getServerSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   if (!isSameOrigin(request)) {
     return NextResponse.json({ error: 'Cross-origin monitoring events are not allowed.' }, { status: 403 });
   }

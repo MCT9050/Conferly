@@ -22,7 +22,23 @@ export async function POST(request: Request) {
   try {
     const payload = (await request.json().catch(() => ({}))) as CreateMeetingRequest;
     if (typeof payload.slug === 'string' && payload.slug.trim()) {
-      requestedSlug = normalizeMeetingSlug(payload.slug);
+      // normalizeMeetingSlug throws if the slug does not match the
+      // 6-64 lowercase letter/number/hyphen pattern; the catch below maps
+      // that to a 400 with a specific message.
+      try {
+        requestedSlug = normalizeMeetingSlug(payload.slug);
+      } catch (slugErr) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              slugErr instanceof Error
+                ? slugErr.message
+                : 'Invalid meeting slug',
+          },
+          { status: 400 },
+        );
+      }
     }
   } catch {
     return NextResponse.json(

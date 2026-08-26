@@ -48,9 +48,14 @@ async function checkLiveKit(): Promise<PillarResult> {
 // Pillar 2 — Business (Lemon Squeezy)
 // ---------------------------------------------------------------------------
 
+// Current Lemon Squeezy variant env vars (must mirror PLAN_TO_VARIANT_ENV in
+// lib/lemon-squeezy.ts). The legacy NEXT_PUBLIC_VARIANT_ID_CLASSROOM_PLUS key
+// was removed: the classroom_plus plan no longer exists in the pricing config,
+// and requiring it here made the health check fail permanently.
 const VARIANT_KEYS = [
   'NEXT_PUBLIC_VARIANT_ID_CLASSROOM',
-  'NEXT_PUBLIC_VARIANT_ID_CLASSROOM_PLUS',
+  'NEXT_PUBLIC_VARIANT_ID_CLASS_20',
+  'NEXT_PUBLIC_VARIANT_ID_CLASS_30',
   'NEXT_PUBLIC_VARIANT_ID_INDIVIDUAL',
   'NEXT_PUBLIC_VARIANT_ID_PRO',
   'NEXT_PUBLIC_VARIANT_ID_UNLIMITED',

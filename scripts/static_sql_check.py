@@ -8,6 +8,13 @@ Performs lightweight PostgreSQL SQL sanity checks without a database:
   4. DO {$$ | $tag$} blocks are well-formed (BEGIN/END balance is not checked
      deeply, but DO ... END $tag$; shape is required).
   5. Naive single-quote balance outside dollar-quoted bodies and comments.
+
+Rule 3 is evaluated from the forward scan: the last character that is part of
+top-level SQL code (i.e. not inside a comment, single-quoted string, or
+dollar-quoted body) must be ';'. Trailing comments after the final statement
+are therefore ignored correctly — including line comments and banner lines,
+which an earlier backward-scanning implementation could not handle (any file
+ending in a comment was always reported as failing).
 """
 import re
 import sys
@@ -37,8 +44,8 @@ def scan(path: str):
     body = None         # inside dollar quote: collect chars
     body_tag = None
 
-    # For validation we mostly need: tags balance, quotes balance outside bodies.
-    # Walk with simple state machine (no body content tracking needed except balance).
+    # Forward tracking of the last top-level code character (rule 3).
+    last_code_pos = -1
 
     pos = 0
     while pos < n:
@@ -83,6 +90,10 @@ def scan(path: str):
             pos += 1
             continue
 
+        # Top-level position: any non-whitespace char belongs to SQL code.
+        # Recorded AFTER the state-transition branches below are given a chance
+        # to run first — otherwise the leading '--' of a trailing line comment
+        # would itself be counted as code.
         if ch == "-" and nxt == "-":
             in_line_comment = True
             pos += 2
@@ -95,6 +106,9 @@ def scan(path: str):
             in_single_quote = True
             pos += 1
             continue
+
+        if ch not in " \t\r\n":
+            last_code_pos = pos
 
         m = DOLLAR_RE.match(text, pos)
         if m:
@@ -115,41 +129,9 @@ def scan(path: str):
     if in_line_comment:
         pass  # line comment at EOF is fine
 
-    # crude statement completeness: last meaningful (non-comment) char must be ';'
-    def last_meaningful_char(txt: str) -> str:
-        i2 = len(txt) - 1
-        in_lc = False      # scanning backwards: track line-comment state roughly
-        # simply strip trailing whitespace/comments from the end
-        while i2 >= 0:
-            c = txt[i2]
-            if c in " \t\r\n":
-                i2 -= 1
-                continue
-            # remove a trailing block comment /* ... */
-            if c == "/" and i2 >= 1 and txt[i2-1] == "*":
-                # find matching opening /*
-                depth = 1
-                i2 -= 2
-                while i2 >= 1 and depth > 0:
-                    if txt[i2] == "/" and txt[i2-1] == "*":
-                        depth -= 1
-                        i2 -= 2
-                    elif txt[i2] == "*" and txt[i2-1] == "/":
-                        depth += 1
-                        i2 -= 2
-                    else:
-                        i2 -= 1
-                continue
-            # remove a trailing line comment: find newline before the '--'
-            # (simple approach: cut back to previous newline and retry)
-            if c == "-" and i2 >= 1 and txt[i2-1] == "-":
-                nl = txt.rfind("\n", 0, i2-1)
-                i2 = nl
-                continue
-            return c
-        return ""
-
-    if last_meaningful_char(text) != ";":
+    # Rule 3: the final top-level code character must terminate a statement.
+    # A file with no top-level code content at all also fails this rule.
+    if last_code_pos < 0 or text[last_code_pos] != ";":
         errors.append("last non-comment content is not a semicolon-terminated statement")
 
     return errors, statements

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { createLiveKitToken, LiveKitRole } from '@/lib/livekit';
 import { verifyAccess, verifyClassLessonAccess } from '@/lib/accessControl';
-import { enforceClassCapacity } from '@/lib/classEntitlements';
+import { enforceClassCapacityAtomic } from '@/lib/classEntitlements';
 import type { ClassroomRole } from '@/types';
 
 const VALID_ROLES = new Set<LiveKitRole>(['participant', 'spectator']);
@@ -145,7 +145,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const capacity = await enforceClassCapacity(
+    const capacity = await enforceClassCapacityAtomic(
       classroom.id,
       classroom.owner_id,
       classroomRoleForToken

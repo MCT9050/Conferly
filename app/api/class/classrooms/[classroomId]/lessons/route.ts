@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+// P4-6: write path uses the established service-role client after explicit
+// application-level authorization (mirrors enrollments/assignments routes).
+import { getSupabaseServerClient } from '@/lib/supabaseServerClient';
 import { normaliseRequiredTitle } from '@/lib/classValidation';
 import { verifyClassroomTeachingAccess } from '@/lib/classroomAuth';
 
@@ -35,7 +37,7 @@ export async function POST(
     scheduledAt = parsed.toISOString();
   }
 
-  const supabase = createSupabaseServerClient({ request });
+  const supabase = getSupabaseServerClient();
   const { data, error } = await supabase
     .from('classroom_lessons')
     .insert({ classroom_id: access.classroom.id, title: title.value, scheduled_at: scheduledAt, status: 'scheduled' })

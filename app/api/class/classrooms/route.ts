@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+// P4-6: writes use the established service-role client after explicit
+// application-level authorization; the read path keeps its original
+// user-JWT SSR client so list semantics are byte-for-byte unchanged.
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseServerClient } from '@/lib/supabaseServerClient';
 import {
   createClassroomSlug,
   normaliseDescription,
@@ -15,7 +19,6 @@ export async function POST(request: NextRequest) {
   if (!session?.userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
   let payload: Record<string, unknown>;
   try {
     payload = await request.json();
@@ -34,7 +37,7 @@ export async function POST(request: NextRequest) {
   const priceCents = normalisePriceCents(payload.price_cents);
   if (!priceCents.ok) return NextResponse.json({ error: priceCents.error }, { status: 400 });
 
-  const supabase = createSupabaseServerClient({ request });
+  const supabase = getSupabaseServerClient();
 
   let data: { id: string; slug: string; title: string } | null = null;
   let unresolvedCollision = false;

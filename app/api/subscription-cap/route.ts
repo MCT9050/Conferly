@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     if (!session?.userId) {
       // Unauthenticated users get the default trial cap for the requested product line
       if (productLine === 'class') {
-        return NextResponse.json({ studentCap: 0, teacherCap: 0, plan: 'class_10', productLine });
+        return NextResponse.json({ studentCap: 0, teacherCap: 0, plan: 'trial', productLine });
       }
       return NextResponse.json({ participantCap: 2, plan: 'trial', productLine });
     }
@@ -42,7 +42,8 @@ export async function GET(request: NextRequest) {
     if (error || !data) {
       // No subscription record for this product line yet — default to trial
       if (productLine === 'class') {
-        return NextResponse.json({ studentCap: 0, teacherCap: 0, plan: 'class_10', productLine });
+        // P4-7: do not label a zero-cap fallback as a paid plan.
+        return NextResponse.json({ studentCap: 0, teacherCap: 0, plan: 'trial', productLine });
       }
       return NextResponse.json({ participantCap: 2, plan: 'meet_free', productLine });
     }

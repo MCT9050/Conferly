@@ -180,3 +180,79 @@ export async function enforceClassCapacity(
 
   return { allowed: true, capacity, counts };
 }
+
+type AtomicCapacityRpcResult = {
+  allowed: boolean;
+  reason?: string;
+  capacity?: { teacher_limit: number; student_limit: number; plan: string };
+  counts?: { teacher_count: number; student_count: number };
+};
+
+/**
+ * Database-authoritative capacity check.
+ *
+ * Delegates the count + decision to the SECURITY DEFINER RPC
+ * `enforce_classroom_capacity_atomic`, which acquires a row-level lock on the
+ * classroom before reading enrollment counts. This is the concurrency-safe
+ * path and should be preferred over the in-process `enforceClassCapacity`
+ * helper for any hot join path (e.g. the lk-token route).
+ *
+ * The function returns the same shape as `enforceClassCapacity` so callers do
+ * not need to branch on the path used.
+ */
+export async function enforceClassCapacityAtomic(
+  classroomId: string,
+  ownerId: string,
+  requestingRole: 'owner' | 'instructor' | 'ta' | 'student' | 'auditor'
+): Promise<CapacityEnforcementResult> {
+  const supabase = getSupabaseServerClient();
+
+  const { data, error } = await supabase.rpc('enforce_classroom_capacity_atomic', {
+    p_classroom_id: classroomId,
+    p_owner_id: ownerId,
+    p_requesting_role: requestingRole,
+  });
+
+  if (error) {
+    return {
+      allowed: false,
+      reason: 'Capacity check failed; please try again.',
+    };
+  }
+
+  const result = (data as unknown) as AtomicCapacityRpcResult | null;
+  if (!result || typeof result.allowed !== 'boolean') {
+    return {
+      allowed: false,
+      reason: 'Capacity check returned an unexpected response.',
+    };
+  }
+
+  if (!result.allowed) {
+    return {
+      allowed: false,
+      reason: result.reason ?? 'Class capacity limit reached',
+    };
+  }
+
+  const cap = result.capacity;
+  const counts = result.counts;
+  if (!cap) {
+    return { allowed: true };
+  }
+
+  return {
+    allowed: true,
+    capacity: {
+      studentLimit: cap.student_limit,
+      teacherLimit: cap.teacher_limit,
+      maxLiveOccupancy: cap.student_limit + cap.teacher_limit,
+      plan: cap.plan,
+      custom: cap.plan === 'class_custom',
+    },
+    counts: counts
+      ? { studentCount: counts.student_count, teacherCount: counts.teacher_count }
+      : undefined,
+  };
+}
+

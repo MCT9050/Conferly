@@ -5,6 +5,9 @@ import { getServerSession } from '@/lib/auth';
 import { resolveClassroom, verifyClassroomAccess, isTeachingRole } from '@/lib/classroomAuth';
 import CreateLessonForm from '@/components/class/CreateLessonForm';
 import LaunchLessonButton from '@/components/class/LaunchLessonButton';
+import CancelLessonButton from '@/components/class/CancelLessonButton';
+import EndLessonButton from '@/components/class/EndLessonButton';
+
 
 function formatScheduledAt(value: string | null): string {
   if (!value) return 'No scheduled time';
@@ -50,9 +53,22 @@ export default async function LessonsPage({ params }: { params: Promise<{ slug: 
                 <h2 className="font-medium text-white">{lesson.title}</h2>
                 <p className="text-sm text-slate-400">{formatScheduledAt(lesson.scheduled_at)} · {lesson.status}</p>
               </div>
-              <div className="flex gap-2">
-                {lesson.status === 'live' && <Link className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white" href={`/class/classrooms/${canonicalSlug}/lessons/${lesson.id}/live`}>Join Live</Link>}
+                            <div className="flex flex-wrap gap-2">
+                {lesson.status === 'live' && (
+                  <>
+                    <Link className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white" href={`/class/classrooms/${canonicalSlug}/lessons/${lesson.id}/live`}>Join Live</Link>
+                    {canManage && <EndLessonButton lessonId={lesson.id} />}
+                  </>
+                )}
                 {canManage && lesson.status === 'scheduled' && <LaunchLessonButton lessonId={lesson.id} />}
+                {canManage && lesson.status === 'scheduled' && <CancelLessonButton lessonId={lesson.id} />}
+
+                <Link
+                  className="rounded-lg border border-white/15 px-4 py-2 text-sm text-slate-100 hover:bg-white/5"
+                  href={`/class/classrooms/${canonicalSlug}/lessons/${lesson.id}/assignments`}
+                >
+                  Assignments
+                </Link>
               </div>
             </div>
           ))}
