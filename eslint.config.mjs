@@ -14,6 +14,14 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Node.js scripts (require() is expected in plain JS scripts)
     "scripts/**",
+    // Dependencies are not application code (also ignored by ESLint by default):
+    "node_modules/**",
+    // Generated Playwright traces, test results, build artifacts & coverage
+    // output (gitignored tooling output — must not be linted as source code):
+    "playwright-report/**",
+    "test-results/**",
+    "coverage/**",
+    ".vercel/**",
   ]),
   {
     rules: {
