@@ -81,7 +81,7 @@ test.describe('Redirect Analysis', () => {
       const visited = new Set<string>();
       let currentUrl = apex.locationHeader;
       let loopDetected = false;
-      let chain = [APEX, currentUrl];
+      const chain = [APEX, currentUrl];
       visited.add(APEX);
 
       for (let i = 0; i < 10; i++) {
@@ -123,7 +123,7 @@ test.describe('Redirect Analysis', () => {
       const visited = new Set<string>();
       let currentUrl = www.locationHeader;
       let loopDetected = false;
-      let chain = [BASE, `(${www.status})`, currentUrl];
+      const chain = [BASE, `(${www.status})`, currentUrl];
       visited.add(BASE);
 
       for (let i = 0; i < 10; i++) {
