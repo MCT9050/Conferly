@@ -139,7 +139,7 @@ export default function MeetPricingPage() {
               advanced compliance, and volume licensing for organizations with 50+ users.
             </p>
             <a 
-              href="mailto:sales@conferly.app"
+              href="mailto:info@conferly.site"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block px-8 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg"

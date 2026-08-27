@@ -155,33 +155,5 @@ export async function createClassroomPlusCheckout(): Promise<CheckoutActionResul
   return { error: 'Classroom+ is a legacy plan. Please contact sales at info@conferly.site.' };
 }
 
-/**
- * Fetches the user's current subscription status from the database.
- * Returns both product lines independently.
- */
-export async function getUserSubscription() {
-  try {
-    const { getServerSession } = await import('../../lib/auth');
-    const session = await getServerSession();
-    if (!session?.userId) {
-      return null;
-    }
-
-    // Import supabase dynamically to avoid server/client import issues
-    const { getSupabaseServerClient } = await import('../../lib/supabaseServerClient');
-    const supabase = getSupabaseServerClient();
-
-    const { data, error } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', session.userId);
-
-    if (error) {
-      return null;
-    }
-
-    return data;
-  } catch {
-    return null;
-  }
-}
+// getUserSubscription() was removed in Phase 4 (P4-7): repo-wide search found
+// zero callers and no external export contract depended on it.
