@@ -256,3 +256,91 @@ export async function enforceClassCapacityAtomic(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Phase C: free-tier room-capacity envelope for Class
+// ---------------------------------------------------------------------------
+
+const FREE_CLASS_ENVELOPE_PLAN = 'class_10';
+
+export type FreeClassCapacityResult = {
+  allowed: boolean;
+  reason?: string;
+  capacity?: ClassCapacity;
+  counts?: ClassRoleCounts;
+};
+
+/**
+ * Free-tier live-capacity envelope for a classroom whose owner has no active
+ * Class subscription.
+ *
+ * The database-authoritative `enforce_classroom_capacity_atomic` RPC is
+ * UNCHANGED and still hard-denies any live join for a subscription-less owner.
+ * This helper composes at the application layer: when that atomic check has
+ * denied an owner-role join solely for the missing owner subscription, the
+ * live join is re-evaluated against the smallest published Class plan envelope
+ * (class_10 limits, resolved from the canonical pricing table — 10 students /
+ * 2 teachers). Paid owners never reach this path.
+ *
+ * Counting conventions mirror the atomic RPC: the requester's own enrollment
+ * row is included in the counts and a join is denied when
+ * count > limit.
+ */
+export async function enforceFreeClassRoomCapacity(
+  classroomId: string,
+  ownerId: string,
+  requestingRole: 'owner' | 'instructor' | 'ta' | 'student' | 'auditor'
+): Promise<FreeClassCapacityResult> {
+  const studentLimit = getClassStudentLimit(FREE_CLASS_ENVELOPE_PLAN);
+  const teacherLimit = getClassTeacherLimit(FREE_CLASS_ENVELOPE_PLAN);
+  if (studentLimit === null || teacherLimit === null) {
+    return { allowed: false, reason: 'Free Class capacity is not configured.' };
+  }
+
+  const counts = await countClassroomRoles(classroomId, ownerId);
+
+  const isTeacherRequest = requestingRole === 'owner' || requestingRole === 'instructor' || requestingRole === 'ta';
+  const isStudentRequest = requestingRole === 'student' || requestingRole === 'auditor';
+
+  if (isTeacherRequest && counts.teacherCount > teacherLimit) {
+    return {
+      allowed: false,
+      reason: `Teacher limit reached (${teacherLimit}). Upgrade to add more teachers.`,
+      capacity: {
+        studentLimit,
+        teacherLimit,
+        maxLiveOccupancy: studentLimit + teacherLimit,
+        plan: 'free',
+        custom: false,
+      },
+      counts,
+    };
+  }
+
+  if (isStudentRequest && counts.studentCount > studentLimit) {
+    return {
+      allowed: false,
+      reason: `Student seat limit reached (${studentLimit}). Upgrade for larger capacity.`,
+      capacity: {
+        studentLimit,
+        teacherLimit,
+        maxLiveOccupancy: studentLimit + teacherLimit,
+        plan: 'free',
+        custom: false,
+      },
+      counts,
+    };
+  }
+
+  return {
+    allowed: true,
+    capacity: {
+      studentLimit,
+      teacherLimit,
+      maxLiveOccupancy: studentLimit + teacherLimit,
+      plan: 'free',
+      custom: false,
+    },
+    counts,
+  };
+}
+

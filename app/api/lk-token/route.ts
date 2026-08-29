@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { createLiveKitToken, LiveKitRole } from '@/lib/livekit';
 import { verifyAccess, verifyClassLessonAccess } from '@/lib/accessControl';
-import { enforceClassCapacityAtomic } from '@/lib/classEntitlements';
+import { enforceClassCapacityAtomic, enforceFreeClassRoomCapacity, resolveClassEntitlement } from '@/lib/classEntitlements';
 import type { ClassroomRole } from '@/types';
 
 const VALID_ROLES = new Set<LiveKitRole>(['participant', 'spectator']);
@@ -151,9 +151,36 @@ export async function POST(request: Request) {
       classroomRoleForToken
     );
 
+    // Phase C: free-tier composition. The atomic capacity RPC is UNCHANGED and
+    // remains authoritative for paid owners — any denial under an active owner
+    // subscription stands. When the classroom owner has NO active Class
+    // subscription, the atomic RPC denies every join solely for that reason;
+    // in that case the registered free-tier allowance applies and the join is
+    // re-evaluated against the free capacity envelope (smallest published
+    // plan). Free-minute exhaustion is enforced at lesson launch (owner gate)
+    // and at accounting time, not here.
+    let effectiveCapacity = capacity;
     if (!capacity.allowed) {
+      const ownerEntitlement = await resolveClassEntitlement(classroom.owner_id);
+      if (!ownerEntitlement) {
+        const freeCapacity = await enforceFreeClassRoomCapacity(
+          classroom.id,
+          classroom.owner_id,
+          classroomRoleForToken
+        );
+        effectiveCapacity = freeCapacity.allowed
+          ? {
+              allowed: true,
+              capacity: freeCapacity.capacity,
+              counts: freeCapacity.counts,
+            }
+          : { allowed: false, reason: freeCapacity.reason };
+      }
+    }
+
+    if (!effectiveCapacity.allowed) {
       return NextResponse.json(
-        { error: capacity.reason ?? 'Class capacity limit reached' },
+        { error: effectiveCapacity.reason ?? 'Class capacity limit reached' },
         { status: 403 }
       );
     }

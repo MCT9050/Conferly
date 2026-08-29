@@ -3,6 +3,8 @@ import { getServerSession } from '@/lib/auth';
 import { getSupabaseServerClient } from '@/lib/supabaseServerClient';
 import { verifyClassroomTeachingAccess } from '@/lib/classroomAuth';
 import { isUuid } from '@/lib/classValidation';
+import { getFreeTierStatus } from '@/lib/freeTier';
+import { freeTierStartDecision } from '@/lib/freeTierAccounting';
 
 type LaunchResult = {
   ok?: boolean;
@@ -46,6 +48,25 @@ export async function POST(
   const access = await verifyClassroomTeachingAccess(session.userId, lesson.classroom_id);
   if (!access.granted || !classroom || access.classroom?.id !== lesson.classroom_id) {
     return NextResponse.json({ error: 'Only instructors can launch' }, { status: 403 });
+  }
+
+  // Phase C: free-tier access gate for Class. The classroom OWNER is the
+  // charged party per the Phase B contract (the same party whose subscription
+  // keys live capacity), so the gate runs when the owner launches their own
+  // lesson — the dominant flow. Existing authorization above remains
+  // authoritative; this only distinguishes paid / free available / free
+  // exhausted / registration required. Non-owner teaching roles keep the
+  // existing path; the Phase B consume RPC independently refuses to charge an
+  // exhausted or paid owner at accounting time.
+  if (classroom.owner_id === session.userId) {
+    const classFreeStatus = await getFreeTierStatus('class');
+    const decision = freeTierStartDecision(classFreeStatus);
+    if (!decision.allow) {
+      return NextResponse.json(
+        { error: decision.message, code: decision.code },
+        { status: decision.httpStatus }
+      );
+    }
   }
 
   // Atomic state-guarded launch via SECURITY DEFINER RPC. The RPC performs

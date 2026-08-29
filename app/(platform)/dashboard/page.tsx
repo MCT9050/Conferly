@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ProductSelector } from '@/components/platform/ProductSelector';
+import FreeTierStatusPanel from '@/components/platform/FreeTierStatusPanel';
 import type { RecentWorkspaceItem } from '@/lib/recentWorkspace';
 
 function sortByDate(a: RecentWorkspaceItem, b: RecentWorkspaceItem) {
@@ -54,6 +55,7 @@ export default async function DashboardPage() {
   return (
     <main className="min-h-screen bg-background">
       <div className="container mx-auto py-12">
+        {user?.id && <FreeTierStatusPanel />}
         <ProductSelector user={user} recentActivity={recentActivity} />
       </div>
     </main>

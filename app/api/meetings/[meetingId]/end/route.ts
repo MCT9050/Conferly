@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { verifyAccess } from '@/lib/accessControl';
 import { completeMeeting } from '@/lib/meetingLifecycle';
+import { recordFreeUsage, resolveMeetingOwnerId } from '@/lib/freeTierAccounting';
 
 /**
  * POST /api/meetings/[meetingId]/end  (P4-2b host end-action fallback)
@@ -38,6 +39,26 @@ export async function POST(
 
   if (!result.ok) {
     return NextResponse.json({ error: result.reason ?? 'Unable to end meeting' }, { status: 500 });
+  }
+
+  // Phase C: free-tier accounting on the authoritative termination event.
+  // Duration = complete_meeting_atomic's duration_seconds; first-wins via the
+  // RPC's already_ended flag (the LiveKit webhook shares this exact helper, so
+  // a meeting can never be charged twice). Paid owners are skipped inside the
+  // Phase B RPC; fewer than one full minute is never charged.
+  if (!result.already_ended) {
+    const ownerId = await resolveMeetingOwnerId(meetingId);
+    if (ownerId) {
+      const accounting = await recordFreeUsage(
+        ownerId,
+        'meet',
+        result.duration_seconds,
+        new Date(endedAtISO)
+      );
+      if (accounting.error) {
+        console.error('[MeetingEnd] free-tier accounting failed:', accounting.detail);
+      }
+    }
   }
 
   return NextResponse.json({

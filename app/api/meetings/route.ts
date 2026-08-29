@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { createExplicitMeeting, normalizeMeetingSlug } from '@/lib/meetingPersistence';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getFreeTierStatus } from '@/lib/freeTier';
+import { freeTierStartDecision } from '@/lib/freeTierAccounting';
 
 type CreateMeetingRequest = {
   slug?: unknown;
@@ -14,6 +16,24 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { ok: false, error: 'Authentication required' },
       { status: 401 },
+    );
+  }
+
+  // Phase C: free-tier access gate for Meet. Authentication above remains the
+  // anonymous boundary (registration required); this gate distinguishes paid /
+  // free available / free exhausted using the database-computed status. The
+  // per-meeting authorization itself is unchanged and stays authoritative at
+  // join time (verifyRoomAccess / verifyAccess).
+  const meetFreeStatus = await getFreeTierStatus('meet');
+  const meetDecision = freeTierStartDecision(meetFreeStatus);
+  if (!meetDecision.allow) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: meetDecision.message,
+        code: meetDecision.code,
+      },
+      { status: meetDecision.httpStatus },
     );
   }
 

@@ -3,6 +3,7 @@ import { getServerSession } from '@/lib/auth';
 import { getSupabaseServerClient } from '@/lib/supabaseServerClient';
 import { verifyClassroomTeachingAccess } from '@/lib/classroomAuth';
 import { isUuid } from '@/lib/classValidation';
+import { getLiveRoomElapsedSeconds, recordFreeUsage } from '@/lib/freeTierAccounting';
 
 type EndResult = {
   ok?: boolean;
@@ -39,7 +40,7 @@ export async function POST(
   const supabase = getSupabaseServerClient();
   const { data: lesson, error: lessonErr } = await supabase
     .from('classroom_lessons')
-    .select('id, classroom_id, status, classrooms!inner(id, slug, owner_id)')
+    .select('id, classroom_id, status, livekit_room_id, classrooms!inner(id, slug, owner_id)')
     .eq('id', lessonId)
     .maybeSingle();
 
@@ -72,6 +73,32 @@ export async function POST(
       : reason === 'not_found' ? 404
       : 500;
     return NextResponse.json({ error: `End failed: ${reason}` }, { status });
+  }
+
+  // Phase C: free-tier accounting on the authoritative lesson termination.
+  // Duration source: the LiveKit room lifetime (room.creationTime → now) —
+  // classroom_lessons stores no start/end timestamps and no frontend clock is
+  // trusted. If the room can no longer be resolved, accounting is skipped here
+  // and the LiveKit room_finished webhook (which carries creationTime in-band)
+  // remains the authority. First-wins via the RPC's already_completed flag —
+  // webhook and host action share this RPC, so a lesson is never charged
+  // twice. Paid owners are skipped inside the Phase B RPC.
+  if (!result.already_completed) {
+    const roomName =
+      typeof lesson.livekit_room_id === 'string' && lesson.livekit_room_id.length > 0
+        ? lesson.livekit_room_id
+        : null;
+    const elapsed = roomName ? await getLiveRoomElapsedSeconds(roomName) : null;
+    if (elapsed !== null) {
+      const ownerId =
+        classroom && typeof classroom.owner_id === 'string' ? classroom.owner_id : null;
+      if (ownerId) {
+        const accounting = await recordFreeUsage(ownerId, 'class', elapsed, new Date());
+        if (accounting.error) {
+          console.error('[LessonEnd] free-tier accounting failed:', accounting.detail);
+        }
+      }
+    }
   }
 
   return NextResponse.json({

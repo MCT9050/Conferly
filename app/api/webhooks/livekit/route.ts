@@ -20,6 +20,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { completeMeeting } from '@/lib/meetingLifecycle';
 import { getSupabaseServerClient } from '@/lib/supabaseServerClient';
+import {
+  elapsedSecondsFromCreationTime,
+  recordFreeUsage,
+  resolveLessonClassContext,
+  resolveMeetingOwnerId,
+} from '@/lib/freeTierAccounting';
 
 // LiveKit webhook auth: livekit-server-sdk WebhookReceiver.receive() compares
 // the body against the `Authorization` header (LiveKit sends the bearer token
@@ -87,12 +93,35 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = getSupabaseServerClient();
-  let result: { ok: boolean; reason?: string; already_ended?: boolean } = { ok: true };
+  let result: {
+    ok: boolean;
+    reason?: string;
+    already_ended?: boolean;
+    duration_seconds?: number | null;
+  } = { ok: true };
 
   try {
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(roomName)) {
       // Meet: room name is the meeting.id (uuid).
       result = await completeMeeting(roomName, endedAtISO);
+      // Phase C: free-tier accounting. The authoritative duration is
+      // complete_meeting_atomic's duration_seconds. First-wins: the RPC's
+      // already_ended flag guarantees that retried/replayed room_finished
+      // events and the host end-action can never double-charge.
+      if (result.ok && !result.already_ended && (result.duration_seconds ?? 0) > 0) {
+        const ownerId = await resolveMeetingOwnerId(roomName);
+        if (ownerId) {
+          const accounting = await recordFreeUsage(
+            ownerId,
+            'meet',
+            result.duration_seconds,
+            new Date(endedAtISO)
+          );
+          if (accounting.error) {
+            console.error('[LiveKitWebhook] Meet free-tier accounting failed:', accounting.detail);
+          }
+        }
+      }
     } else {
       // Class: room name is deterministic 'class-<classroomId>-<lessonId>'.
       const match = /^class-([0-9a-f-]{36})-([0-9a-f-]{36})$/i.exec(roomName);
@@ -112,6 +141,32 @@ export async function POST(request: NextRequest) {
             reason: (rpcResult as any)?.reason,
             already_ended: (rpcResult as any)?.already_completed,
           };
+          // Phase C: free-tier accounting for Class — charged against the
+          // classroom OWNER (the same party whose subscription keys live
+          // capacity), per the Phase B contract. Duration is the authoritative
+          // LiveKit room lifetime carried in-band by room_finished
+          // (event.createdAt − room.creationTime); classroom_lessons stores no
+          // lesson timestamps. First-wins via already_completed.
+          if (result.ok && !result.already_ended) {
+            const elapsed = elapsedSecondsFromCreationTime(
+              (event as any)?.room?.creationTime,
+              typeof rawTs === 'number' && rawTs > 0 ? rawTs : Math.floor(Date.now() / 1000)
+            );
+            if (elapsed !== null) {
+              const { ownerId } = await resolveLessonClassContext(lessonId);
+              if (ownerId) {
+                const accounting = await recordFreeUsage(
+                  ownerId,
+                  'class',
+                  elapsed,
+                  new Date(endedAtISO)
+                );
+                if (accounting.error) {
+                  console.error('[LiveKitWebhook] Class free-tier accounting failed:', accounting.detail);
+                }
+              }
+            }
+          }
         }
       }
       // Unknown room name: acknowledge, do not act.
