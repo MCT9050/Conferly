@@ -22,6 +22,8 @@ interface ClientOptions {
  * Respects COOKIE_DOMAIN env var if set explicitly.
  */
 function deriveCookieDomain(request?: NextRequest | Request): string | undefined {
+  // Explicit configuration always wins. This is the only supported mechanism
+  // for sharing auth cookies across arbitrary custom domains.
   if (process.env.COOKIE_DOMAIN) {
     return process.env.COOKIE_DOMAIN.startsWith('.')
       ? process.env.COOKIE_DOMAIN
@@ -31,20 +33,42 @@ function deriveCookieDomain(request?: NextRequest | Request): string | undefined
   if (!request) return undefined;
 
   const host = request.headers.get('host') ?? '';
-  const normalizedHost = host.replace(/:\d+$/, '');
+  const normalizedHost = host
+    .replace(/:\d+$/, '')
+    .toLowerCase();
 
-  // No domain override for localhost — cookies stay host-specific
-  if (normalizedHost.includes('localhost') || normalizedHost.includes('127.0.0.1')) {
+  // Local development must remain host-only.
+  if (
+    normalizedHost === 'localhost' ||
+    normalizedHost === '127.0.0.1' ||
+    normalizedHost.endsWith('.localhost')
+  ) {
     return undefined;
   }
 
-  // For production subdomains like class.conferly.site, derive .conferly.site
-  const parts = normalizedHost.split('.');
-  if (parts.length > 2) {
-    return `.${parts.slice(-2).join('.')}`;
+  // Vercel preview/deployment hostnames live under the shared public suffix
+  // vercel.app. Browsers must not receive Domain=.vercel.app auth cookies.
+  // Keep those cookies scoped to the exact preview hostname instead.
+  if (
+    normalizedHost === 'vercel.app' ||
+    normalizedHost.endsWith('.vercel.app')
+  ) {
+    return undefined;
   }
 
-  return `.${normalizedHost}`;
+  // Conferly intentionally shares authentication across its own product
+  // subdomains such as class.conferly.site and meet.conferly.site.
+  if (
+    normalizedHost === 'conferly.site' ||
+    normalizedHost.endsWith('.conferly.site')
+  ) {
+    return '.conferly.site';
+  }
+
+  // Do not guess a registrable domain for unknown hosts. Simple
+  // "last two labels" logic is unsafe for public suffixes such as
+  // co.za/co.uk and for multi-tenant hosting providers.
+  return undefined;
 }
 
 export function createSupabaseServerClient(
