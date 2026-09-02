@@ -40,7 +40,36 @@ export default async function ClassroomDetailPage({
     .eq('id', resolvedClassroom.id)
     .single();
 
-  if (error || !classroom) {
+  if (error) {
+    console.error('[CLASSROOM_DETAIL] classroom query failed:', {
+      code: error.code,
+      message: error.message,
+      classroomId: resolvedClassroom.id,
+      userId: user.id,
+    });
+
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <Link href="/class/dashboard" className="text-sm text-muted-foreground hover:text-foreground mb-4 inline-block">
+          ← Back to Classrooms
+        </Link>
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-6" role="alert">
+          <h2 className="text-lg font-semibold text-amber-200 mb-2">Unable to load classroom</h2>
+          <p className="text-sm text-amber-300/80 mb-4">
+            Something went wrong while loading this classroom. Please try again.
+          </p>
+          <Link
+            href={`/class/classrooms/${encodeURIComponent(slug)}`}
+            className="inline-block rounded-lg bg-amber-600 px-4 py-2 text-white text-sm hover:bg-amber-700 transition-colors"
+          >
+            Retry
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!classroom) {
     notFound();
   }
 

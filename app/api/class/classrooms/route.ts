@@ -89,10 +89,13 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createSupabaseServerClient({ request });
+  // Classroom visibility is enforced by RLS for this user-JWT read.
+  // Avoid filtering through the embedded enrollment relationship: PostgREST
+  // rejects that shape and the filter is redundant with the classroom policies.
   const { data, error } = await supabase
     .from('classrooms')
-    .select('*, classroom_enrollments(role, enrollment_status)')
-    .or(`owner_id.eq.${session.userId},classroom_enrollments.student_id.eq.${session.userId}`);
+    .select('*')
+    .order('updated_at', { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: 'Unable to load classrooms' }, { status: 500 });

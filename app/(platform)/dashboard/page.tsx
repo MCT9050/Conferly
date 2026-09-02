@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ProductSelector } from '@/components/platform/ProductSelector';
 import FreeTierStatusPanel from '@/components/platform/FreeTierStatusPanel';
@@ -10,6 +11,26 @@ function sortByDate(a: RecentWorkspaceItem, b: RecentWorkspaceItem) {
 export default async function DashboardPage() {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
+
+  // Onboarding is a UX gate only. A profile lookup failure must not be
+  // misrepresented as incomplete onboarding.
+  if (user?.id) {
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('onboarding_completed_at')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error('[DASHBOARD] profile lookup failed:', {
+        code: profileError.code,
+        message: profileError.message,
+        userId: user.id,
+      });
+    } else if (!profile?.onboarding_completed_at) {
+      redirect('/onboarding');
+    }
+  }
 
   let recentActivity: RecentWorkspaceItem[] = [];
 
